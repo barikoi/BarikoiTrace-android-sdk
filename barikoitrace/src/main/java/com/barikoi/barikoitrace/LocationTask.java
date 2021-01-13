@@ -226,66 +226,13 @@ public class LocationTask {
         handler.removeCallbacksAndMessages(null);
     }
 
-    public void getAddress(final double lat, final double lon){
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
-        final String token = prefs.getString(Api.TOKEN, "");
-        RequestQueue queue = RequestQueueSingleton.getInstance(context.getApplicationContext()).getRequestQueue();
-        StringRequest request = new StringRequest(Request.Method.GET,
-                Api.url_base+"reverse?latitude="+lat+"&longitude="+lon,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        if(context instanceof Activity){
-                            Activity container=(Activity)context;
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                                if(container.isDestroyed() || container.isFinishing()) return;
-                            }
-                        }
-                       /* try {
-                            JSONObject place=new JSONArray(response).getJSONObject(0);
-                            String address=place.getString("Address")+", "+place.getString("area")+", "+place.getString("city");
-                            Place p=new Place(place.getString("Address"),lon+"",lat+"","",place.getString("city"),place.getString("area"),"","","");
-                            float distance=Float.parseFloat(place.getString("distance"))*1000;
-                            if(distance>50){
-                                getaddressG(lat,lon);
-                            }
-                            else if(p!=null && listener!=null ) listener.reversedAddress(p);
-
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            //Toast.makeText(SelectPlaceActivity.this,"Problem with the server",Toast.LENGTH_LONG).show();
-                            getaddressG(lat,lon);
-                        }*/
-                    }
-
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        //loading.setVisibility(View.GONE);
-                        //NetworkcallUtils.handleResponse(error,context);
-                    }
-                }
-        ) {
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> parameters = new HashMap<String, String>();
-                //parameters.put("id", id.getText().toString());
-                if(!token.equals("")) {
-                    parameters.put("Authorization", "bearer " + token);
-                }
-                return parameters;
-            }
-
-        };
-        queue.add(request);
-    }
     public void sendLocationData(final Location location,final int id, final String apikey){
 //        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
 //        final String token = prefs.getString(Api.TOKEN, "");
         final String time = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.ENGLISH).format(location.getTime());
         RequestQueue queue = RequestQueueSingleton.getInstance(context.getApplicationContext()).getRequestQueue();
         String reqUrl=Api.gpx_url+"?latitude="+location.getLatitude()+"&longitude="+location.getLongitude()+"&speed="+location.getSpeed()+"&bearing="+location.getBearing()+"&altitude="+location.getAltitude()+"&gpx_time="+time+"&api_key="+apikey+"&user_id="+id;
-        Log.d(TAG,reqUrl);
+
         StringRequest request = new StringRequest(Request.Method.POST,
                 reqUrl,
                 new Response.Listener<String>() {
