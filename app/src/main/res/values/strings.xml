@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Barikoi Trace SDK app</string>
+    <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyB7TpLyrwzPVJy6nrMpycz72JRUjaJnVg4</string>
+    <string name="name">Name</string>
+    <string name="email">Email</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="password">Password</string>
+    <string name="create_account">Create Account</string>
+    <string name="already_a_member">Already a member?</string>
+    <string name="enroll_title">Choose company name to enroll</string>
+    <string name="log_in">Log in</string>
+    <string name="logout">Log out</string>
+    <string name="sure_log_out">Are you sure you want to log out?</string>
+    <string name="login"><a href="http://www.bla.com">Log in</a></string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="submit">Submit</string>
+    <string name="no_acc_creat_one">No account yet? Create one</string>
+    <string name="signup"><a href="http://www.bla.com">Sign up</a></string>
+    <string name="forgot_pasword"><a href="http://www.bla.com">Forgot pasword?</a></string>
+    <string name="try_again">TRY AGAIN</string>
+
+    <string name="couldnot_connect">Could not connect</string>
+    <string name="prob_change_server">Problem or change in server, please wait and try again</string>
+    <string name="could_not_con_acc">Could not connect to account</string>
+    <string name="this_field_is_required">This field is required</string>
+
+</resources>
