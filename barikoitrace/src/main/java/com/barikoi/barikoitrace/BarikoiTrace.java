@@ -30,7 +30,7 @@ public class BarikoiTrace {
         editor.putString(APIKEY_TAG, apikey);
         editor.apply();
     }
-    public static BarikoiTrace getInstance(Context context, String apikey){
+    public synchronized static BarikoiTrace getInstance(Context context, String apikey){
         if (INSTANCE==null)
             INSTANCE= new BarikoiTrace(context.getApplicationContext(),apikey);
         return INSTANCE;
