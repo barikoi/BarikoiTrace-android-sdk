@@ -6,7 +6,6 @@ import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.TraceMode;
 
-import java.util.Set;
 import java.util.UUID;
 
 
@@ -42,7 +41,7 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putInt("distanceFilter", traceTrackingMode.getDistanceFilter());
         this.sharedPRefHelper.putInt("stopDuration", traceTrackingMode.getStopDuration());
         this.sharedPRefHelper.putInt("accuracyFilter", traceTrackingMode.getAccuracyFilter());
-        this.sharedPRefHelper.putInt("type", traceTrackingMode.getTrackingOptions().getOption());
+        this.sharedPRefHelper.putInt("type", traceTrackingMode.getTrackingModes().getOption());
     }
 
 

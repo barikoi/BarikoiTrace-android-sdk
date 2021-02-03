@@ -64,20 +64,20 @@ public final class C0089a {
 
 
     public static int m402a(ConfigStorageManager aVar) {
-        if (aVar.getType() == TraceMode.TrackingOptions.ACTIVE.getOption()) {
+        if (aVar.getType() == TraceMode.TrackingModes.ACTIVE.getOption()) {
             return 50;
         }
-        if (aVar.getType() == TraceMode.TrackingOptions.REACTIVE.getOption()) {
+        if (aVar.getType() == TraceMode.TrackingModes.REACTIVE.getOption()) {
             return 75;
         }
-        if (aVar.getType() == TraceMode.TrackingOptions.PASSIVE.getOption()) {
+        if (aVar.getType() == TraceMode.TrackingModes.PASSIVE.getOption()) {
         }
         return 100;
     }
 
 
     public static int m403a(ConfigStorageManager aVar, long j) {
-        if (aVar.getType() == TraceMode.TrackingOptions.ACTIVE.getOption()) {
+        if (aVar.getType() == TraceMode.TrackingModes.ACTIVE.getOption()) {
             if (j >= 0 && j <= 10) {
                 return 25;
             }
@@ -97,7 +97,7 @@ public final class C0089a {
                 return j >= 101 ? 250 : 100;
             }
             return 175;
-        } else if (aVar.getType() == TraceMode.TrackingOptions.REACTIVE.getOption()) {
+        } else if (aVar.getType() == TraceMode.TrackingModes.REACTIVE.getOption()) {
             if (j >= 0 && j <= 10) {
                 return 50;
             }
@@ -117,7 +117,7 @@ public final class C0089a {
                 return j >= 101 ? 500 : 100;
             }
             return 350;
-        } else if (aVar.getType() == TraceMode.TrackingOptions.PASSIVE.getOption()) {
+        } else if (aVar.getType() == TraceMode.TrackingModes.PASSIVE.getOption()) {
             if (j >= 0 && j <= 10) {
                 return 100;
             }

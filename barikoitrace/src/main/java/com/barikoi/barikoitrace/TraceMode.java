@@ -4,14 +4,14 @@ import androidx.annotation.Keep;
 
 @Keep
 public final class TraceMode {
-    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 50, TrackingOptions.ACTIVE);
-    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 100, TrackingOptions.PASSIVE);
-    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 75, TrackingOptions.REACTIVE);
+    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 50, TrackingModes.ACTIVE);
+    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 100, TrackingModes.PASSIVE);
+    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 75, TrackingModes.REACTIVE);
     private int accuracyFilter;
     private DesiredAccuracy desiredAccuracy;
     private int distanceFilter;
     private int stopDuration;
-    private TrackingOptions trackingOptions;
+    private TrackingModes trackingModes;
     private int updateInterval;
 
     @Keep
@@ -32,17 +32,24 @@ public final class TraceMode {
         private int distanceFilter = 0;
         private int stopDuration = 0;
         private int updateInterval = 0;
-        public Builder(int updateInterval) {
-            this.updateInterval = updateInterval;
+        public Builder() {
+
         }
 
         public Builder(int distanceFilter, int updateInterval) {
             this.distanceFilter = distanceFilter;
             this.stopDuration = updateInterval;
         }
-
+        public Builder setDistancefilter(int distanceFilter){
+            this.distanceFilter=distanceFilter;
+            return this;
+        }
+        public Builder setUpdateInterval(int updateInterval){
+            this.updateInterval=updateInterval;
+            return this;
+        }
         public TraceMode build() {
-            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingOptions.CUSTOM);
+            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM);
         }
 
         public Builder setAccuracyFilter(int i) {
@@ -72,7 +79,7 @@ public final class TraceMode {
     }
 
 
-    public enum TrackingOptions {
+    public enum TrackingModes {
         PASSIVE(0),
         REACTIVE(1),
         ACTIVE(2),
@@ -82,7 +89,7 @@ public final class TraceMode {
 
         int option;
 
-        private TrackingOptions(int i) {
+        private TrackingModes(int i) {
             this.option = i;
         }
 
@@ -95,13 +102,13 @@ public final class TraceMode {
 
 
 
-    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingOptions trackingOptions) {
+    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes) {
         this.desiredAccuracy = desiredAccuracy2;
         this.updateInterval = updateinterval;
         this.distanceFilter = distancefilter;
         this.stopDuration = stopduration;
         this.accuracyFilter = accuracyfilter;
-        this.trackingOptions = trackingOptions;
+        this.trackingModes = trackingModes;
     }
 
     public int getAccuracyFilter() {
@@ -120,8 +127,8 @@ public final class TraceMode {
         return this.stopDuration;
     }
 
-    public TrackingOptions getTrackingOptions() {
-        return this.trackingOptions;
+    public TrackingModes getTrackingModes() {
+        return this.trackingModes;
     }
 
     public int getUpdateInterval() {

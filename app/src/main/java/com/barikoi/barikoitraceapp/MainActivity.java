@@ -148,7 +148,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 					}
 					else {
 
-						BarikoiTrace.startTracking(new TraceMode.Builder(3).build());
+						BarikoiTrace.startTracking(new TraceMode.Builder().setUpdateInterval(3).build());
 						if (BarikoiTrace.isLocationTracking()) {
 							Toast.makeText(getApplicationContext(), "Service started!!", Toast.LENGTH_SHORT).show();
 						}

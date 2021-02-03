@@ -15,13 +15,11 @@ import androidx.core.app.NotificationCompat;
 
 import com.barikoi.barikoitrace.R;
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
-import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.C0089a;
 import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
@@ -115,7 +113,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                 int a = (int) C0089a.m400a(location.getSpeed());
                 this.f254g = 0;
                 this.logDbHelper.m312a("Location " + location.getLatitude() + "--" + location.getLongitude() + "--" + this.f253f + "--" + a);
-                if (this.configStorageManager.getType() == TraceMode.TrackingOptions.CUSTOM.getOption()) {
+                if (this.configStorageManager.getType() == TraceMode.TrackingModes.CUSTOM.getOption()) {
                     
                     this.locationTracker.m77a(location, C0089a.EnumC0091b.MOVING);
                     return;
