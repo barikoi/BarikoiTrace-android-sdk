@@ -12,3 +12,5 @@
 /captures
 .externalNativeBuild
 .cxx
+libs/
+src/main/res/values/barikoi_config.xml

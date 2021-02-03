@@ -1,13 +1,9 @@
 package com.barikoi.barikoitraceapp;
 
 import android.annotation.SuppressLint;
-import android.app.ActivityManager;
-import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.location.Location;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -26,6 +22,10 @@ import androidx.appcompat.widget.AppCompatButton;
 import androidx.appcompat.widget.SwitchCompat;
 
 import com.barikoi.barikoitrace.BarikoiTrace;
+import com.barikoi.barikoitrace.TraceMode;
+import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
+import com.barikoi.barikoitrace.models.BarikoiTraceError;
+import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.mapbox.android.core.location.LocationEngine;
 import com.mapbox.android.core.location.LocationEngineListener;
@@ -101,44 +101,63 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 			}
 		});
 		locationTask.displayLocation();*/
-
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		token = prefs.getString("token", "");
-		int userid=Integer.parseInt(prefs.getString(USER_ID,""));
-		barikoiTrace= BarikoiTrace.getInstance(this,"MjA1NDo4MjBSTUxLTEs5").setUserId(userid);
+		String userid=prefs.getString(USER_ID,"");
+		BarikoiTrace.initialize(this,getString(R.string.barikoi_api_key));
+		BarikoiTrace.setEmail("sadmansakib69@yahoo.com", new BarikoiTraceUserCallback() {
+			@Override
+			public void onFailure(BarikoiTraceError barikoiError) {
+
+			}
+
+			@Override
+			public void onSuccess(BarikoiTraceUser traceUser) {
+
+			}
+		});
 		username = prefs.getString(Api.NAME, "");
 		tv_username = findViewById(R.id.tvUserName);
 		switchService = findViewById(R.id.switchService);
 
 		tv_username.setText(username);
 
-		if (barikoiTrace.isTrackingOn()) {
-			Log.d("locationupdate","already running no need to start again");
+
+		if (BarikoiTrace.isLocationTracking()) {
+			//Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
-
 		switchService.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
 			@Override
 			public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
 
 				if (b) {
-					switchService.setChecked(true);
 
-					if (barikoiTrace.isTrackingOn()) {
+					if (BarikoiTrace.isLocationTracking()) {
 						Log.d("locationupdate","already running no need to start again");
 						//System.out.println("already running no need to start again");
 						Toast.makeText(getApplicationContext(), "Service already running!! no need to start again", Toast.LENGTH_SHORT).show();
-					} else {
-						barikoiTrace.startTracking();
-						if (barikoiTrace.isTrackingOn()) {
+						switchService.setChecked(false);
+					}else if(BarikoiTrace.isBatteryOptimizationEnabled()){
+						BarikoiTrace.disableBatteryOptimization();
+						switchService.setChecked(false);
+					}else if(!BarikoiTrace.isLocationPermissionsGranted()){
+						BarikoiTrace.requestLocationPermissions(MainActivity.this);
+					}else if(!BarikoiTrace.isLocationSettingsOn()){
+						BarikoiTrace.requestLocationServices(MainActivity.this);
+					}
+					else {
+
+						BarikoiTrace.startTracking(new TraceMode.Builder(3).build());
+						if (BarikoiTrace.isLocationTracking()) {
 							Toast.makeText(getApplicationContext(), "Service started!!", Toast.LENGTH_SHORT).show();
 						}
 					}
 				}else{
 					switchService.setChecked(false);
-					if (barikoiTrace.isTrackingOn()) {
-						barikoiTrace.stopTracking();
-						if (!barikoiTrace.isTrackingOn()) {
+					if (BarikoiTrace.isLocationTracking()) {
+						BarikoiTrace.stopTracking();
+						if (!BarikoiTrace.isLocationTracking()) {
 							Toast.makeText(getApplicationContext(), "Service stopped!!", Toast.LENGTH_SHORT).show();
 						}
 					}
@@ -360,7 +379,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		Log.d("OnLoc", "Onlocchanged");
 		if (location != null) {
 			if (mMap != null)
-				/*IntentDataCheck()*/
+
 				locationEngine.removeLocationEngineListener(this);
 		} else {
 			locationEngine.requestLocationUpdates();
@@ -382,9 +401,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 	@Override
 	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-		if(requestCode==barikoiTrace.BARIKOI_REQUEST_CHECK_PERMISSION){
-			barikoiTrace.permissionGranted(true);
-		}
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 	}
 

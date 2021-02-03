@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.barikoi.barikoitrace.Api.TOKEN;
+import static com.barikoi.barikoitrace.network.Api.TOKEN;
 import static com.barikoi.barikoitraceapp.Api.ENROLLED;
 import static com.barikoi.barikoitraceapp.Api.companyListurl;
 

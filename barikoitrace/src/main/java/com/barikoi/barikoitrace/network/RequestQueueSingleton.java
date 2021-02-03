@@ -1,4 +1,4 @@
-package com.barikoi.barikoitrace;
+package com.barikoi.barikoitrace.network;
 
 import android.content.Context;
 import android.graphics.Bitmap;

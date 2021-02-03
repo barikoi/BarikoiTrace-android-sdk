@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Barikoi Trace SDK app</string>
+    <string name="app_name">BarikoiTrace SDK app</string>
     <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyB7TpLyrwzPVJy6nrMpycz72JRUjaJnVg4</string>
     <string name="name">Name</string>
     <string name="email">Email</string>

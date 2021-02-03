@@ -10,11 +10,26 @@
     <application
         android:usesCleartextTraffic="true">
         <service
-            android:name="com.barikoi.barikoitrace.TimerService"
+            android:name="com.barikoi.barikoitrace.service.BarikoiTraceLocationService"
             android:foregroundServiceType="location"
             android:enabled="true"
             android:exported="true">
 
         </service>
+        <service
+            android:name="com.barikoi.barikoitrace.service.BarikoiTraceService"
+            android:enabled="true"
+            android:exported="true">
+
+        </service>
+        <receiver
+            android:name="com.barikoi.barikoitrace.event.BootEventReceiver"
+            android:enabled="true" >
+            <intent-filter android:priority="999" >
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
