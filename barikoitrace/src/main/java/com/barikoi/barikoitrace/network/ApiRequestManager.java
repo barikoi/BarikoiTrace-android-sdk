@@ -48,9 +48,10 @@ public class ApiRequestManager {
         key=configStorageManager.getApiKey();
     }
 
-    public void getUser(final String email, final String phone, final BarikoiTraceUserCallback callback){
+    public void setUser(final String email, final String phone, final BarikoiTraceUserCallback callback){
 
-
+        id=configStorageManager.getUserID();
+        key=configStorageManager.getApiKey();
         StringRequest request = new StringRequest(Request.Method.POST,
                 Api.user_url,
                 new Response.Listener<String>() {
@@ -66,8 +67,9 @@ public class ApiRequestManager {
                                 String email=userjson.getString("email");
                                 String phone=userjson.getString("phone");
                                 BarikoiTraceUser user=new BarikoiTraceUser(id+"", email,phone);
-                                callback.onSuccess(user);
                                 configStorageManager.setUserID(user.getUserId());
+                                setId(id+"");
+                                callback.onSuccess(user);
                             }else {
                                 String msg= responsejson.getString("message");
                                 callback.onFailure(new BarikoiTraceError(status+"",msg));
@@ -171,8 +173,10 @@ public class ApiRequestManager {
     }
 
 
+    private void setId(String id){
+        INSTANCE.id=id;
 
-
+    }
 
 
 

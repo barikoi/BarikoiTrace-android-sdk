@@ -88,7 +88,7 @@ public final class LogDbHelper extends SQLiteOpenHelper {
 
     private LogDbHelper(Context context) {
         super(context, "log", (SQLiteDatabase.CursorFactory) null, 1);
-        BarikoiTraceLogView.debugLog("log db created");
+        //BarikoiTraceLogView.debugLog("log db created");
         this.context = context.getApplicationContext();
         this.configStorageManager = ConfigStorageManager.getInstance(context);
     }

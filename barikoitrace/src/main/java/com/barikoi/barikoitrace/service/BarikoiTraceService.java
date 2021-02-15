@@ -27,7 +27,7 @@ public class BarikoiTraceService extends Service {
     public void onCreate() {
         super.onCreate();
         try {
-            BarikoiTraceLogView.debugLog("BarikoiTraceService started");
+            //BarikoiTraceLogView.debugLog("BarikoiTraceService started");
             this.networkChangeManager = new NetworkChangeManager(this);
             LocationTracker locationTracker = new LocationTracker(this);
             this.locationTracker = locationTracker;
@@ -39,7 +39,7 @@ public class BarikoiTraceService extends Service {
 
     @Override // android.app.Service
     public void onDestroy() {
-        BarikoiTraceLogView.debugLog("BarikoiTraceService destroyed");
+        //BarikoiTraceLogView.debugLog("BarikoiTraceService destroyed");
         try {
             if (this.networkChangeManager != null) {
                 this.networkChangeManager.unregisterReceiver();

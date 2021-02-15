@@ -1,4 +1,4 @@
-package com.barikoi.barikoitraceapp;
+package com.barikoi.barikoitracesdkapp;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
@@ -36,8 +36,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.barikoi.barikoitrace.network.Api.TOKEN;
-import static com.barikoi.barikoitraceapp.Api.ENROLLED;
-import static com.barikoi.barikoitraceapp.Api.companyListurl;
+import static com.barikoi.barikoitracesdkapp.Api.ENROLLED;
+import static com.barikoi.barikoitracesdkapp.Api.companyListurl;
 
 
 public class CompanyNameActivity extends AppCompatActivity {

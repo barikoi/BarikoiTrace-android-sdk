@@ -2,7 +2,6 @@ package com.barikoi.barikoitrace;
 
 import android.app.Application;
 import android.content.Context;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 
@@ -12,7 +11,6 @@ import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
-import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
@@ -158,7 +156,7 @@ public final class LocationManager {
                 BarikoiTraceLogView.onFailure(BarikoiTraceErrors.LocationPermissionError());
             } else {
 
-                BarikoiTraceLogView.onSuccess("Tracking Started");
+                BarikoiTraceLogView.onSuccess("Tracking Started " );
                 this.confdb.turnTrackingOn(traceTrackingMode);
                 this.locationTracker.startLocationService();
             }
@@ -200,7 +198,7 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
             callback.onFailure(BarikoiTraceErrors.noDataError());
         }else{
-            this.apiRequestManager.getUser(email,null,callback);
+            this.apiRequestManager.setUser(email,null,callback);
         }
 
     }
@@ -212,7 +210,7 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
             callback.onFailure(BarikoiTraceErrors.noDataError());
         }else {
-            this.apiRequestManager.getUser(null, phone, callback);
+            this.apiRequestManager.setUser(null, phone, callback);
         }
     }
     void setUserId(String user_id){

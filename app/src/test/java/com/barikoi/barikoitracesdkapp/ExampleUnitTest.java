@@ -1,4 +1,4 @@
-package com.barikoi.barikoitraceapp;
+package com.barikoi.barikoitracesdkapp;
 
 import org.junit.Test;
 

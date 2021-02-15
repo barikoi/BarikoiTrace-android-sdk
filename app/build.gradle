@@ -4,7 +4,7 @@ android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
     defaultConfig {
-        applicationId "com.barikoi.barikoitrace"
+        applicationId "com.barikoi.barikoitracesdkapp"
         minSdkVersion 16
         targetSdkVersion 29
         versionCode 1
@@ -37,6 +37,4 @@ dependencies {
     implementation 'com.android.volley:volley:1.1.1'
     implementation 'com.graphhopper:graphhopper-navigation-android-ui:0.1.0-SNAPSHOT'
     implementation 'com.graphhopper:directions-api-client:0.10.1-4'
-    debugImplementation 'com.idescout.sql:sqlscout-server:4.1'
-    releaseImplementation 'com.idescout.sql:sqlscout-server-noop:4.1'
 }

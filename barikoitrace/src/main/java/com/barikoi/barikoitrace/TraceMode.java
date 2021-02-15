@@ -53,7 +53,7 @@ public final class TraceMode {
         }
 
         public Builder setAccuracyFilter(int i) {
-            if (i < 20 || i > 150) {
+            if (i < 10 || i > 150) {
                 this.accuracyFilter = 100;
             } else {
                 this.accuracyFilter = i;
@@ -134,4 +134,6 @@ public final class TraceMode {
     public int getUpdateInterval() {
         return this.updateInterval;
     }
+
+
 }

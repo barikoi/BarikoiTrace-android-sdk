@@ -1,4 +1,4 @@
-package com.barikoi.barikoitraceapp;
+package com.barikoi.barikoitracesdkapp;
 
 /**
  * Created by Sakib on 7/16/2017.

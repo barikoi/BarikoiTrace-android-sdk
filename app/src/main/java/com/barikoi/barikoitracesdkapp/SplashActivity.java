@@ -1,4 +1,4 @@
-package com.barikoi.barikoitraceapp;
+package com.barikoi.barikoitracesdkapp;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -30,8 +30,8 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.barikoi.barikoitraceapp.Api.ENROLLED;
-import static com.barikoi.barikoitraceapp.Api.usercheckurl;
+import static com.barikoi.barikoitracesdkapp.Api.ENROLLED;
+import static com.barikoi.barikoitracesdkapp.Api.usercheckurl;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -133,12 +133,12 @@ public class SplashActivity extends AppCompatActivity {
 								NetworkResponse response = error.networkResponse;
 								if (error instanceof AuthFailureError) {
 									Toast.makeText(SplashActivity.this, "authentication problem, redirecting to login", Toast.LENGTH_SHORT).show();
-
+                                    routeToAppropriatePage(1);
 								} else if (response != null && response.data != null) {
 									switch (response.statusCode) {
 										case 401: {
 											Toast.makeText(SplashActivity.this, "not logged in, redirecting to login", Toast.LENGTH_SHORT).show();
-
+                                            routeToAppropriatePage(1);
 										}
 										default:
 

@@ -45,7 +45,7 @@ public final class C0089a {
     }
 
 
-    public static double m400a(float f) {
+    public static double getSpeedInKmph(float f) {
         return ((double) f) * 3.6d;
     }
 
@@ -63,7 +63,7 @@ public final class C0089a {
     }
 
 
-    public static int m402a(ConfigStorageManager aVar) {
+    public static int getAccuracyRounded(ConfigStorageManager aVar) {
         if (aVar.getType() == TraceMode.TrackingModes.ACTIVE.getOption()) {
             return 50;
         }
@@ -71,70 +71,72 @@ public final class C0089a {
             return 75;
         }
         if (aVar.getType() == TraceMode.TrackingModes.PASSIVE.getOption()) {
+            return 100;
         }
+        if(aVar.getAccuracyFilter()!=0) return aVar.getAccuracyFilter();
         return 100;
     }
 
 
-    public static int m403a(ConfigStorageManager aVar, long j) {
+    public static int getDistFilterFromSpeed(ConfigStorageManager aVar, long avgspd) {
         if (aVar.getType() == TraceMode.TrackingModes.ACTIVE.getOption()) {
-            if (j >= 0 && j <= 10) {
+            if (avgspd >= 0 && avgspd <= 10) {
                 return 25;
             }
-            if (j >= 11 && j <= 20) {
+            if (avgspd >= 11 && avgspd <= 20) {
                 return 50;
             }
-            if (j >= 21 && j <= 30) {
+            if (avgspd >= 21 && avgspd <= 30) {
                 return 75;
             }
-            if (j >= 31 && j <= 50) {
+            if (avgspd >= 31 && avgspd <= 50) {
                 return 100;
             }
-            if (j >= 51 && j <= 70) {
+            if (avgspd >= 51 && avgspd <= 70) {
                 return 125;
             }
-            if (j < 71 || j > 100) {
-                return j >= 101 ? 250 : 100;
+            if (avgspd < 71 || avgspd > 100) {
+                return avgspd >= 101 ? 250 : 100;
             }
             return 175;
         } else if (aVar.getType() == TraceMode.TrackingModes.REACTIVE.getOption()) {
-            if (j >= 0 && j <= 10) {
+            if (avgspd >= 0 && avgspd <= 10) {
                 return 50;
             }
-            if (j >= 11 && j <= 20) {
+            if (avgspd >= 11 && avgspd <= 20) {
                 return 100;
             }
-            if (j >= 21 && j <= 30) {
+            if (avgspd >= 21 && avgspd <= 30) {
                 return 150;
             }
-            if (j >= 31 && j <= 50) {
+            if (avgspd >= 31 && avgspd <= 50) {
                 return 200;
             }
-            if (j >= 51 && j <= 70) {
+            if (avgspd >= 51 && avgspd <= 70) {
                 return 250;
             }
-            if (j < 71 || j > 100) {
-                return j >= 101 ? 500 : 100;
+            if (avgspd < 71 || avgspd > 100) {
+                return avgspd >= 101 ? 500 : 100;
             }
             return 350;
         } else if (aVar.getType() == TraceMode.TrackingModes.PASSIVE.getOption()) {
-            if (j >= 0 && j <= 10) {
+            if (avgspd >= 0 && avgspd <= 10) {
                 return 100;
             }
-            if (j >= 11 && j <= 20) {
+            if (avgspd >= 11 && avgspd <= 20) {
                 return 200;
             }
-            if (j >= 21 && j <= 30) {
+            if (avgspd >= 21 && avgspd <= 30) {
                 return 300;
             }
-            if (j >= 31 && j <= 50) {
+            if (avgspd >= 31 && avgspd <= 50) {
                 return 400;
             }
-            if (j >= 51 && j <= 70) {
+            if (avgspd >= 51 && avgspd <= 70) {
                 return 500;
             }
-            if (j < 71 || j > 100) {
-                return j >= 101 ? 1000 : 100;
+            if (avgspd < 71 || avgspd > 100) {
+                return avgspd >= 101 ? 1000 : 100;
             }
             return 700;
         } else {
@@ -143,7 +145,7 @@ public final class C0089a {
     }
 
 
-    public static int m404a(ConfigStorageManager aVar, List<Integer> list, Location location, int i) {
+    public static int m404a(ConfigStorageManager aVar, List<Integer> list, Location location, int speed) {
         int a;
         try {
             Location s = aVar.getLastLocation();
@@ -152,17 +154,17 @@ public final class C0089a {
             }
             long time = (location.getTime() - s.getTime()) / 1000;
             if (time >= 0 && time < 60) {
-                list.add(Integer.valueOf(i));
+                list.add(Integer.valueOf(speed));
                 if (list.size() < 5 || (a = m405a(list)) <= 0) {
                     return 100;
                 }
                 list.remove(list.size() - 1);
-                return m403a(aVar, (long) a);
+                return getDistFilterFromSpeed(aVar, (long) a);
             } else if (time <= 60) {
                 return 100;
             } else {
                 list.clear();
-                list.add(Integer.valueOf(i));
+                list.add(Integer.valueOf(speed));
                 return 100;
             }
         } catch (Exception e) {

@@ -1,4 +1,4 @@
-package com.barikoi.barikoitraceapp;
+package com.barikoi.barikoitracesdkapp;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
@@ -29,7 +29,7 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.barikoi.barikoitraceapp.Api.loginurl;
+import static com.barikoi.barikoitracesdkapp.Api.loginurl;
 
 public class LoginActivity extends AppCompatActivity {
 

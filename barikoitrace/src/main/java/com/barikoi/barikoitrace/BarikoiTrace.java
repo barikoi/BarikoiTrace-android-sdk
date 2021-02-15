@@ -25,6 +25,7 @@ public class BarikoiTrace {
     public static void initialize(Context context, String apikey){
         manager = LocationManager.getInstance(context);
         getInstance().m15a(apikey);
+
     }
     public void setUserId(String id){
         getInstance().setUserId(id);

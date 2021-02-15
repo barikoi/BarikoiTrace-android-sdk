@@ -1,17 +1,21 @@
-package com.barikoi.barikoitraceapp;
+package com.barikoi.barikoitracesdkapp;
 
 import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Trace;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,6 +28,7 @@ import androidx.appcompat.widget.SwitchCompat;
 import com.barikoi.barikoitrace.BarikoiTrace;
 import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
+import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -47,8 +52,9 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode;
 
 import java.util.List;
 
-import static com.barikoi.barikoitraceapp.Api.USER_ID;
-import static com.barikoi.barikoitraceapp.NetworkcallUtils.logout;
+import static com.barikoi.barikoitracesdkapp.Api.EMAIL;
+import static com.barikoi.barikoitracesdkapp.Api.USER_ID;
+import static com.barikoi.barikoitracesdkapp.NetworkcallUtils.logout;
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationEngineListener,
@@ -61,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 	private int LOCATION_SETTING_REQUEST = 999;
 	private SwitchCompat switchService;
 	private MapboxMap mMap = null;
+	private Spinner spinnertype;
 	private MapView mapView = null;
 	private LocationEngine locationEngine = null;
 	private LocationLayerPlugin locationPlugin= null;
@@ -104,11 +111,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		token = prefs.getString("token", "");
 		String userid=prefs.getString(USER_ID,"");
-		BarikoiTrace.initialize(this,getString(R.string.barikoi_api_key));
-		BarikoiTrace.setEmail("sadmansakib69@yahoo.com", new BarikoiTraceUserCallback() {
+		String email=prefs.getString(EMAIL,"");
+		BarikoiTrace.initialize(this,"MjA1NDo4MjBSTUxLTEs5");
+		BarikoiTrace.setEmail(email, new BarikoiTraceUserCallback() {
 			@Override
 			public void onFailure(BarikoiTraceError barikoiError) {
-
+				Log.e("test",barikoiError.getMessage());
 			}
 
 			@Override
@@ -121,7 +129,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		switchService = findViewById(R.id.switchService);
 
 		tv_username.setText(username);
-
+		String[] types= new String[]{"NONE","ACTIVE","REACTIVE", "PASSIVE"};
+		spinnertype=findViewById(R.id.spinnerType);
+		ArrayAdapter aa = new ArrayAdapter(this,android.R.layout.simple_spinner_item,types);
+		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		spinnertype.setAdapter(aa);
 
 		if (BarikoiTrace.isLocationTracking()) {
 			//Log.d("locationupdate","already running no need to start again");
@@ -132,6 +144,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 			public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
 
 				if (b) {
+					TraceMode mode=null;
+					EditText uitext=( EditText)findViewById(R.id.input_updateinterval);
+					EditText dftext=( EditText)findViewById(R.id.input_distancefilter);
+					EditText aftext=( EditText)findViewById(R.id.input_accuracy);
+					int ui=Integer.parseInt(uitext.getText().toString());
+					int df=Integer.parseInt(dftext.getText().toString());
+					int af=Integer.parseInt(aftext.getText().toString());
+					TraceMode.Builder tb=new TraceMode.Builder();
+					if(ui>0) tb.setUpdateInterval(ui);
+					if(df>0) tb.setDistancefilter(df);
+					if(af>0) tb.setAccuracyFilter(af);
+
+					if(!spinnertype.getSelectedItem().equals("NONE")){
+						if(spinnertype.getSelectedItem().equals("ACTIVE"))mode= TraceMode.ACTIVE;
+						if(spinnertype.getSelectedItem().equals("REACTIVE")) mode = TraceMode.REACTIVE;
+						if(spinnertype.getSelectedItem().equals("PASSIVE")) mode= TraceMode.PASSIVE;
+					}
 
 					if (BarikoiTrace.isLocationTracking()) {
 						Log.d("locationupdate","already running no need to start again");
@@ -147,8 +176,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 						BarikoiTrace.requestLocationServices(MainActivity.this);
 					}
 					else {
-
-						BarikoiTrace.startTracking(new TraceMode.Builder().setUpdateInterval(3).build());
+						if(mode==null) mode =tb.build();
+						BarikoiTrace.startTracking(mode);
 						if (BarikoiTrace.isLocationTracking()) {
 							Toast.makeText(getApplicationContext(), "Service started!!", Toast.LENGTH_SHORT).show();
 						}

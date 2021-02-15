@@ -5,6 +5,7 @@ import android.location.Location;
 import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.TraceMode;
+import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 
 import java.util.UUID;
 
@@ -42,7 +43,9 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putInt("stopDuration", traceTrackingMode.getStopDuration());
         this.sharedPRefHelper.putInt("accuracyFilter", traceTrackingMode.getAccuracyFilter());
         this.sharedPRefHelper.putInt("type", traceTrackingMode.getTrackingModes().getOption());
+        //BarikoiTraceLogView.debugLog("desiredAccuracy: " +this.getDesiredAccuracy()+", updateInterval: "+this.getUpdateInterval()+",distanceFilter:"+this.getDistanceFilter()+",accuracyFilter:"+getAccuracyFilter());
     }
+
 
 
     private void clearTrackingModefromDB() {

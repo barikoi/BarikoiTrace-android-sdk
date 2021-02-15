@@ -169,26 +169,26 @@ public class UnifiedLocationManager {
     }
 
 
-    public void startLocationUpdate(ConfigStorageManager aVar, int i, int i2) {
+    public void startLocationUpdate(ConfigStorageManager configStorageManager, int minTime, int minDistance) {
         if (SystemSettingsManager.isGoogleAvailable(this.context)) {
-            createGoogleLocationUpdate(aVar, i, i2);
+            createGoogleLocationUpdate(configStorageManager, minTime, minDistance);
         } else {
-            nativeLocationUpdate(aVar, i, i2);
+            nativeLocationUpdate(configStorageManager, minTime, minDistance);
         }
     }
 
 
     @SuppressLint("MissingPermission")
-    public void nativeLocationUpdate(ConfigStorageManager aVar, int i, int i2) {
+    public void nativeLocationUpdate(ConfigStorageManager configStorageManager, int minTime, int minDistance) {
         if (SystemSettingsManager.checkPermissions(this.context)) {
-            int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(aVar.getDesiredAccuracy()).ordinal()];
+            int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(configStorageManager.getDesiredAccuracy()).ordinal()];
             String str = i3 != 2 ? i3 != 3 ? "gps" : "passive" : "network";
             LocationManager locationManager = (LocationManager) this.context.getSystemService(Context.LOCATION_SERVICE);
             this.locationManager = locationManager;
-            if (i > 0) {
-                locationManager.requestLocationUpdates(str, (long) (i * 1000), 0.0f, this.nativeLocationListenerimp, Looper.getMainLooper());
+            if (minTime > 0) {
+                locationManager.requestLocationUpdates(str, (long) (minTime * 1000), 0.0f, this.nativeLocationListenerimp, Looper.getMainLooper());
             } else {
-                locationManager.requestLocationUpdates(str, 0, (float) i2, this.nativeLocationListenerimp, Looper.getMainLooper());
+                locationManager.requestLocationUpdates(str, 0, (float) minDistance, this.nativeLocationListenerimp, Looper.getMainLooper());
             }
         } else {
             this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());

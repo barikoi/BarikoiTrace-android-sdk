@@ -16,7 +16,7 @@ public class BootEventReceiver extends BroadcastReceiver {
     @Override // android.content.BroadcastReceiver
     public void onReceive(Context context, Intent intent) {
         try {
-            BarikoiTraceLogView.debugLog("received msg"+intent.getData().toString());
+            //BarikoiTraceLogView.debugLog("received msg"+intent.getData().toString());
             LocationTracker bVar = new LocationTracker(context);
             String action = intent.getAction();
             char c = 65535;

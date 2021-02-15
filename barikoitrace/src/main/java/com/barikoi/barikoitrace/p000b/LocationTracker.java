@@ -126,7 +126,7 @@ public final class LocationTracker implements LocationUpdateListener {
                 ApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
                     @Override
                     public void onlocationUpdate(Location location) {
-                        BarikoiTraceLogView.debugLog("location Updated");
+
                     }
 
                     @Override

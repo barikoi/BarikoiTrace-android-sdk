@@ -15,13 +15,12 @@ import androidx.core.app.NotificationCompat;
 
 import com.barikoi.barikoitrace.R;
 import com.barikoi.barikoitrace.TraceMode;
+import com.barikoi.barikoitrace.Utils.DateTimeUtils;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
-import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.C0089a;
-import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.p000b.p002d.UnifiedLocationManager;
@@ -44,43 +43,43 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     private UnifiedLocationManager unifiedLocationManager;
 
 
-    private LogDbHelper logDbHelper;
+    //private LogDbHelper logDbHelper;
 
 
     private List<Integer> f252e = new ArrayList();
 
 
-    private int f253f = 0;
+    private int activeDistFilter = 0;
 
 
     private int f254g = 0;
-    private ApiRequestManager apiRequestManager;
+
 
 
     private void m522a() {
         if (this.configStorageManager.getUpdateInterval() > 0) {
             UnifiedLocationManager cVar = this.unifiedLocationManager;
             ConfigStorageManager aVar = this.configStorageManager;
-            cVar.startLocationUpdate(aVar, aVar.getUpdateInterval(), this.f253f);
+            cVar.startLocationUpdate(aVar, aVar.getUpdateInterval(), this.activeDistFilter);
             return;
 
         }
-        int a = C0089a.m403a(this.configStorageManager, 0);
-        this.f253f = a;
+        int a = C0089a.getDistFilterFromSpeed(this.configStorageManager, 0);
+        this.activeDistFilter = a;
         this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, a);
     }
 
 
-    private void m523a(Location location, int i) throws BarikoiTraceException {
+    private void m523a(Location location, int speed) throws BarikoiTraceException {
         try {
-            int a = C0089a.m404a(this.configStorageManager, this.f252e, location, i);
-            if (this.f253f < a || this.f253f > a) {
+            int a = C0089a.m404a(this.configStorageManager, this.f252e, location, speed);
+            if (this.activeDistFilter < a || this.activeDistFilter > a) {
                 if (this.unifiedLocationManager != null) {
                     this.unifiedLocationManager.removeLocationUpdate();
                 }
-                this.f253f = a;
-                this.logDbHelper.m312a("Distance filter updated:  " + this.f253f);
-                this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, this.f253f);
+                this.activeDistFilter = a;
+                //this.logDbHelper.m312a("Distance filter updated:  " + this.activeDistFilter);
+                this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, this.activeDistFilter);
             }
             this.locationTracker.m77a(location, C0089a.EnumC0091b.MOVING);
         } catch (Exception e) {
@@ -89,15 +88,16 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     }
 
 
-    private boolean m524b(Location location) {
+    private boolean isValid(Location location) {
         boolean z = true;
         if (!this.configStorageManager.getAccuracyEngine() || this.f254g >= 1) {
             return true;
         }
+
         if (new Date().getTime() - location.getTime() > 10000 || location.getAccuracy() < 0.0f) {
             return false;
         }
-        if (location.getAccuracy() > ((float) C0089a.m402a(this.configStorageManager))) {
+        if (location.getAccuracy() > ((float) C0089a.getAccuracyRounded(this.configStorageManager))) {
             z = false;
         }
         return z;
@@ -107,24 +107,24 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     public void onLocationReceived(Location location) {
         try {
-            if (m524b(location)) {
-                BarikoiTraceLogView.debugLog("valid location found");
+            if (isValid(location)) {
+                BarikoiTraceLogView.debugLog("location : accuracy "+location.getAccuracy() + ", time: "+ DateTimeUtils.getDateTimeLocal(location.getTime()));
 
-                int a = (int) C0089a.m400a(location.getSpeed());
                 this.f254g = 0;
-                this.logDbHelper.m312a("Location " + location.getLatitude() + "--" + location.getLongitude() + "--" + this.f253f + "--" + a);
+                //this.logDbHelper.m312a("Location " + location.getLatitude() + "--" + location.getLongitude() + "--" + this.activeDistFilter + "--" + a);
                 if (this.configStorageManager.getType() == TraceMode.TrackingModes.CUSTOM.getOption()) {
-                    
+                    BarikoiTraceLogView.debugLog("custom "+ configStorageManager.getUpdateInterval());
                     this.locationTracker.m77a(location, C0089a.EnumC0091b.MOVING);
                     return;
                 }
-
-                m523a(location, a);
+                int speed = (int) C0089a.getSpeedInKmph(location.getSpeed());
+                BarikoiTraceLogView.debugLog(activeDistFilter+"");
+                m523a(location, speed);
                 return;
             }
             this.f254g++;
-            this.unifiedLocationManager.removeLocationUpdate();
-            m522a();
+            /*this.unifiedLocationManager.removeLocationUpdate();
+            m522a();*/
         } catch (BarikoiTraceException e) {
         }
     }
@@ -147,7 +147,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     @Override // android.app.Service
     public void onCreate() {
         super.onCreate();
-        String CHANNEL_ID = "BarikoiTrace ";
+        String CHANNEL_ID = "BarikoiTrace";
         String CHANNEL_NAME = "BarikoiTrace is running as Background service";
 
         NotificationChannel channel = null;
@@ -184,13 +184,13 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             startForeground(1, notification2);
         }
         try {
-            LogDbHelper a = LogDbHelper.getInstance(this);
-            this.logDbHelper = a;
+            //LogDbHelper a = LogDbHelper.getInstance(this);
+            //this.logDbHelper = a;
             //a.m312a("BarikoiTraceLocationService:  onCreate");
             this.configStorageManager = ConfigStorageManager.getInstance(this);
             this.locationTracker = new LocationTracker(this);
             this.unifiedLocationManager = new UnifiedLocationManager(this, this);
-            this.apiRequestManager= ApiRequestManager.getInstance(this);
+
             m522a();
         } catch (Exception e) {
         }
@@ -200,7 +200,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     public void onDestroy() {
         super.onDestroy();
         try {
-            this.logDbHelper.m312a("BarikoiTraceLocationService:  onDestroy");
+            //this.logDbHelper.m312a("BarikoiTraceLocationService:  onDestroy");
             if (this.unifiedLocationManager != null) {
                 this.unifiedLocationManager.removeLocationUpdate();
                 this.unifiedLocationManager = null;
