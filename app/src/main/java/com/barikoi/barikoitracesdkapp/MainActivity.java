@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		token = prefs.getString("token", "");
 		String userid = prefs.getString(USER_ID, "");
 		String email = prefs.getString(EMAIL, "");
-		BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
+		BarikoiTrace.initialize(this, "API_KEY");
 		BarikoiTrace.setEmail(email, new BarikoiTraceUserCallback() {
 			@Override
 			public void onFailure(BarikoiTraceError barikoiError) {
