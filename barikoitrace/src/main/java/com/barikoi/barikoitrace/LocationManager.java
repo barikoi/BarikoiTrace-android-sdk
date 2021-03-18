@@ -137,12 +137,6 @@ public final class LocationManager {
 
 
 
-
-
-
-
-
-
     public boolean m27a() {
         return SystemSettingsManager.checkBackgroundLocationPermission(this.context);
     }
@@ -291,7 +285,7 @@ public final class LocationManager {
 
 
     public boolean m50j() {
-        return this.confdb.isSdkTracking();
+        return this.locationTracker.isTrackingOn();
     }
 
 
@@ -302,5 +296,9 @@ public final class LocationManager {
         BarikoiTraceLogView.onSuccess("Tracking stopped");
         this.confdb.stopSdkTracking();
         this.locationTracker.stopLocationService();
+    }
+
+    public void setOFflineTracking(boolean enabled) {
+        this.confdb.setOfflineTracking(enabled);
     }
 }

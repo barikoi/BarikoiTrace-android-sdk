@@ -54,7 +54,9 @@ public class BarikoiTrace {
     }
 
 
-
+    public static void openAutostartsettings(Context context){
+        SystemSettingsManager.openAutostartSettings(context);
+    }
 
 
 
@@ -135,7 +137,9 @@ public class BarikoiTrace {
     }
 
 
-
+    public static void setOfflineTracking(boolean enabled){
+        getInstance().setOFflineTracking(enabled);
+    }
 
 /*
     public static void updateCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i) {

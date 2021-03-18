@@ -13,6 +13,7 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.barikoi.barikoitrace.Utils.DateTimeUtils;
+import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
@@ -21,6 +22,7 @@ import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
@@ -171,7 +173,56 @@ public class ApiRequestManager {
         request.setShouldCache(false);
         requestQueue.add(request);
     }
+    public void sendOfflineData(final JSONArray data, final BarikoiTraceBulkUpdateCallback callback ){
 
+        StringRequest request = new StringRequest(Request.Method.POST,
+                Api.bulk_url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        try {
+                            JSONObject responsejson=new JSONObject(response);
+                            int status= responsejson.getInt("status");
+                            if(status==200){
+
+                                callback.onBulkUpdate();
+                            }else {
+                                String msg= responsejson.getString("message");
+                                callback.onFailure(new BarikoiTraceError(status+"",msg));
+                            }
+                        } catch (JSONException e) {
+                            callback.onFailure(BarikoiTraceErrors.jsonResponseError());
+                        }
+                    }
+
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("locationupdate","error:"+error.getMessage());
+                        //loading.setVisibility(View.GONE);
+                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
+                        //NetworkcallUtils.handleResponse(error,context);
+                    }
+                }
+        ) {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                HashMap<String,String> params=new HashMap<>();
+                params.put("api_key",key);
+                params.put("user_id",id);
+
+                params.put("gpx_bulk", data.toString());
+
+
+                return params;
+            }
+        };
+        request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        request.setShouldCache(false);
+        requestQueue.add(request);
+    }
 
     private void setId(String id){
         INSTANCE.id=id;

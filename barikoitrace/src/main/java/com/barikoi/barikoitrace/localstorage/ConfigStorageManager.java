@@ -128,7 +128,7 @@ public final class ConfigStorageManager {
 
 
     public boolean isOfflineTracking() {
-        return !this.sharedPRefHelper.getBoolean("offlineTracking");
+        return this.sharedPRefHelper.getBoolean("offlineTracking");
     }
 
     public void turnTrackingOn(TraceMode traceMode) {
@@ -136,9 +136,9 @@ public final class ConfigStorageManager {
         updateTrackingModetoDB(traceMode);
     }
 
-    public boolean isSdkTracking() {
+    /*public boolean isSdkTracking() {
         return this.sharedPRefHelper.getBoolean("sdk_tracking");
-    }
+    }*/
 
 
 
@@ -148,6 +148,13 @@ public final class ConfigStorageManager {
         clearTrackingModefromDB();
     }
 
+    public boolean isDataSyncing(){
+            return this.sharedPRefHelper.getBoolean("offline_syncing");
+    }
+
+    public void setDataSyncing(boolean syncing){
+        this.sharedPRefHelper.putBoolean("offline_syncing", syncing);
+    }
 
 
 
@@ -331,7 +338,7 @@ public final class ConfigStorageManager {
 
 
 
-    public void m270p(boolean z) {
+    public void setOfflineTracking(boolean z) {
         this.sharedPRefHelper.putBoolean("offlineTracking", z);
     }
 

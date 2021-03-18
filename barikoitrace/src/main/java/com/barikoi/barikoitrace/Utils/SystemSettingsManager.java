@@ -1,8 +1,10 @@
 package com.barikoi.barikoitrace.Utils;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
@@ -17,6 +19,7 @@ import com.barikoi.barikoitrace.BarikoiTrace;
 import com.google.android.gms.common.GoogleApiAvailability;
 
 import java.security.Permission;
+import java.util.List;
 
 import static android.Manifest.permission.ACCESS_BACKGROUND_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
@@ -93,7 +96,46 @@ public class SystemSettingsManager {
             }
         }
     }
-
+    public static void openAutostartSettings( Context context) {
+        try {
+            Intent intent = new Intent();
+            String manufacturer = Build.MANUFACTURER;
+            if ("xiaomi".equalsIgnoreCase(manufacturer)) {
+                intent.setComponent( new ComponentName(
+                        "com.miui.securitycenter",
+                        "com.miui.permcenter.autostart.AutoStartManagementActivity"
+                ));
+            } else if ("oppo".equalsIgnoreCase(manufacturer)) {
+                intent.setComponent( new ComponentName(
+                        "com.coloros.safecenter",
+                        "com.coloros.safecenter.permission.startup.StartupAppListActivity"
+                )); //need "oppo.permission.OPPO_COMPONENT_SAFE" in the manifest
+            } else if ("vivo".equalsIgnoreCase(manufacturer)) {
+                intent.setComponent( new ComponentName(
+                        "com.vivo.permissionmanager",
+                        "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"
+                ));
+            } else if ("Letv".equalsIgnoreCase(manufacturer)) {
+                intent.setComponent( new ComponentName(
+                        "com.letv.android.letvsafe",
+                        "com.letv.android.letvsafe.AutobootManageActivity"
+                ));
+            } else if ("Honor".equalsIgnoreCase(manufacturer)) {
+                intent.setComponent( new ComponentName(
+                        "com.huawei.systemmanager",
+                        "com.huawei.systemmanager.optimize.process.ProtectActivity"
+                ));
+            } else {
+                //Timber.d("Auto-start permission not necessary")
+            }
+            List list = context.getPackageManager()
+                    .queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+            if (list.size() > 0) {
+                context.startActivity(intent);
+            }
+        } catch (Exception e) {
+        }
+    }
 
     public static boolean isPowerSaveMode(Context context) {
         if (Build.VERSION.SDK_INT >= 21) {

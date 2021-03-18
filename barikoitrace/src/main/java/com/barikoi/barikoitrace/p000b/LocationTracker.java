@@ -1,5 +1,6 @@
 package com.barikoi.barikoitrace.p000b;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -10,6 +11,7 @@ import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.event.BootEventReceiver;
@@ -21,9 +23,12 @@ import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.C0089a;
 import com.barikoi.barikoitrace.network.ApiRequestManager;
+import com.barikoi.barikoitrace.network.JsonResponseAdapter;
 import com.barikoi.barikoitrace.p000b.p001c.DeviceInfo;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.service.BarikoiTraceLocationService;
+
+import org.json.JSONArray;
 
 
 public final class LocationTracker implements LocationUpdateListener {
@@ -45,6 +50,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
 
     private BarikoiTraceLocationCallback locationCallback;
+
 
 
 
@@ -119,10 +125,15 @@ public final class LocationTracker implements LocationUpdateListener {
             this.storageManager.updateLastLocation(location);
             sendLocationBroadCast(location, bVar.toString(), (BarikoiTraceError) null);
 
-
             DeviceInfo.updateBatteryInfo(this.context);
             boolean a2 = NetworkChecker.isNetworkAvailable(this.context);
             if (a2) {
+                if(storageManager.isOfflineTracking()) {
+                    if (!storageManager.isDataSyncing() && locdbhelper.getofflinecount() > 0) {
+                        uploadOfflineData();
+                    }
+                }
+
                 ApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
                     @Override
                     public void onlocationUpdate(Location location) {
@@ -134,12 +145,37 @@ public final class LocationTracker implements LocationUpdateListener {
                         BarikoiTraceLogView.onFailure(barikoiError);
                     }
                 });
+            }else if(storageManager.isOfflineTracking()){
+                    locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
             }
         } catch (Exception e) {
             throw new BarikoiTraceException(e);
         }
     }
 
+
+    private void uploadOfflineData(){
+        storageManager.setDataSyncing(true);
+
+            final JSONArray data=locdbhelper.getLocationJson(Integer.parseInt(storageManager.getUserID()));
+
+            ApiRequestManager.getInstance(context).sendOfflineData(data, new BarikoiTraceBulkUpdateCallback() {
+                @Override
+                public void onBulkUpdate() {
+                    if(locdbhelper.clearlast100()>0)
+                        uploadOfflineData();
+                    else storageManager.setDataSyncing(false);
+                }
+
+                @Override
+                public void onFailure(BarikoiTraceError barikoiError) {
+                    BarikoiTraceLogView.debugLog(data.toString());
+                    BarikoiTraceLogView.onFailure(barikoiError);
+                    storageManager.setDataSyncing(false);
+                }
+            });
+
+    }
 
     public void sendLocationBroadCast(Location location, String str, BarikoiTraceError barikoiError) throws BarikoiTraceException {
         try {
@@ -215,10 +251,10 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void m85e() {
 
-            if (!this.storageManager.isSdkTracking() ) {
+            if (!isTrackingOn() ) {
                 return;
             }
-            if (!C0089a.m410a(this.storageManager.getAppstate(), this.storageManager) || (!NetworkChecker.isNetworkAvailable(this.context) && this.storageManager.isOfflineTracking())) {
+            if (!C0089a.m410a(this.storageManager.getAppstate(), this.storageManager) || (!NetworkChecker.isNetworkAvailable(this.context) && !this.storageManager.isOfflineTracking())) {
                 stopLocationService();
             } else {
                 startLocationService();
@@ -229,12 +265,20 @@ public final class LocationTracker implements LocationUpdateListener {
 
 
     public void startLocationService() {
-            if (this.storageManager.isSdkTracking() ) {
+            if (!isTrackingOn() ) {
                 this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
             }
     }
 
-
+    public boolean isTrackingOn() {
+        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (BarikoiTraceLocationService.class.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public void stopLocationService() {
             this.context.stopService(new Intent(this.context, BarikoiTraceLocationService.class));

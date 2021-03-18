@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 
 
 import androidx.core.app.NotificationCompat;
@@ -53,7 +54,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
 
     private int f254g = 0;
-
+    private PowerManager.WakeLock wakeLock;
 
 
     private void m522a() {
@@ -198,7 +199,9 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     @Override // android.app.Service
     public void onDestroy() {
-        super.onDestroy();
+        if(wakeLock!=null)wakeLock.release();
+        configStorageManager.setDataSyncing(false);
+
         try {
             //this.logDbHelper.m312a("BarikoiTraceLocationService:  onDestroy");
             if (this.unifiedLocationManager != null) {
@@ -207,6 +210,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             }
         } catch (Exception e) {
         }
+        super.onDestroy();
     }
 
 
@@ -215,6 +219,12 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     public int onStartCommand(Intent intent, int i, int i2) {
 
         BarikoiTraceLogView.onSuccess("service started");
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                "BarikoiTraceLocationService::MyWakelockTag");
+        wakeLock.acquire();
+
         return Service.START_STICKY;
     }
+
 }

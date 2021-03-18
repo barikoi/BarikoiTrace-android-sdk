@@ -1,8 +1,10 @@
 package com.barikoi.barikoitracesdkapp;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Trace;
@@ -24,6 +26,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.app.ActivityCompat;
 
 import com.barikoi.barikoitrace.BarikoiTrace;
 import com.barikoi.barikoitrace.TraceMode;
@@ -70,9 +73,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 	private Spinner spinnertype;
 	private MapView mapView = null;
 	private LocationEngine locationEngine = null;
-	private LocationLayerPlugin locationPlugin= null;
+	private LocationLayerPlugin locationPlugin = null;
 	private FloatingActionButton fab;
-	private PermissionsManager permissionsManager =null;
+	private PermissionsManager permissionsManager = null;
 	private final static String TAG = "MainActivity";
 	private BarikoiTrace barikoiTrace;
 
@@ -110,13 +113,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		locationTask.displayLocation();*/
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		token = prefs.getString("token", "");
-		String userid=prefs.getString(USER_ID,"");
-		String email=prefs.getString(EMAIL,"");
-		BarikoiTrace.initialize(this,"MjA1NDo4MjBSTUxLTEs5");
+		String userid = prefs.getString(USER_ID, "");
+		String email = prefs.getString(EMAIL, "");
+		BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
 		BarikoiTrace.setEmail(email, new BarikoiTraceUserCallback() {
 			@Override
 			public void onFailure(BarikoiTraceError barikoiError) {
-				Log.e("test",barikoiError.getMessage());
+				Log.e("test", barikoiError.getMessage());
 			}
 
 			@Override
@@ -124,14 +127,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 			}
 		});
+		BarikoiTrace.setOfflineTracking(true);
 		username = prefs.getString(Api.NAME, "");
 		tv_username = findViewById(R.id.tvUserName);
 		switchService = findViewById(R.id.switchService);
 
 		tv_username.setText(username);
-		String[] types= new String[]{"NONE","ACTIVE","REACTIVE", "PASSIVE"};
-		spinnertype=findViewById(R.id.spinnerType);
-		ArrayAdapter aa = new ArrayAdapter(this,android.R.layout.simple_spinner_item,types);
+		String[] types = new String[]{"NONE", "ACTIVE", "REACTIVE", "PASSIVE"};
+		spinnertype = findViewById(R.id.spinnerType);
+		ArrayAdapter aa = new ArrayAdapter(this, android.R.layout.simple_spinner_item, types);
 		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spinnertype.setAdapter(aa);
 
@@ -139,50 +143,52 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 			//Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
+		BarikoiTrace.openAutostartsettings(this);
 		switchService.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
 			@Override
 			public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
 
 				if (b) {
-					TraceMode mode=null;
-					EditText uitext=( EditText)findViewById(R.id.input_updateinterval);
-					EditText dftext=( EditText)findViewById(R.id.input_distancefilter);
-					EditText aftext=( EditText)findViewById(R.id.input_accuracy);
-					int ui=Integer.parseInt(uitext.getText().toString());
-					int df=Integer.parseInt(dftext.getText().toString());
-					int af=Integer.parseInt(aftext.getText().toString());
-					TraceMode.Builder tb=new TraceMode.Builder();
-					if(ui>0) tb.setUpdateInterval(ui);
-					if(df>0) tb.setDistancefilter(df);
-					if(af>0) tb.setAccuracyFilter(af);
+					TraceMode mode = null;
+					EditText uitext = (EditText) findViewById(R.id.input_updateinterval);
+					EditText dftext = (EditText) findViewById(R.id.input_distancefilter);
+					EditText aftext = (EditText) findViewById(R.id.input_accuracy);
+					int ui = Integer.parseInt(uitext.getText().toString());
+					int df = Integer.parseInt(dftext.getText().toString());
+					int af = Integer.parseInt(aftext.getText().toString());
+					TraceMode.Builder tb = new TraceMode.Builder();
+					if (ui > 0) tb.setUpdateInterval(ui);
+					if (df > 0) tb.setDistancefilter(df);
+					if (af > 0) tb.setAccuracyFilter(af);
 
-					if(!spinnertype.getSelectedItem().equals("NONE")){
-						if(spinnertype.getSelectedItem().equals("ACTIVE"))mode= TraceMode.ACTIVE;
-						if(spinnertype.getSelectedItem().equals("REACTIVE")) mode = TraceMode.REACTIVE;
-						if(spinnertype.getSelectedItem().equals("PASSIVE")) mode= TraceMode.PASSIVE;
+					if (!spinnertype.getSelectedItem().equals("NONE")) {
+						if (spinnertype.getSelectedItem().equals("ACTIVE")) mode = TraceMode.ACTIVE;
+						if (spinnertype.getSelectedItem().equals("REACTIVE"))
+							mode = TraceMode.REACTIVE;
+						if (spinnertype.getSelectedItem().equals("PASSIVE"))
+							mode = TraceMode.PASSIVE;
 					}
 
 					if (BarikoiTrace.isLocationTracking()) {
-						Log.d("locationupdate","already running no need to start again");
+						Log.d("locationupdate", "already running no need to start again");
 						//System.out.println("already running no need to start again");
 						Toast.makeText(getApplicationContext(), "Service already running!! no need to start again", Toast.LENGTH_SHORT).show();
 						switchService.setChecked(false);
-					}else if(BarikoiTrace.isBatteryOptimizationEnabled()){
+					} else if (BarikoiTrace.isBatteryOptimizationEnabled()) {
 						BarikoiTrace.disableBatteryOptimization();
 						switchService.setChecked(false);
-					}else if(!BarikoiTrace.isLocationPermissionsGranted()){
+					} else if (!BarikoiTrace.isLocationPermissionsGranted()) {
 						BarikoiTrace.requestLocationPermissions(MainActivity.this);
-					}else if(!BarikoiTrace.isLocationSettingsOn()){
+					} else if (!BarikoiTrace.isLocationSettingsOn()) {
 						BarikoiTrace.requestLocationServices(MainActivity.this);
-					}
-					else {
-						if(mode==null) mode =tb.build();
+					} else {
+						if (mode == null) mode = tb.build();
 						BarikoiTrace.startTracking(mode);
 						if (BarikoiTrace.isLocationTracking()) {
 							Toast.makeText(getApplicationContext(), "Service started!!", Toast.LENGTH_SHORT).show();
 						}
 					}
-				}else{
+				} else {
 					switchService.setChecked(false);
 					if (BarikoiTrace.isLocationTracking()) {
 						BarikoiTrace.stopTracking();
@@ -261,10 +267,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //
 //        }
 		fab.setOnClickListener(new View.OnClickListener() {
+			@SuppressLint("MissingPermission")
 			@Override
 			public void onClick(View view) {
 				if (locationEngine != null) {
-					@SuppressLint("MissingPermission")
+
 					Location lastLocation = locationEngine.getLastLocation();
 					if (lastLocation != null) {
 						setCameraPosition(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 13.0);
@@ -290,6 +297,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		}
 	}
 
+	@SuppressLint("MissingPermission")
 	private void initializeLocationEngine() {
 		LocationEngineProvider locationEngineProvider = new LocationEngineProvider(this);
 		locationEngine = locationEngineProvider.obtainBestLocationEngineAvailable();
@@ -331,6 +339,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 	}
 
+	@SuppressLint("MissingPermission")
 	@Override
 	protected void onStart() {
 		super.onStart();
@@ -392,6 +401,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		mapView.onResume();
 	}
 
+	@SuppressLint("MissingPermission")
 	@Override
 	public void onConnected() {
 		locationEngine.requestLocationUpdates();
@@ -403,6 +413,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		mapView.onSaveInstanceState(outState);
 	}
 
+	@SuppressLint("MissingPermission")
 	@Override
 	public void onLocationChanged(Location location) {
 		Log.d("OnLoc", "Onlocchanged");
