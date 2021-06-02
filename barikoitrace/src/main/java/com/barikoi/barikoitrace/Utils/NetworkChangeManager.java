@@ -40,7 +40,7 @@ public class NetworkChangeManager {
             super.onAvailable(network);
             try {
 
-                //NetworkChangeManager.this.locationTracker.m83c();
+                //NetworkChangeManager.this.locationTracker.syncOfflineTrips();
             } catch (Exception e) {
             }
         }

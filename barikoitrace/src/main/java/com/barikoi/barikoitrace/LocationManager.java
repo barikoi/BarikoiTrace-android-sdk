@@ -8,6 +8,7 @@ import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
@@ -130,6 +131,7 @@ public final class LocationManager {
 
     void m15a(String str) {
         setApiKey(str);
+        locationTracker.syncActiveTrip();
     }
 
 
@@ -142,7 +144,7 @@ public final class LocationManager {
     }
 
 
-    public void m28b(TraceMode traceTrackingMode) {
+    public void startTracking(TraceMode traceTrackingMode) {
         try {
             if (TextUtils.isEmpty(this.confdb.getUserID())) {
                 BarikoiTraceLogView.onFailure(BarikoiTraceErrors.noUserError());
@@ -289,6 +291,9 @@ public final class LocationManager {
     }
 
 
+    public void startGeofence(double lat, double lon, int radius){
+        this.locationTracker.startGeofence(lat,lon,radius);
+    }
 
 
     public void stopTracking() {
@@ -298,7 +303,26 @@ public final class LocationManager {
         this.locationTracker.stopLocationService();
     }
 
+    public void startTrip(String tag, TraceMode traceMode, BarikoiTraceTripStateCallback callback){
+
+        locationTracker.startTrip(tag, traceMode,callback);
+
+    }
+
+    public void stopTrip( BarikoiTraceTripStateCallback callback){
+        locationTracker.stopTrip(callback);
+
+    }
+
+    public boolean isOnTrip(){
+        return locationTracker.isOnTrip();
+    }
+
+    public void syncTripstate(){
+        locationTracker.syncActiveTrip();
+    }
     public void setOFflineTracking(boolean enabled) {
         this.confdb.setOfflineTracking(enabled);
     }
+
 }

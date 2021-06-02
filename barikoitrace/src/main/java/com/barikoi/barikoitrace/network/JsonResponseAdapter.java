@@ -5,10 +5,14 @@ import android.location.Location;
 import com.barikoi.barikoitrace.Utils.DateTimeUtils;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
+import com.barikoi.barikoitrace.models.createtrip.Trip;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 public class JsonResponseAdapter {
     static BarikoiTraceUser getUser(String response) throws BarikoiTraceException{
@@ -47,6 +51,25 @@ public class JsonResponseAdapter {
         return params;
     }
 
+    public static ArrayList<Trip> getTrips(JSONArray array){
+        ArrayList<Trip> trips = new ArrayList<>();
+        try{
+            for(int i = 0; i <array.length(); i++){
+                JSONObject tripjson= array.getJSONObject(i).getJSONObject("trip_info");
+                int id= tripjson.has("id")?tripjson.getInt("id"): i;
+                String startTime= tripjson.getString("start_time");
+                int state = tripjson.getInt("state");
+                int user_id=tripjson.has("id")?tripjson.getInt("user_id"):0;
+                String tag = tripjson.getString("tag");
+                String endTime =null;
+                if(tripjson.has("start_time")) endTime= tripjson.getString("start_time");
+                trips.add(new Trip(id,startTime,endTime,tag,state,user_id,1));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return trips;
+    }
 
 
 }

@@ -60,6 +60,9 @@ public final class BarikoiTraceErrors {
         return new BarikoiTraceError("BK500", "Server error");
     }
 
+    public static BarikoiTraceError tripStateError(){
+        return new BarikoiTraceError("BK409", "Trip state Error");
+    }
 
     public static BarikoiTraceError m459z() {
         return new BarikoiTraceError("BK402", "JSON conversion error");

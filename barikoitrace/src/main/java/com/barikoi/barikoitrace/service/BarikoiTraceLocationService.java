@@ -22,6 +22,7 @@ import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.C0089a;
+import com.barikoi.barikoitrace.p000b.GeofenceManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.p000b.p002d.UnifiedLocationManager;
@@ -223,8 +224,19 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 "BarikoiTraceLocationService::MyWakelockTag");
         wakeLock.acquire();
+        if (intent.getStringExtra("type")!=null){
+            try {
+                double lat =intent.getDoubleExtra("latitude",23.870769);
+                double lon = intent.getDoubleExtra("longitude",90.387815);
+                int radius= intent.getIntExtra("radius",30);
+                GeofenceManager.getInstance(this).createGeofence(lat,lon,radius,10,"testgeofence");
+            } catch (BarikoiTraceException e) {
+                e.printStackTrace();
+            }
+        }
 
         return Service.START_STICKY;
     }
+
 
 }

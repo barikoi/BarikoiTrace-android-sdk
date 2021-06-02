@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.exceptions.ContextException;
@@ -121,16 +122,28 @@ public class BarikoiTrace {
 
 
 
-
+    /*public static void startGeofence(double lat,double lon , int radius){
+        getInstance().startGeofence(lat,lon, radius);
+    }*/
 
     public static void startTracking(TraceMode traceTrackingMode) {
         if (traceTrackingMode == null) {
             BarikoiTraceLogView.onFailure(BarikoiTraceErrors.noDataError());
         } else {
-            getInstance().m28b(traceTrackingMode);
+            getInstance().startTracking(traceTrackingMode);
         }
     }
 
+    public static void startTrip(String tag, TraceMode traceTrackingMode, BarikoiTraceTripStateCallback callback){
+        getInstance().startTrip(tag,traceTrackingMode, callback);
+    }
+
+    public static void endTrip(BarikoiTraceTripStateCallback callback){
+        getInstance().stopTrip(callback);
+    }
+    public static  boolean isOnTrip(){
+        return getInstance().isOnTrip();
+    }
 
     public static void stopTracking() {
         getInstance().stopTracking();

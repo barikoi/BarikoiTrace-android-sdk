@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Trace;
@@ -30,6 +31,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.barikoi.barikoitrace.BarikoiTrace;
 import com.barikoi.barikoitrace.TraceMode;
+import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
@@ -42,6 +44,7 @@ import com.mapbox.android.core.location.LocationEngineProvider;
 import com.mapbox.android.core.permissions.PermissionsListener;
 import com.mapbox.android.core.permissions.PermissionsManager;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.annotations.PolygonOptions;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapView;
@@ -53,6 +56,7 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin;
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode;
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.barikoi.barikoitracesdkapp.Api.EMAIL;
@@ -139,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spinnertype.setAdapter(aa);
 
-		if (BarikoiTrace.isLocationTracking()) {
+		if (BarikoiTrace.isOnTrip()) {
 			//Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
@@ -147,8 +151,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		switchService.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
 			@Override
 			public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
-
+				if (!compoundButton.isPressed()) return;
 				if (b) {
+
 					TraceMode mode = null;
 					EditText uitext = (EditText) findViewById(R.id.input_updateinterval);
 					EditText dftext = (EditText) findViewById(R.id.input_distancefilter);
@@ -169,33 +174,59 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 							mode = TraceMode.PASSIVE;
 					}
 
-					if (BarikoiTrace.isLocationTracking()) {
+					if (BarikoiTrace.isOnTrip()) {
 						Log.d("locationupdate", "already running no need to start again");
 						//System.out.println("already running no need to start again");
-						Toast.makeText(getApplicationContext(), "Service already running!! no need to start again", Toast.LENGTH_SHORT).show();
-						switchService.setChecked(false);
+						Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
+
 					} else if (BarikoiTrace.isBatteryOptimizationEnabled()) {
 						BarikoiTrace.disableBatteryOptimization();
+						switchService.setOnCheckedChangeListener (null);
 						switchService.setChecked(false);
+						switchService.setOnCheckedChangeListener (this);
 					} else if (!BarikoiTrace.isLocationPermissionsGranted()) {
 						BarikoiTrace.requestLocationPermissions(MainActivity.this);
 					} else if (!BarikoiTrace.isLocationSettingsOn()) {
 						BarikoiTrace.requestLocationServices(MainActivity.this);
 					} else {
 						if (mode == null) mode = tb.build();
-						BarikoiTrace.startTracking(mode);
-						if (BarikoiTrace.isLocationTracking()) {
-							Toast.makeText(getApplicationContext(), "Service started!!", Toast.LENGTH_SHORT).show();
-						}
+						BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
+							@Override
+							public void onSuccess() {
+								Toast.makeText(getApplicationContext(), "trip started!!", Toast.LENGTH_SHORT).show();
+
+							}
+
+							@Override
+							public void onFailure(BarikoiTraceError barikoiError) {
+								Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+
+								switchService.setChecked(false);
+							}
+						});
 					}
 				} else {
-					switchService.setChecked(false);
-					if (BarikoiTrace.isLocationTracking()) {
-						BarikoiTrace.stopTracking();
-						if (!BarikoiTrace.isLocationTracking()) {
-							Toast.makeText(getApplicationContext(), "Service stopped!!", Toast.LENGTH_SHORT).show();
-						}
-					}
+
+					if (BarikoiTrace.isOnTrip()) {
+						BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
+							@Override
+							public void onSuccess() {
+								Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
+
+							}
+
+							@Override
+							public void onFailure(BarikoiTraceError barikoiError) {
+								switchService.setChecked(true);
+								Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+
+							}
+						});
+						//if (!BarikoiTrace.isOnTrip()) {
+							//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
+						//}
+					}else Toast.makeText(getApplicationContext(), "no trip to end!", Toast.LENGTH_SHORT).show();
+
 				}
 			}
 		});
@@ -284,8 +315,39 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 			}
 		});
 
+		/*mMap.addOnMapLongClickListener(latlng ->{
+			mMap.clear();
+			mMap.addPolygon(generatePerimeter(latlng, 50,16));
+			BarikoiTrace.startGeofence(latlng.getLatitude(),latlng.getLongitude(),50);
+		});*/
+
 	}
 
+	private PolygonOptions generatePerimeter(LatLng centerCoordinates, double radiusInmeters, int numberOfSides) {
+		List<LatLng> positions = new ArrayList<>();
+		double distanceX = radiusInmeters / (111319 * Math.cos(centerCoordinates.getLatitude() * Math.PI / 180));
+		double distanceY = radiusInmeters / 110574;
+
+		double slice = (2 * Math.PI) / numberOfSides;
+
+		double theta;
+		double x;
+		double y;
+		LatLng position;
+		for (int i = 0; i < numberOfSides; ++i) {
+			theta = i * slice;
+			x = distanceX * Math.cos(theta);
+			y = distanceY * Math.sin(theta);
+
+			position = new LatLng(centerCoordinates.getLatitude() + y,
+					centerCoordinates.getLongitude() + x);
+			positions.add(position);
+		}
+		return new PolygonOptions()
+				.addAll(positions)
+				.fillColor(Color.BLUE)
+				.alpha(0.4f);
+	}
 	private void enableLocation() {
 		if (PermissionsManager.areLocationPermissionsGranted(this)) {
 			// Create an instance of LOST location engine

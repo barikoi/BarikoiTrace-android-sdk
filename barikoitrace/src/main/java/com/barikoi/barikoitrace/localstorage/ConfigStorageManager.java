@@ -136,11 +136,13 @@ public final class ConfigStorageManager {
         updateTrackingModetoDB(traceMode);
     }
 
+    public void turnTrackingOn() {
+        this.sharedPRefHelper.putBoolean("sdk_tracking", true);
+    }
+
     /*public boolean isSdkTracking() {
         return this.sharedPRefHelper.getBoolean("sdk_tracking");
     }*/
-
-
 
 
     public void stopSdkTracking() {
@@ -349,7 +351,13 @@ public final class ConfigStorageManager {
     }
 
 
+    public void setOnTrip(boolean onTrip){
+        this.sharedPRefHelper.putBoolean("onTrip", onTrip);
+    }
 
+    public boolean isOnTrip(){
+        return this.sharedPRefHelper.getBoolean("onTrip");
+    }
 
     public Location getLastLocation() {
         Location location = new Location("center");

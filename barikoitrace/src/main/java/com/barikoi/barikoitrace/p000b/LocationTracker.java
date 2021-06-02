@@ -8,12 +8,16 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.text.TextUtils;
 
-
+import com.barikoi.barikoitrace.TraceMode;
+import com.barikoi.barikoitrace.Utils.DateTimeUtils;
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
+import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
+import com.barikoi.barikoitrace.callback.BarikoiTraceTripApiCallback;
+import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.event.BootEventReceiver;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
@@ -21,7 +25,9 @@ import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.localstorage.sqlitedb.LocationDbHelper;
 import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
+import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.C0089a;
+import com.barikoi.barikoitrace.models.createtrip.Trip;
 import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.network.JsonResponseAdapter;
 import com.barikoi.barikoitrace.p000b.p001c.DeviceInfo;
@@ -29,6 +35,8 @@ import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.service.BarikoiTraceLocationService;
 
 import org.json.JSONArray;
+
+import java.util.ArrayList;
 
 
 public final class LocationTracker implements LocationUpdateListener {
@@ -287,8 +295,102 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
 
+    public void startTrip(final String tag, final TraceMode traceMode, final BarikoiTraceTripStateCallback callback){
+        final String startTime= DateTimeUtils.getCurrentTimeLocal();
+
+        ApiRequestManager.getInstance(context).startTrip(startTime, tag, new BarikoiTraceTripApiCallback() {
+            @Override
+            public void onFailure(BarikoiTraceError barikoiError) {
+                //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 0);
+                callback.onFailure(barikoiError);
+            }
+
+            @Override
+            public void onSuccess() {
+                storageManager.setOnTrip(true);
+                storageManager.turnTrackingOn(traceMode);
+                startLocationService();
+                callback.onSuccess();
+                //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 1);
+            }
+        });
+
+    }
+
+    public void stopTrip(final BarikoiTraceTripStateCallback callback){
+
+        final String endTime= DateTimeUtils.getCurrentTimeLocal();
+
+        if(isOnTrip()) {
+            ApiRequestManager.getInstance(context).endTrip(endTime, new BarikoiTraceTripApiCallback() {
+                @Override
+                public void onFailure(BarikoiTraceError barikoiError) {
+                    callback.onFailure(barikoiError);
+                    //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 2);
+                }
+
+                @Override
+                public void onSuccess() {
+                    storageManager.setOnTrip(false);
+                    storageManager.stopSdkTracking();
+                    stopLocationService();
+                    callback.onSuccess();
+                    //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 1);
+                }
+            });
+            //if (locdbhelper.getActiveTrips().get(0).getSynced() == 1)
+            /*else {
+                locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 0);
+                syncOfflineTrips();
+            }*/
+        }else callback.onFailure(BarikoiTraceErrors.tripStateError());
+    }
 
 
+
+    public boolean isOnTrip(){
+        return storageManager.isOnTrip();
+    }
+
+
+    public void syncOfflineTrips(){
+        ArrayList<Trip> trips=locdbhelper.getofflineTrips();
+        for(final Trip trip: trips){
+            if (trip.getSynced()==0)
+            ApiRequestManager.getInstance(context).syncOfflineTrip(trip, new BarikoiTraceTripApiCallback() {
+                @Override
+                public void onFailure(BarikoiTraceError barikoiError) {
+
+                }
+
+                @Override
+                public void onSuccess() {
+                    locdbhelper.removeTrip(trip.getId());
+                }
+            });
+            else if(trip.getSynced()==2){
+                ApiRequestManager.getInstance(context).endTrip(trip.getEnd_time(), new BarikoiTraceTripApiCallback() {
+                    @Override
+                    public void onFailure(BarikoiTraceError barikoiError) {
+
+                    }
+
+                    @Override
+                    public void onSuccess() {
+                        locdbhelper.removeTrip(trip.getId());
+                    }
+                });
+            }
+        }
+    }
+
+    public void startGeofence(double lat, double lon, int radius){
+        this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class)
+                .putExtra("type","geofence")
+                .putExtra("latitude",lat)
+        .putExtra("longitude",lon)
+        .putExtra("radius",radius));
+    }
 
 
     public void unregisterReceiver() throws BarikoiTraceException {
@@ -300,5 +402,38 @@ public final class LocationTracker implements LocationUpdateListener {
         } catch (Exception e) {
             throw new BarikoiTraceException(e);
         }
+    }
+
+    public void syncActiveTrip() {
+        ApiRequestManager.getInstance(context).getCurrentTrips(new BarikoiTraceGetTripCallback() {
+            @Override
+            public void onSuccess(ArrayList<Trip> trips) {
+                if(trips.size()==1){
+                    if(!isOnTrip()){
+                        storageManager.setOnTrip(true);
+                        storageManager.turnTrackingOn();
+                        startLocationService();
+                    }
+                    if(!isTrackingOn()){
+
+                        startLocationService();
+                    }
+                }else if(trips.size()==0){
+                    if(isOnTrip()){
+                        storageManager.setOnTrip(false);
+                    }
+                    if(isTrackingOn()){
+                        storageManager.stopSdkTracking();
+                        stopLocationService();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(BarikoiTraceError barikoiError) {
+
+            }
+        });
+
     }
 }
