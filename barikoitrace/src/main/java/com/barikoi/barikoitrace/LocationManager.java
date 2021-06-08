@@ -8,15 +8,19 @@ import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
+import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
+import com.barikoi.barikoitrace.models.createtrip.Trip;
 import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p001c.ApplicationBinder;
 
+import java.util.ArrayList;
 import java.util.Map;
 
 
@@ -131,7 +135,17 @@ public final class LocationManager {
 
     void m15a(String str) {
         setApiKey(str);
-        locationTracker.syncActiveTrip();
+        syncActiveTrip(new BarikoiTraceTripStateCallback() {
+            @Override
+            public void onSuccess() {
+
+            }
+
+            @Override
+            public void onFailure(BarikoiTraceError barikoiError) {
+
+            }
+        });
     }
 
 
@@ -166,10 +180,12 @@ public final class LocationManager {
         Context context = this.context;
         ((Application) context).registerActivityLifecycleCallbacks(new ApplicationBinder(context, this.confdb, this.locationTracker));
         this.confdb.setApiKey(str);
+        apiRequestManager.setKey(str);
+                
         if (!NetworkChecker.isNetworkAvailable(this.context)) {
             BarikoiTraceLogView.onFailure(BarikoiTraceErrors.networkError());
         } else if (TextUtils.isEmpty(str)) {
-            BarikoiTraceLogView.onFailure(BarikoiTraceErrors.noDataError());
+            BarikoiTraceLogView.onFailure(BarikoiTraceErrors.noKeyError());
         }
     }
 
@@ -181,7 +197,7 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(str)) {
             barikoiUserCallback.onFailure(BarikoiTraceErrors.noDataError());
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
-            barikoiUserCallback.onFailure(BarikoiTraceErrors.noDataError());
+            barikoiUserCallback.onFailure(BarikoiTraceErrors.noKeyError());
         }else{
 
         }
@@ -192,7 +208,7 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(email)) {
             callback.onFailure(BarikoiTraceErrors.noDataError());
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
-            callback.onFailure(BarikoiTraceErrors.noDataError());
+            callback.onFailure(BarikoiTraceErrors.noKeyError());
         }else{
             this.apiRequestManager.setUser(email,null,callback);
         }
@@ -204,7 +220,7 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(phone)) {
             callback.onFailure(BarikoiTraceErrors.noDataError());
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
-            callback.onFailure(BarikoiTraceErrors.noDataError());
+            callback.onFailure(BarikoiTraceErrors.noKeyError());
         }else {
             this.apiRequestManager.setUser(null, phone, callback);
         }
@@ -214,6 +230,47 @@ public final class LocationManager {
     }
 
 
+    public void syncActiveTrip(final BarikoiTraceTripStateCallback callback) {
+        if (!NetworkChecker.isNetworkAvailable(this.context)) {
+            callback.onFailure(BarikoiTraceErrors.networkError());
+        } else if (TextUtils.isEmpty(this.confdb.getUserID())) {
+            callback.onFailure(BarikoiTraceErrors.noUserError());
+        } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
+            callback.onFailure(BarikoiTraceErrors.noKeyError());
+        }else
+        ApiRequestManager.getInstance(context).getCurrentTrips(new BarikoiTraceGetTripCallback() {
+            @Override
+            public void onSuccess(ArrayList<Trip> trips) {
+                if(trips.size()==1){
+                    if(!isOnTrip()){
+                        confdb.setOnTrip(true);
+                        confdb.turnTrackingOn();
+                        locationTracker.startLocationService();
+                    }
+                    if(!locationTracker.isTrackingOn()){
+
+                        locationTracker.startLocationService();
+                    }
+                }else if(trips.size()==0){
+                    if(isOnTrip()){
+                        confdb.setOnTrip(false);
+                    }
+                    if(locationTracker.isTrackingOn()){
+                        confdb.stopSdkTracking();
+                        locationTracker.stopLocationService();
+                    }
+                }
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onFailure(BarikoiTraceError barikoiError) {
+                callback.onFailure(barikoiError);
+            }
+        });
+
+
+    }
 
     boolean m32b() {
         return SystemSettingsManager.checkPermissions(this.context) ;
@@ -318,8 +375,8 @@ public final class LocationManager {
         return locationTracker.isOnTrip();
     }
 
-    public void syncTripstate(){
-        locationTracker.syncActiveTrip();
+    public void syncTripstate(BarikoiTraceTripStateCallback callback){
+        syncActiveTrip(callback);
     }
     public void setOFflineTracking(boolean enabled) {
         this.confdb.setOfflineTracking(enabled);

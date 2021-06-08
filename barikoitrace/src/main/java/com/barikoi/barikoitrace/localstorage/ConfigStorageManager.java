@@ -213,25 +213,11 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putString("appState", str);
     }
 
-    public void m238d() {
-        this.sharedPRefHelper.remove("oauth");
+    public void removeUser() {
         this.sharedPRefHelper.remove("user_id");
-        this.sharedPRefHelper.remove("app_id");
-        this.sharedPRefHelper.remove("project_id");
-        this.sharedPRefHelper.remove("account_id");
-        this.sharedPRefHelper.remove("geofence_events");
-        this.sharedPRefHelper.remove("trips_events");
-        this.sharedPRefHelper.remove("location_events");
-        this.sharedPRefHelper.remove("nearby_events");
-        this.sharedPRefHelper.remove("event_listener");
-        this.sharedPRefHelper.remove("location_listener");
-        this.sharedPRefHelper.remove("subscribe_events");
-        this.sharedPRefHelper.remove("subscribe_location");
-        this.sharedPRefHelper.remove("subscribe_user");
-        this.sharedPRefHelper.remove("tripUpdating");
-        this.sharedPRefHelper.remove("locationCount");
-        this.sharedPRefHelper.remove("locationCountStartedAt");
-        //m222a();
+        this.sharedPRefHelper.remove("email");
+        this.sharedPRefHelper.remove("phone");
+
     }
 
 
@@ -310,6 +296,7 @@ public final class ConfigStorageManager {
 
 
     public void setUserID(String str) {
+        removeUser();
         this.sharedPRefHelper.putString("user_id", str);
     }
 

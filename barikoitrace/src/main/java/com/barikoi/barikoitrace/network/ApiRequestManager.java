@@ -3,8 +3,11 @@ package com.barikoi.barikoitrace.network;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.location.Location;
+import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
@@ -442,18 +445,21 @@ public class ApiRequestManager {
 
     }
 
+    public void setKey(String key){
+        INSTANCE.key=key;
+    }
 
 
 
-    @SuppressLint("NewApi")
-    private String paramString(HashMap map){
 
-        Iterator hmIterator = map.entrySet().iterator();
+    private String paramString(HashMap<String,String> map){
+
         String params="?";
-        while (hmIterator.hasNext()) {
-            Map.Entry mapElement = (Map.Entry)hmIterator.next();
+        for (Map.Entry<String, String> mapElement : map.entrySet()) {
+
             try {
-                params=params+(mapElement.getKey() + "=" + URLEncoder.encode(mapElement.getValue().toString(), StandardCharsets.UTF_8.toString() )+"&");
+                params=params+(mapElement.getKey() + "=" + URLEncoder.encode(String.valueOf(mapElement.getValue()), "UTF-8" )+"&");
+
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }

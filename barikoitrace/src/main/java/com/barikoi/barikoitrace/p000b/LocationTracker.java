@@ -404,36 +404,4 @@ public final class LocationTracker implements LocationUpdateListener {
         }
     }
 
-    public void syncActiveTrip() {
-        ApiRequestManager.getInstance(context).getCurrentTrips(new BarikoiTraceGetTripCallback() {
-            @Override
-            public void onSuccess(ArrayList<Trip> trips) {
-                if(trips.size()==1){
-                    if(!isOnTrip()){
-                        storageManager.setOnTrip(true);
-                        storageManager.turnTrackingOn();
-                        startLocationService();
-                    }
-                    if(!isTrackingOn()){
-
-                        startLocationService();
-                    }
-                }else if(trips.size()==0){
-                    if(isOnTrip()){
-                        storageManager.setOnTrip(false);
-                    }
-                    if(isTrackingOn()){
-                        storageManager.stopSdkTracking();
-                        stopLocationService();
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(BarikoiTraceError barikoiError) {
-
-            }
-        });
-
-    }
 }

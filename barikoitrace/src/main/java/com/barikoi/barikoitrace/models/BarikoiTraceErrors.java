@@ -12,7 +12,9 @@ public final class BarikoiTraceErrors {
         return new BarikoiTraceError("BK402", "User not created");
     }
 
-
+    public static BarikoiTraceError noKeyError() {
+        return new BarikoiTraceError("BK402", "API key not found, Make sure to initialize BarikoiTrace with API key");
+    }
     public static BarikoiTraceError invalidAccuracyError() {
         return new BarikoiTraceError("BK402", "Invalid accuracy");
     }

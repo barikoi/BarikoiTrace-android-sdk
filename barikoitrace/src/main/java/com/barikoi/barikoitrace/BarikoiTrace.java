@@ -154,6 +154,10 @@ public class BarikoiTrace {
         getInstance().setOFflineTracking(enabled);
     }
 
+    public static void syncTripstate(BarikoiTraceTripStateCallback callback){
+        getInstance().syncTripstate(callback);
+    }
+
 /*
     public static void updateCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i) {
         if (i > 10) {
