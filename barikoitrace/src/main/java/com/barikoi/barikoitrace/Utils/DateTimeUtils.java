@@ -23,7 +23,7 @@ public class DateTimeUtils {
 
 
     public static String getCurrentTimeLocal() {
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Calendar.getInstance().getTime());
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Calendar.getInstance().getTime());
     }
 
 
@@ -79,7 +79,7 @@ public class DateTimeUtils {
         }
     }
     public static String getDateTimeLocal(long time){
-        return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.ENGLISH).format(time);
+        return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(time);
     }
 
     public static String getCurrentDateTimeUTC() {

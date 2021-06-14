@@ -260,7 +260,7 @@ public class ApiRequestManager {
                                 callback.onFailure(new BarikoiTraceError(status+"",msg));
                             }
                         } catch (JSONException e) {
-                            callback.onFailure(BarikoiTraceErrors.serverError());
+                            callback.onFailure(BarikoiTraceErrors.jsonResponseError());
                         }
                     }
 
