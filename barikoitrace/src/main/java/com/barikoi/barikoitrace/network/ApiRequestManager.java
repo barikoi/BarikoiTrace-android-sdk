@@ -74,7 +74,7 @@ public class ApiRequestManager {
                         try {
                             JSONObject responsejson=new JSONObject(response);
                             int status= responsejson.getInt("status");
-                            if(status==200){
+                            if(status==200 || status==201){
                                 JSONObject userjson=responsejson.getJSONObject("user");
                                 int id= userjson.getInt("id");
                                 String name= userjson.getString("name");
@@ -120,6 +120,63 @@ public class ApiRequestManager {
         requestQueue.add(request);
     }
 
+    public void setorCreateUser(final String email, final String phone, final BarikoiTraceUserCallback callback){
+
+
+        key=configStorageManager.getApiKey();
+        StringRequest request = new StringRequest(Request.Method.POST,
+                Api.get_create_user_url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        try {
+                            JSONObject responsejson=new JSONObject(response);
+                            int status= responsejson.getInt("status");
+                            if(status==200 || status==201){
+                                JSONObject userjson=responsejson.getJSONObject("user");
+                                int id= userjson.getInt("id");
+                                String name= userjson.getString("name");
+                                String email=userjson.getString("email");
+                                String phone=userjson.getString("phone");
+                                BarikoiTraceUser user=new BarikoiTraceUser(id+"", email,phone);
+                                configStorageManager.setUserID(user.getUserId());
+                                setId(id+"");
+                                callback.onSuccess(user);
+                            }else {
+                                String msg= responsejson.getString("message");
+                                callback.onFailure(new BarikoiTraceError(status+"",msg));
+                            }
+                        } catch (JSONException e) {
+                            callback.onFailure(BarikoiTraceErrors.jsonResponseError());
+                        }
+                    }
+
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("locationupdate","error:"+error.getMessage());
+                        callback.onFailure(BarikoiTraceErrors.serverError());
+                        //loading.setVisibility(View.GONE);
+                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
+                        //NetworkcallUtils.handleResponse(error,context);
+                    }
+                }
+        ) {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                HashMap<String,String> params=new HashMap<>();
+                params.put("api_key",key);
+                if(!TextUtils.isEmpty(email)) params.put("email",email);
+                if(!TextUtils.isEmpty(phone)) params.put("phone",phone);
+                return params;
+            }
+        };
+        request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        request.setShouldCache(false);
+        requestQueue.add(request);
+    }
 
     public void sendLocation(final Location location, final BarikoiTraceLocationUpdateCallback callback){
         final double latitude= location.getLatitude();

@@ -9,6 +9,7 @@ public class Api {
     public static final String gpx_url= base_url+"/position/push";
     public static final String bulk_url= base_url+"/position/bulk/push";
     public static final String user_url=base_url+"/user";
+    public static final String get_create_user_url=base_url+"/authenticate";
     public static final String NAME="name",PHONE="phone",EMAIL="email",TOKEN="token", PATH="file_path", URI_PATH="uri_path",USER_ID="user_id",POINTS="points",SPENT_POINTS="redeemed_points",ISREFFERED="isReferred",REFCODE="ref_code";
 
 

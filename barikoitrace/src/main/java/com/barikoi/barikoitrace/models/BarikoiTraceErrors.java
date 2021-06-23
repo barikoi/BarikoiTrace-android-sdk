@@ -22,7 +22,7 @@ public final class BarikoiTraceErrors {
 
 
     public static BarikoiTraceError noDataError() {
-        return new BarikoiTraceError("BK402", "Data not found");
+        return new BarikoiTraceError("BK402", "Required parameter Data not found");
     }
 
 

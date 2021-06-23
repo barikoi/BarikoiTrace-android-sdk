@@ -39,6 +39,9 @@ public class BarikoiTrace {
         getInstance().setPhone(phone,callback);
     }
 
+    public static void setOrCreateUser (String email,String phone, BarikoiTraceUserCallback callback){
+        getInstance().setOrCreateUser(email,phone,callback);
+    }
 
 
 

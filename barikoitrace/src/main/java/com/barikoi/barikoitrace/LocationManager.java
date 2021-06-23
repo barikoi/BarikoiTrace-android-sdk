@@ -225,6 +225,18 @@ public final class LocationManager {
             this.apiRequestManager.setUser(null, phone, callback);
         }
     }
+
+    void setOrCreateUser( String email,String phone, BarikoiTraceUserCallback callback){
+        if (!NetworkChecker.isNetworkAvailable(this.context)) {
+            callback.onFailure(BarikoiTraceErrors.networkError());
+        } else if (TextUtils.isEmpty(phone)) {
+            callback.onFailure(BarikoiTraceErrors.noDataError());
+        } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
+            callback.onFailure(BarikoiTraceErrors.noKeyError());
+        }else {
+            this.apiRequestManager.setorCreateUser(email, phone, callback);
+        }
+    }
     void setUserId(String user_id){
         this.confdb.setUserID(user_id);
     }
