@@ -21,18 +21,18 @@ import com.google.android.gms.common.GoogleApiAvailability;
 import java.security.Permission;
 import java.util.List;
 
-import static android.Manifest.permission.ACCESS_BACKGROUND_LOCATION;
+
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 
 public class SystemSettingsManager {
 
-    public static void requestAndroidPbackgroundLocationPermission(Activity activity) {
+    /*public static void requestAndroidPbackgroundLocationPermission(Activity activity) {
         if (Build.VERSION.SDK_INT >= 29) {
             ActivityCompat.requestPermissions(activity, new String[]{ACCESS_BACKGROUND_LOCATION}, (int) BarikoiTrace.REQUEST_CODE_BACKGROUND_LOCATION_PERMISSION);
         }
-    }
+    }*/
 
 
     public static boolean checkOreo() {
@@ -40,9 +40,9 @@ public class SystemSettingsManager {
     }
 
 
-    public static boolean checkBackgroundLocationPermission(Context context) {
+    /*public static boolean checkBackgroundLocationPermission(Context context) {
         return Build.VERSION.SDK_INT >= 29 && ContextCompat.checkSelfPermission(context, ACCESS_BACKGROUND_LOCATION) == 0;
-    }
+    }*/
 
 
     public static boolean checkifMockprovider(Context context, Location location) {

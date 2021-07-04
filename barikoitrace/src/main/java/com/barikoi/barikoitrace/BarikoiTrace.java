@@ -15,7 +15,7 @@ public class BarikoiTrace {
     public static final String EXTRA="BarikoiTraceHandler";
 
 
-    public static final int REQUEST_CODE_BACKGROUND_LOCATION_PERMISSION = 10222;
+    //public static final int REQUEST_CODE_BACKGROUND_LOCATION_PERMISSION = 10222;
     public static final int REQUEST_CODE_LOCATION_ENABLED = 10225;
     public static final int REQUEST_CODE_LOCATION_PERMISSION = 10221;
 
@@ -45,10 +45,10 @@ public class BarikoiTrace {
 
 
 
-    public static boolean isBackgroundLocationPermissionGranted() {
+    /*public static boolean isBackgroundLocationPermissionGranted() {
         return getInstance().m27a();
     }
-
+*/
     public static boolean isLocationPermissionsGranted() {
         return getInstance().m32b();
     }
@@ -114,9 +114,9 @@ public class BarikoiTrace {
         SystemSettingsManager.requestLocationPermissions(activity);
     }
 
-    public static void requestBackgroundLocationPermission(Activity activity) {
+    /*public static void requestBackgroundLocationPermission(Activity activity) {
         SystemSettingsManager.requestAndroidPbackgroundLocationPermission(activity);
-    }
+    }*/
 
 
     public static void requestLocationServices(Activity activity) {

@@ -153,9 +153,7 @@ public final class LocationManager {
 
 
 
-    public boolean m27a() {
-        return SystemSettingsManager.checkBackgroundLocationPermission(this.context);
-    }
+
 
 
     public void startTracking(TraceMode traceTrackingMode) {
