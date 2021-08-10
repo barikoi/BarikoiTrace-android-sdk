@@ -97,7 +97,11 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
+                        //Log.d("locationupdate","error:"+error.getMessage());
+                        if (error.networkResponse != null){
+                            String s = new String(error.networkResponse.data);
+                            Log.d("locationupdate", "error message: "+s);
+                        }
                         callback.onFailure(BarikoiTraceErrors.serverError());
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
@@ -155,7 +159,11 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
+                        //Log.d("locationupdate","error:"+error.getMessage());
+                        if (error.networkResponse != null){
+                            String s = new String(error.networkResponse.data);
+                            Log.d("locationupdate", "error message: "+s);
+                        }
                         callback.onFailure(BarikoiTraceErrors.serverError());
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
@@ -214,7 +222,10 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
+                        if (error.networkResponse != null){
+                            String s = new String(error.networkResponse.data);
+                            Log.d("locationupdate", "error message: "+s);
+                        }
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
                         //NetworkcallUtils.handleResponse(error,context);
@@ -269,7 +280,10 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
+                        if (error.networkResponse != null){
+                            String s = new String(error.networkResponse.data);
+                            Log.d("locationupdate", "error message: "+s);
+                        }
                         callback.onFailure(BarikoiTraceErrors.serverError());
 
                     }
@@ -325,7 +339,10 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                        if (error.networkResponse != null){
+                            String s = new String(error.networkResponse.data);
+                            Log.d("locationupdate", "error message: "+s);
+                        }
                         callback.onFailure(BarikoiTraceErrors.serverError());
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
@@ -386,7 +403,10 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                        if (error.networkResponse != null){
+                            String s = new String(error.networkResponse.data);
+                            Log.d("locationupdate", "error message: "+s);
+                        }
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
                         //NetworkcallUtils.handleResponse(error,context);
@@ -434,7 +454,12 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                        if (error!=null ) {
+                            if (error.networkResponse != null){
+                                String s = new String(error.networkResponse.data);
+                                Log.d("locationupdate", "error message: "+s);
+                            }
+                        }
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
                         //NetworkcallUtils.handleResponse(error,context);
@@ -482,7 +507,12 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                        if (error!=null ) {
+                            if (error.networkResponse != null){
+                                String s = new String(error.networkResponse.data);
+                                Log.d("locationupdate", "error message: "+s);
+                            }
+                        }
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
                         //NetworkcallUtils.handleResponse(error,context);
