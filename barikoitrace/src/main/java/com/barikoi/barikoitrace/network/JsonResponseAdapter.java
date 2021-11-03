@@ -2,6 +2,7 @@ package com.barikoi.barikoitrace.network;
 
 import android.location.Location;
 
+import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.DateTimeUtils;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
@@ -45,6 +46,7 @@ public class JsonResponseAdapter {
             params.put("altitude", location.getAltitude());
             params.put("gpx_time", DateTimeUtils.getDateTimeLocal(location.getTime()));
             params.put("speed",location.getSpeed());
+            params.put("accuracy",location.getAccuracy());
         }catch(JSONException e){
             throw new BarikoiTraceException(e);
         }
@@ -69,6 +71,16 @@ public class JsonResponseAdapter {
             e.printStackTrace();
         }
         return trips;
+    }
+
+    public static TraceMode getCompanySettings(JSONObject obj) throws JSONException{
+
+        return new TraceMode.Builder().setUpdateInterval(obj.getInt("update_time_interval"))
+                .setDistancefilter(obj.getInt("distance_interval"))
+                .setAccuracyFilter(obj.getInt("accuracy_filter"))
+                .setOfflineSync(obj.getInt("offline_sync")==1?true:false)
+                .build();
+
     }
 
 

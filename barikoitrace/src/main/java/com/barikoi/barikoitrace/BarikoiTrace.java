@@ -30,7 +30,6 @@ public class BarikoiTrace {
     }
     public void setUserId(String id){
         getInstance().setUserId(id);
-
     }
     public static void setEmail(String email, BarikoiTraceUserCallback callback){
         getInstance().setEmail(email,callback);
@@ -39,8 +38,12 @@ public class BarikoiTrace {
         getInstance().setPhone(phone,callback);
     }
 
+    @Deprecated
     public static void setOrCreateUser (String email,String phone, BarikoiTraceUserCallback callback){
         getInstance().setOrCreateUser(email,phone,callback);
+    }
+    public static void setOrCreateUser (String name, String email,String phone, BarikoiTraceUserCallback callback){
+        getInstance().setOrCreateUser(name,email,phone,callback);
     }
 
 
@@ -157,9 +160,12 @@ public class BarikoiTrace {
         getInstance().setOFflineTracking(enabled);
     }
 
-    public static void syncTripstate(BarikoiTraceTripStateCallback callback){
-        getInstance().syncTripstate(callback);
+    public static void syncSettingsfromRemote(){
+
     }
+    /*public static void syncTripstate(BarikoiTraceTripStateCallback callback){
+        getInstance().syncTripstate(callback);
+    }*/
 
 /*
     public static void updateCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i) {

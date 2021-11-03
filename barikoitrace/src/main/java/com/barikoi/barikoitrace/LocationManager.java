@@ -232,7 +232,21 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
             callback.onFailure(BarikoiTraceErrors.noKeyError());
         }else {
-            this.apiRequestManager.setorCreateUser(email, phone, callback);
+            this.apiRequestManager.setorCreateUser(null,email, phone, callback);
+        }
+    }
+    void setOrCreateUser(String name, String email,String phone, BarikoiTraceUserCallback callback){
+
+        if (!NetworkChecker.isNetworkAvailable(this.context)) {
+            callback.onFailure(BarikoiTraceErrors.networkError());
+        } else if (TextUtils.isEmpty(phone)) {
+            callback.onFailure(BarikoiTraceErrors.noDataError());
+        } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
+            callback.onFailure(BarikoiTraceErrors.noKeyError());
+        } else if(TextUtils.isEmpty(phone)){
+            callback.onFailure(new BarikoiTraceError("BK402","user login or register requires phone number"));
+        }else {
+            this.apiRequestManager.setorCreateUser(name,email, phone, callback);
         }
     }
     void setUserId(String user_id){

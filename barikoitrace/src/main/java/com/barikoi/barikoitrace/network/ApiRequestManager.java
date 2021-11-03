@@ -20,6 +20,7 @@ import com.barikoi.barikoitrace.Utils.DateTimeUtils;
 import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
+import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripApiCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
@@ -63,10 +64,9 @@ public class ApiRequestManager {
     }
 
     public void setUser(final String email, final String phone, final BarikoiTraceUserCallback callback){
-
         id=configStorageManager.getUserID();
         key=configStorageManager.getApiKey();
-        StringRequest request = new StringRequest(Request.Method.POST,
+        StringRequest request = new StringRequest(Request.Method.GET,
                 Api.user_url,
                 new Response.Listener<String>() {
                     @Override
@@ -89,6 +89,7 @@ public class ApiRequestManager {
                                 callback.onFailure(new BarikoiTraceError(status+"",msg));
                             }
                         } catch (JSONException e) {
+
                             callback.onFailure(BarikoiTraceErrors.jsonResponseError());
                         }
                     }
@@ -99,9 +100,7 @@ public class ApiRequestManager {
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.getMessage());
                         callback.onFailure(BarikoiTraceErrors.serverError());
-                        //loading.setVisibility(View.GONE);
-                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
-                        //NetworkcallUtils.handleResponse(error,context);
+
                     }
                 }
         ) {
@@ -113,6 +112,13 @@ public class ApiRequestManager {
                 if(!TextUtils.isEmpty(phone)) params.put("phone",phone);
                 return params;
             }
+
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String,String> params = new HashMap<String, String>();
+                params.put("Content-Type","application/x-www-form-urlencoded");
+                return params;
+            }
         };
         request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
@@ -120,7 +126,7 @@ public class ApiRequestManager {
         requestQueue.add(request);
     }
 
-    public void setorCreateUser(final String email, final String phone, final BarikoiTraceUserCallback callback){
+    public void setorCreateUser(final String name, final String email, final String phone, final BarikoiTraceUserCallback callback){
 
 
         key=configStorageManager.getApiKey();
@@ -132,6 +138,7 @@ public class ApiRequestManager {
                         try {
                             JSONObject responsejson=new JSONObject(response);
                             int status= responsejson.getInt("status");
+                            Log.d("userjson",responsejson.toString());
                             if(status==200 || status==201){
                                 JSONObject userjson=responsejson.getJSONObject("user");
                                 int id= userjson.getInt("id");
@@ -147,6 +154,7 @@ public class ApiRequestManager {
                                 callback.onFailure(new BarikoiTraceError(status+"",msg));
                             }
                         } catch (JSONException e) {
+                            Log.e("userlogerror", e.getMessage());
                             callback.onFailure(BarikoiTraceErrors.jsonResponseError());
                         }
                     }
@@ -167,6 +175,7 @@ public class ApiRequestManager {
             protected Map<String, String> getParams() throws AuthFailureError {
                 HashMap<String,String> params=new HashMap<>();
                 params.put("api_key",key);
+                if(!TextUtils.isEmpty(name)) params.put("name",name);
                 if(!TextUtils.isEmpty(email)) params.put("email",email);
                 if(!TextUtils.isEmpty(phone)) params.put("phone",phone);
                 return params;
@@ -185,6 +194,7 @@ public class ApiRequestManager {
         long time=location.getTime();
         final float bearing= location.getBearing();
         final float speed= location.getSpeed();
+        final float accuracy=location.getAccuracy();
         final String timestring= DateTimeUtils.getDateTimeLocal(time);
 
         if(latitude==0 || longitude==0){
@@ -233,6 +243,7 @@ public class ApiRequestManager {
                 params.put("speed",speed+"");
                 params.put("bearing",bearing+"");
                 params.put("gpx_time",timestring);
+                params.put("accuracy",accuracy+"");
 
 
                  return params;
@@ -469,6 +480,47 @@ public class ApiRequestManager {
                             int status= responsejson.getInt("status");
                             if(status==200 || status ==201){
                                 callback.onSuccess(JsonResponseAdapter.getTrips(responsejson.getJSONObject("data").getJSONArray("trips")));
+                            }else {
+                                String msg= responsejson.getString("message");
+                                callback.onFailure(new BarikoiTraceError(status+"",msg));
+                            }
+                        } catch (JSONException e) {
+                            callback.onFailure(BarikoiTraceErrors.jsonResponseError());
+                        }
+                    }
+
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                        //loading.setVisibility(View.GONE);
+                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
+                        //NetworkcallUtils.handleResponse(error,context);
+                        callback.onFailure( BarikoiTraceErrors.serverError());
+                    }
+                }
+        ) {
+
+        };
+
+        requestQueue.add(request);
+    }
+
+    public void syncSettings(final BarikoiTraceSettingsCallback callback){
+        HashMap<String,String> params=new HashMap<>();
+        params.put("api_key",key);
+
+        StringRequest request = new StringRequest(Request.Method.GET,
+                Api.company_settings+paramString(params),
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        try {
+                            JSONObject responsejson=new JSONObject(response);
+                            int status= responsejson.getInt("status");
+                            if(status==200 ){
+                                callback.onSuccess(JsonResponseAdapter.getCompanySettings(responsejson.getJSONObject("settings")));
                             }else {
                                 String msg= responsejson.getString("message");
                                 callback.onFailure(new BarikoiTraceError(status+"",msg));

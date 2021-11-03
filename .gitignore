@@ -18,3 +18,7 @@
 .cxx
 libs/
 src/main/res/values/barikoi_config.xml
+/.idea/.gitignore
+/.idea/gradle.xml
+/.idea/misc.xml
+/.idea/vcs.xml
