@@ -46,7 +46,17 @@ public final class ConfigStorageManager {
         //BarikoiTraceLogView.debugLog("desiredAccuracy: " +this.getDesiredAccuracy()+", updateInterval: "+this.getUpdateInterval()+",distanceFilter:"+this.getDistanceFilter()+",accuracyFilter:"+getAccuracyFilter());
     }
 
-
+    public TraceMode getTraceMode(){
+        if(this.sharedPRefHelper.getInt("updateInterval")!=0 &&  this.sharedPRefHelper.getInt("distanceFilter")!=0){
+            return new TraceMode.Builder()
+                    .setAccuracyFilter(this.sharedPRefHelper.getInt("accuracyFilter"))
+                    .setDistancefilter(this.sharedPRefHelper.getInt("distanceFilter"))
+                    .setUpdateInterval(this.sharedPRefHelper.getInt("updateInterval"))
+                    .setOfflineSync(this.sharedPRefHelper.getBoolean("offlineTracking"))
+                    .setDesiredAccuracy(TraceMode.DesiredAccuracy.toEnum(this.sharedPRefHelper.getString("desiredAccuracy")))
+                    .build();
+        }else return null;
+    }
 
     private void clearTrackingModefromDB() {
         this.sharedPRefHelper.remove("desiredAccuracy");
@@ -131,8 +141,8 @@ public final class ConfigStorageManager {
         return this.sharedPRefHelper.getBoolean("offlineTracking");
     }
 
-    public void turnTrackingOn(TraceMode traceMode) {
-        this.sharedPRefHelper.putBoolean("sdk_tracking", true);
+    public void setTraceMode(TraceMode traceMode) {
+        //this.sharedPRefHelper.putBoolean("sdk_tracking", true);
         updateTrackingModetoDB(traceMode);
     }
 

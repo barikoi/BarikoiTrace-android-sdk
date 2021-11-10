@@ -16,6 +16,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.DateTimeUtils;
 import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
@@ -520,12 +521,17 @@ public class ApiRequestManager {
                             JSONObject responsejson=new JSONObject(response);
                             int status= responsejson.getInt("status");
                             if(status==200 ){
-                                callback.onSuccess(JsonResponseAdapter.getCompanySettings(responsejson.getJSONObject("settings")));
+                                TraceMode mode=JsonResponseAdapter.getCompanySettings(responsejson.getJSONObject("settings"));
+                                configStorageManager.setTraceMode(mode);
+                                callback.onSuccess(mode);
+
                             }else {
                                 String msg= responsejson.getString("message");
                                 callback.onFailure(new BarikoiTraceError(status+"",msg));
                             }
                         } catch (JSONException e) {
+                            if(configStorageManager.getTraceMode()==null)
+
                             callback.onFailure(BarikoiTraceErrors.jsonResponseError());
                         }
                     }

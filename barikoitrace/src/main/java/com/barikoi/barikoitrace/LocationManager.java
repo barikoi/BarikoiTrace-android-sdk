@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
+import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
@@ -165,7 +166,8 @@ public final class LocationManager {
             } else {
 
                 BarikoiTraceLogView.onSuccess("Tracking Started " );
-                this.confdb.turnTrackingOn(traceTrackingMode);
+                this.confdb.turnTrackingOn();
+                this.confdb.setTraceMode(traceTrackingMode);
                 this.locationTracker.startLocationService();
             }
         } catch (Exception e) {
@@ -268,7 +270,7 @@ public final class LocationManager {
                 if(trips.size()==1){
                     if(!isOnTrip()){
                         confdb.setOnTrip(true);
-                        confdb.turnTrackingOn();
+                        //confdb.turnTrackingOn();
                         locationTracker.startLocationService();
                     }
                     if(!locationTracker.isTrackingOn()){
@@ -278,11 +280,10 @@ public final class LocationManager {
                 }else if(trips.size()==0){
                     if(isOnTrip()){
                         confdb.setOnTrip(false);
-                    }
-                    if(locationTracker.isTrackingOn()){
-                        confdb.stopSdkTracking();
+                        //confdb.stopSdkTracking();
                         locationTracker.stopLocationService();
                     }
+
                 }
                 callback.onSuccess();
             }
@@ -399,6 +400,9 @@ public final class LocationManager {
         return locationTracker.isOnTrip();
     }
 
+    public void getCompanySettings(BarikoiTraceSettingsCallback callback){
+        apiRequestManager.syncSettings(callback);
+    }
     public void syncTripstate(BarikoiTraceTripStateCallback callback){
         syncActiveTrip(callback);
     }
@@ -406,4 +410,7 @@ public final class LocationManager {
         this.confdb.setOfflineTracking(enabled);
     }
 
+    public void setTraceMode(TraceMode mode) {
+        confdb.setTraceMode(mode);
+    }
 }

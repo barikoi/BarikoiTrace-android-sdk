@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
@@ -68,6 +69,7 @@ public class BarikoiTrace {
 
 
 
+
     public static void disableBatteryOptimization() {
         getInstance().requestBatteryOptimization();
     }
@@ -127,10 +129,9 @@ public class BarikoiTrace {
     }
 
 
-
-    /*public static void startGeofence(double lat,double lon , int radius){
-        getInstance().startGeofence(lat,lon, radius);
-    }*/
+    public static void setTraceMode(TraceMode mode){
+        getInstance().setTraceMode(mode);
+    }
 
     public static void startTracking(TraceMode traceTrackingMode) {
         if (traceTrackingMode == null) {
@@ -155,13 +156,12 @@ public class BarikoiTrace {
         getInstance().stopTracking();
     }
 
-
     public static void setOfflineTracking(boolean enabled){
         getInstance().setOFflineTracking(enabled);
     }
 
-    public static void syncSettingsfromRemote(){
-
+    public static void getSettingsfromRemote(BarikoiTraceSettingsCallback callback){
+        getInstance().getCompanySettings(callback);
     }
     /*public static void syncTripstate(BarikoiTraceTripStateCallback callback){
         getInstance().syncTripstate(callback);

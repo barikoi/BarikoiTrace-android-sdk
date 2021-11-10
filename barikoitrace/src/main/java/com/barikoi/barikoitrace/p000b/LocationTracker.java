@@ -1,11 +1,14 @@
 package com.barikoi.barikoitrace.p000b;
 
+import static android.os.Build.*;
+
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.TraceMode;
@@ -274,7 +277,11 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void startLocationService() {
             if (!isTrackingOn() ) {
-                this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
+                if (VERSION.SDK_INT >= VERSION_CODES.O) {
+                    this.context.startForegroundService(new Intent(this.context, BarikoiTraceLocationService.class));
+                }else{
+                    this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
+                }
             }
     }
 
@@ -308,7 +315,8 @@ public final class LocationTracker implements LocationUpdateListener {
             @Override
             public void onSuccess() {
                 storageManager.setOnTrip(true);
-                storageManager.turnTrackingOn(traceMode);
+                storageManager.turnTrackingOn();
+                //storageManager.turnTrackingOn(traceMode);
                 startLocationService();
                 callback.onSuccess();
                 //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 1);
@@ -332,7 +340,7 @@ public final class LocationTracker implements LocationUpdateListener {
                 @Override
                 public void onSuccess() {
                     storageManager.setOnTrip(false);
-                    storageManager.stopSdkTracking();
+                    //storageManager.stopSdkTracking();
                     stopLocationService();
                     callback.onSuccess();
                     //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 1);
