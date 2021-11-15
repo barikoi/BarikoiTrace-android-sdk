@@ -68,19 +68,6 @@ public final class LocationManager {
 
 
 
-
-    public Bundle m6a(Map<String, String> map) {
-        Bundle bundle = new Bundle();
-        try {
-            if (map.size() > 0) {
-                bundle.putString("type", map.get("type"));
-                bundle.putString("cid", map.get("cid"));
-            }
-        } catch (Exception e) {
-        }
-        return bundle;
-    }
-
     /*
     *//*
     public void m7a(Intent intent) {
@@ -223,18 +210,6 @@ public final class LocationManager {
             callback.onFailure(BarikoiTraceErrors.noKeyError());
         }else {
             this.apiRequestManager.setUser(null, phone, callback);
-        }
-    }
-
-    void setOrCreateUser( String email,String phone, BarikoiTraceUserCallback callback){
-        if (!NetworkChecker.isNetworkAvailable(this.context)) {
-            callback.onFailure(BarikoiTraceErrors.networkError());
-        } else if (TextUtils.isEmpty(phone)) {
-            callback.onFailure(BarikoiTraceErrors.noDataError());
-        } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
-            callback.onFailure(BarikoiTraceErrors.noKeyError());
-        }else {
-            this.apiRequestManager.setorCreateUser(null,email, phone, callback);
         }
     }
     void setOrCreateUser(String name, String email,String phone, BarikoiTraceUserCallback callback){

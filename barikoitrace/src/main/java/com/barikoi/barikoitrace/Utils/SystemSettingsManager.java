@@ -74,7 +74,8 @@ public class SystemSettingsManager {
         if (i >= 19) {
             return Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE, 0) != 0;
         }
-        String string = Settings.Secure.getString(context.getContentResolver(), "location_providers_allowed");
+
+        String string = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
         return string.contains("gps") && string.contains("network");
     }
 

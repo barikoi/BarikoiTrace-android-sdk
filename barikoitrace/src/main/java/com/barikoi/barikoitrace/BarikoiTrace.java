@@ -23,26 +23,47 @@ public class BarikoiTrace {
     private static LocationManager manager;
     private Context context;
 
-
+    /**
+     * Initializes the BarikoiTrace module with API key and context
+     *
+     * @param context   Application or Activity context
+     * @param apikey    API key from Barikoi Trace
+     */
     public static void initialize(Context context, String apikey){
         manager = LocationManager.getInstance(context);
         getInstance().m15a(apikey);
-
     }
+    /**
+     * set Barikoi User by the user ID
+     *
+     * @param id ID of the BarikoiTrace user in STRING
+     */
     public void setUserId(String id){
         getInstance().setUserId(id);
     }
+
+    @Deprecated
     public static void setEmail(String email, BarikoiTraceUserCallback callback){
         getInstance().setEmail(email,callback);
     }
+    @Deprecated
     public static void setPhone(String phone, BarikoiTraceUserCallback callback){
         getInstance().setPhone(phone,callback);
     }
 
     @Deprecated
     public static void setOrCreateUser (String email,String phone, BarikoiTraceUserCallback callback){
-        getInstance().setOrCreateUser(email,phone,callback);
+        getInstance().setOrCreateUser(null,email,phone,callback);
     }
+
+    /**
+     * Logs in an user using name, email, phone number. If user does not exist, create an user and return the user info.
+     *
+     * @param name
+     * @param email
+     * @param phone
+     * @param callback {@link BarikoiTraceUserCallback}
+     */
     public static void setOrCreateUser (String name, String email,String phone, BarikoiTraceUserCallback callback){
         getInstance().setOrCreateUser(name,email,phone,callback);
     }
@@ -53,15 +74,29 @@ public class BarikoiTrace {
         return getInstance().m27a();
     }
 */
+
+    /**
+     * returns whether location permissions area granted
+     *
+     * @return {@link Boolean}
+     */
     public static boolean isLocationPermissionsGranted() {
         return getInstance().m32b();
     }
 
+    /**
+     * Return whether location settings is turned on
+     *
+     * @return {@link Boolean}
+     */
     public static boolean isLocationSettingsOn() {
         return getInstance().checkLocationSettings();
     }
 
-
+    /**
+     * Opents Autostart settings intent for some custom android OS. Autostart settings is needed for loation service management
+     * @param context
+     */
     public static void openAutostartsettings(Context context){
         SystemSettingsManager.openAutostartSettings(context);
     }
@@ -98,17 +133,27 @@ public class BarikoiTrace {
     }
 
 
-
+    /**
+     * set Barikoi User by the user ID
+     *
+     * @param user_id ID of the BarikoiTrace user in STRING
+     */
     public static void setUser(String user_id){
         getInstance().setUserId(user_id);
     }
 
-
-
+    /**
+     *
+     * @return Whether the Barrety optimization ignore settings is enabled
+     */
     public static boolean isBatteryOptimizationEnabled() {
         return getInstance().checkIgnoringBatteryOptimization();
     }
 
+    /**
+     *
+     * @return whether location service is on
+     */
     public static boolean isLocationTracking() {
         return getInstance().m50j();
     }

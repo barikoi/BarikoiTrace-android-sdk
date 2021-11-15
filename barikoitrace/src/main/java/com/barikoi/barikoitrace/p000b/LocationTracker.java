@@ -94,7 +94,6 @@ public final class LocationTracker implements LocationUpdateListener {
 
             DeviceInfo.updateBatteryInfo(this.context);
             boolean a = NetworkChecker.isNetworkAvailable(this.context);
-            String a2 = C0089a.m406a();
             if (a) {
 
             }
@@ -304,7 +303,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void startTrip(final String tag, final TraceMode traceMode, final BarikoiTraceTripStateCallback callback){
         final String startTime= DateTimeUtils.getCurrentTimeLocal();
-
+        storageManager.setTraceMode(traceMode);
         ApiRequestManager.getInstance(context).startTrip(startTime, tag, new BarikoiTraceTripApiCallback() {
             @Override
             public void onFailure(BarikoiTraceError barikoiError) {
