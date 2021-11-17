@@ -18,7 +18,7 @@
 <!--    <string name="navigation_guidance_night" translatable="false">https://map.barikoi.com/styles/osm-bright/style.json</string>-->
 
 <!--    <string name="map_view_styleUrl" translatable="false">https://map.barikoi.com/styles/osm-liberty/style.json</string>-->
-    <string name="map_view_styleUrl" translatable="false">https://map.barikoi.com/styles/barikoi-dark/style.json</string>
+    <string name="map_view_styleUrl" translatable="false">https://map.barikoi.com/styles/barikoi-dark/style.json?key=</string>
     <!-- The "day" style used for navigation -->
     <string name="navigation_guidance_day" translatable="false">https://map.barikoi.com/styles/osm-liberty/style.json</string>
     <!-- The "night" style used for navigation -->

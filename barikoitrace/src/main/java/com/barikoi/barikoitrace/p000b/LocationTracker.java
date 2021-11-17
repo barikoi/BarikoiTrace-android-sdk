@@ -100,7 +100,6 @@ public final class LocationTracker implements LocationUpdateListener {
 
     }
 
-
     public void m74a() {
         if (!TextUtils.isEmpty(this.storageManager.getUserID())) {
             if (SystemSettingsManager.checkLocationSettings(this.context)) {
@@ -130,7 +129,7 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
 
-    public void m77a(Location location, C0089a.EnumC0091b bVar) throws BarikoiTraceException {
+    public void m77a(final Location location, C0089a.EnumC0091b bVar) throws BarikoiTraceException {
         try {
             this.storageManager.updateLastLocation(location);
             sendLocationBroadCast(location, bVar.toString(), (BarikoiTraceError) null);
@@ -153,6 +152,13 @@ public final class LocationTracker implements LocationUpdateListener {
                     @Override
                     public void onFailure(BarikoiTraceError barikoiError) {
                         BarikoiTraceLogView.onFailure(barikoiError);
+                        if(barikoiError.equals(BarikoiTraceErrors.networkError()) && storageManager.isOfflineTracking()){
+                            try {
+                                locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
+                            } catch (BarikoiTraceException e) {
+                                e.printStackTrace();
+                            }
+                        }
                     }
                 });
             }else if(storageManager.isOfflineTracking()){
@@ -329,6 +335,9 @@ public final class LocationTracker implements LocationUpdateListener {
         final String endTime= DateTimeUtils.getCurrentTimeLocal();
 
         if(isOnTrip()) {
+            if(locdbhelper.getofflinecount()>0 && !storageManager.isDataSyncing()){
+                uploadOfflineData();
+            }
             ApiRequestManager.getInstance(context).endTrip(endTime, new BarikoiTraceTripApiCallback() {
                 @Override
                 public void onFailure(BarikoiTraceError barikoiError) {

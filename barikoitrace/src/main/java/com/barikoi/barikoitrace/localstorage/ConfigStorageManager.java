@@ -55,7 +55,13 @@ public final class ConfigStorageManager {
                     .setOfflineSync(this.sharedPRefHelper.getBoolean("offlineTracking"))
                     .setDesiredAccuracy(TraceMode.DesiredAccuracy.toEnum(this.sharedPRefHelper.getString("desiredAccuracy")))
                     .build();
-        }else return null;
+        }else return new TraceMode.Builder()
+                .setAccuracyFilter(200)
+                .setDistancefilter(0)
+                .setUpdateInterval(5)
+                .setOfflineSync(true)
+                .setDesiredAccuracy(TraceMode.DesiredAccuracy.HIGH)
+                .build();
     }
 
     private void clearTrackingModefromDB() {

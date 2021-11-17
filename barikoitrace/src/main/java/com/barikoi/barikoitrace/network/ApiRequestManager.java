@@ -11,9 +11,12 @@ import androidx.annotation.RequiresApi;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.NetworkError;
+import com.android.volley.NoConnectionError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.barikoi.barikoitrace.TraceMode;
@@ -226,9 +229,8 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.getMessage());
-                        //loading.setVisibility(View.GONE);
-                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
-                        //NetworkcallUtils.handleResponse(error,context);
+                        if (error instanceof NetworkError || error instanceof NoConnectionError)
+                            callback.onFailure(BarikoiTraceErrors.networkError());
                     }
                 }
         ) {
@@ -250,7 +252,7 @@ public class ApiRequestManager {
                  return params;
             }
         };
-        request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
+        request.setRetryPolicy(new DefaultRetryPolicy(20 * 1000, 0,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         request.setShouldCache(false);
         requestQueue.add(request);
@@ -495,9 +497,6 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        //loading.setVisibility(View.GONE);
-                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
-                        //NetworkcallUtils.handleResponse(error,context);
                         callback.onFailure( BarikoiTraceErrors.serverError());
                     }
                 }

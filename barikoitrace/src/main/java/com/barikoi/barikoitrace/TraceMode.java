@@ -80,6 +80,7 @@ public final class TraceMode {
         LOW;
 
         public static DesiredAccuracy toEnum(String str) {
+            if(str.equals("") || str ==null) return HIGH;
             return valueOf(str);
         }
     }

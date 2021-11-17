@@ -8,4 +8,6 @@ public interface BarikoiTraceLocationUpdateCallback {
     void onlocationUpdate(Location location);
 
     void onFailure(BarikoiTraceError barikoiError);
+
+
 }

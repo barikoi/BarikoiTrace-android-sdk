@@ -58,12 +58,17 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
 
     private void m522a() {
-        if (this.configStorageManager.getUpdateInterval() > 0) {
+        TraceMode mode=this.configStorageManager.getTraceMode();
+        if (mode.getUpdateInterval() > 0) {
             UnifiedLocationManager cVar = this.unifiedLocationManager;
-            ConfigStorageManager aVar = this.configStorageManager;
-            cVar.startLocationUpdate(aVar, aVar.getUpdateInterval(), this.activeDistFilter);
+            cVar.removeLocationUpdate();
+            cVar.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter);
             return;
 
+        }else if(mode.getDistanceFilter()>0){
+            this.unifiedLocationManager.removeLocationUpdate();
+            this.unifiedLocationManager.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter);
+            return;
         }
         int a = C0089a.getDistFilterFromSpeed(this.configStorageManager, 0);
         this.activeDistFilter = a;
