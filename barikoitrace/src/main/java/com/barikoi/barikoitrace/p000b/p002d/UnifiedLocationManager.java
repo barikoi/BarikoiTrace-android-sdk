@@ -12,12 +12,17 @@ import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
+import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.SettingsClient;
+import com.google.android.gms.tasks.Task;
 
 
 public class UnifiedLocationManager {
@@ -28,21 +33,15 @@ public class UnifiedLocationManager {
 
     private LocationUpdateListener locationUpdateListener;
 
-
     private LocationManager locationManager;
-
 
     private FusedLocationProviderClient fusedLocationProviderClient;
 
-
     private ConfigStorageManager configStorageManager;
-
 
     private LocationCallback googleLocationCallback = new GoogleLocationCallback();
 
-
     private LocationListener nativeLocationListenerimp = new NativeLocationListener();
-
 
     class GoogleLocationCallback extends LocationCallback {
         GoogleLocationCallback() {
@@ -51,7 +50,7 @@ public class UnifiedLocationManager {
         public void onLocationAvailability(LocationAvailability locationAvailability) {
             super.onLocationAvailability(locationAvailability);
             if (!SystemSettingsManager.checkLocationSettings(UnifiedLocationManager.this.context)) {
-                UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());
+                UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationSettingsError());
             }
         }
 
@@ -83,7 +82,7 @@ public class UnifiedLocationManager {
         @Override // android.location.LocationListener
         public void onProviderDisabled(String str) {
             if (!SystemSettingsManager.checkLocationSettings(UnifiedLocationManager.this.context)) {
-                UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());
+                UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationSettingsError());
             }
         }
 
@@ -128,16 +127,17 @@ public class UnifiedLocationManager {
     }
 
 
+    @SuppressLint("MissingPermission")
     private void createGoogleLocationUpdate(ConfigStorageManager aVar, int timeInterval, int smallestDisplacement) {
         if (SystemSettingsManager.checkPermissions(this.context)) {
             LocationRequest locationRequest = new LocationRequest();
             int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(aVar.getDesiredAccuracy()).ordinal()];
             if (i3 == 1) {
-                locationRequest.setPriority(100);
+                locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
             } else if (i3 == 2) {
-                locationRequest.setPriority(102);
+                locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
             } else if (i3 == 3) {
-                locationRequest.setPriority(104);
+                locationRequest.setPriority(LocationRequest.PRIORITY_LOW_POWER );
             }
             if (timeInterval > 0) {
                 long j = (long) (timeInterval * 1000);
@@ -194,4 +194,5 @@ public class UnifiedLocationManager {
             this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());
         }
     }
+
 }

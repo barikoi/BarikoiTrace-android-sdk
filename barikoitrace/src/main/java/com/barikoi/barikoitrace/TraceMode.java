@@ -4,15 +4,16 @@ import androidx.annotation.Keep;
 
 @Keep
 public final class TraceMode {
-    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 50, TrackingModes.ACTIVE);
-    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 100, TrackingModes.PASSIVE);
-    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 75, TrackingModes.REACTIVE);
+    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 50, TrackingModes.ACTIVE, true);
+    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 100, TrackingModes.PASSIVE,true);
+    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 75, TrackingModes.REACTIVE,true);
     private int accuracyFilter;
     private DesiredAccuracy desiredAccuracy;
     private int distanceFilter;
     private int stopDuration;
     private TrackingModes trackingModes;
     private int updateInterval;
+    private boolean offline;
 
     @Keep
     public enum AppState {
@@ -32,6 +33,7 @@ public final class TraceMode {
         private int distanceFilter = 0;
         private int stopDuration = 0;
         private int updateInterval = 0;
+        private boolean offline=true;
         public Builder() {
 
         }
@@ -48,8 +50,12 @@ public final class TraceMode {
             this.updateInterval=updateInterval;
             return this;
         }
+        public Builder setOfflineSync(boolean offline){
+            this.offline=offline;
+            return this;
+        }
         public TraceMode build() {
-            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM);
+            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM,this.offline);
         }
 
         public Builder setAccuracyFilter(int i) {
@@ -74,6 +80,7 @@ public final class TraceMode {
         LOW;
 
         public static DesiredAccuracy toEnum(String str) {
+            if(str.equals("") || str ==null) return HIGH;
             return valueOf(str);
         }
     }
@@ -109,6 +116,16 @@ public final class TraceMode {
         this.stopDuration = stopduration;
         this.accuracyFilter = accuracyfilter;
         this.trackingModes = trackingModes;
+    }
+
+    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes, boolean offline) {
+        this.desiredAccuracy = desiredAccuracy2;
+        this.updateInterval = updateinterval;
+        this.distanceFilter = distancefilter;
+        this.stopDuration = stopduration;
+        this.accuracyFilter = accuracyfilter;
+        this.trackingModes = trackingModes;
+        this.offline=offline;
     }
 
     public int getAccuracyFilter() {

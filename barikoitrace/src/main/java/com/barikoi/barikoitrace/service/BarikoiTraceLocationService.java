@@ -22,7 +22,6 @@ import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.C0089a;
-import com.barikoi.barikoitrace.p000b.GeofenceManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.p000b.p002d.UnifiedLocationManager;
@@ -59,12 +58,17 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
 
     private void m522a() {
-        if (this.configStorageManager.getUpdateInterval() > 0) {
+        TraceMode mode=this.configStorageManager.getTraceMode();
+        if (mode.getUpdateInterval() > 0) {
             UnifiedLocationManager cVar = this.unifiedLocationManager;
-            ConfigStorageManager aVar = this.configStorageManager;
-            cVar.startLocationUpdate(aVar, aVar.getUpdateInterval(), this.activeDistFilter);
+            cVar.removeLocationUpdate();
+            cVar.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter);
             return;
 
+        }else if(mode.getDistanceFilter()>0){
+            this.unifiedLocationManager.removeLocationUpdate();
+            this.unifiedLocationManager.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter);
+            return;
         }
         int a = C0089a.getDistFilterFromSpeed(this.configStorageManager, 0);
         this.activeDistFilter = a;
@@ -131,7 +135,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         }
     }
 
-    @Override // com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener
+    @Override
 
     public void onFailure(BarikoiTraceError barikoiError) {
         try {
@@ -155,7 +159,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         NotificationChannel channel = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             channel = new NotificationChannel(CHANNEL_ID,
-                    CHANNEL_NAME, NotificationManager.IMPORTANCE_NONE);
+                    CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
 
             Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -223,8 +227,8 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 "BarikoiTraceLocationService::MyWakelockTag");
-        wakeLock.acquire();
-        if (intent.getStringExtra("type")!=null){
+        wakeLock.acquire(180000);
+        /*if (intent.getStringExtra("type")!=null){
             try {
                 double lat =intent.getDoubleExtra("latitude",23.870769);
                 double lon = intent.getDoubleExtra("longitude",90.387815);
@@ -233,7 +237,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             } catch (BarikoiTraceException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
 
         return Service.START_STICKY;
     }

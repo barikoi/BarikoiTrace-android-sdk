@@ -42,6 +42,9 @@ public final class BarikoiTraceErrors {
         return new BarikoiTraceError("BK408", "Location services error or permissions not granted");
     }
 
+    public static BarikoiTraceError LocationSettingsError() {
+        return new BarikoiTraceError("BK407", "Location services not enabled");
+    }
 
     public static BarikoiTraceError MockAppError() {
         return new BarikoiTraceError("BK408", "Mock application is in use");

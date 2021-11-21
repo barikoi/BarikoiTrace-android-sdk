@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -71,9 +72,10 @@ public class SystemSettingsManager {
             return ((LocationManager) context.getSystemService(context.LOCATION_SERVICE)).isLocationEnabled();
         }
         if (i >= 19) {
-            return Settings.Secure.getInt(context.getContentResolver(), "location_mode", 0) != 0;
+            return Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE, 0) != 0;
         }
-        String string = Settings.Secure.getString(context.getContentResolver(), "location_providers_allowed");
+
+        String string = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
         return string.contains("gps") && string.contains("network");
     }
 
@@ -128,6 +130,7 @@ public class SystemSettingsManager {
             } else {
                 //Timber.d("Auto-start permission not necessary")
             }
+            Log.d("autostartpermission", intent.getComponent().getPackageName());
             List list = context.getPackageManager()
                     .queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
             if (list.size() > 0) {
@@ -137,6 +140,35 @@ public class SystemSettingsManager {
         }
     }
 
+    public static void checkAppServicePermission(Context context){
+        Intent[] POWERMANAGER_INTENTS = {
+                new Intent().setComponent(new ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")),
+                new Intent().setComponent(new ComponentName("com.letv.android.letvsafe", "com.letv.android.letvsafe.AutobootManageActivity")),
+                new Intent().setComponent(new ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")),
+                new Intent().setComponent(new ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity")),
+                new Intent().setComponent(new ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.appcontrol.activity.StartupAppControlActivity")),
+                new Intent().setComponent(new ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")),
+                new Intent().setComponent(new ComponentName("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity")),
+                new Intent().setComponent(new ComponentName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity")),
+                new Intent().setComponent(new ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity")),
+                new Intent().setComponent(new ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager")),
+                new Intent().setComponent(new ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")),
+                new Intent().setComponent(new ComponentName("com.samsung.android.lool", "com.samsung.android.sm.ui.battery.BatteryActivity")),
+                new Intent().setComponent(new ComponentName("com.htc.pitroad", "com.htc.pitroad.landingpage.activity.LandingPageActivity")),
+                new Intent().setComponent(new ComponentName("com.asus.mobilemanager", "com.asus.mobilemanager.MainActivity"))
+        };
+
+
+
+        for (Intent intent : POWERMANAGER_INTENTS)
+            if (context.getPackageManager().resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null) {
+                // show dialog to ask user action
+                Log.d("packagecheck", intent.getComponent().toString());
+                context.startActivity(intent);
+                break;
+            }
+
+    }
     public static boolean isPowerSaveMode(Context context) {
         if (Build.VERSION.SDK_INT >= 21) {
             return ((PowerManager) context.getSystemService(context.POWER_SERVICE)).isPowerSaveMode();
