@@ -208,9 +208,9 @@ public class BarikoiTrace {
     public static void getSettingsfromRemote(BarikoiTraceSettingsCallback callback){
         getInstance().getCompanySettings(callback);
     }
-    /*public static void syncTripstate(BarikoiTraceTripStateCallback callback){
+    public static void syncTripstate(BarikoiTraceTripStateCallback callback){
         getInstance().syncTripstate(callback);
-    }*/
+    }
 
 /*
     public static void updateCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i) {
