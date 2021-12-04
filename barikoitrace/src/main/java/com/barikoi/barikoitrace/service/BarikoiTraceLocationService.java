@@ -226,9 +226,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             startForeground(1, notification2);
         }
         try {
-            //LogDbHelper a = LogDbHelper.getInstance(this);
-            //this.logDbHelper = a;
-            //a.m312a("BarikoiTraceLocationService:  onCreate");
+
             this.configStorageManager = ConfigStorageManager.getInstance(this);
             this.locationTracker = new LocationTracker(this);
             this.unifiedLocationManager = new UnifiedLocationManager(this, this);

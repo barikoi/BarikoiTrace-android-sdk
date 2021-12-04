@@ -97,33 +97,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		mapView.onCreate(savedInstanceState);
 		mapView.getMapAsync(this);
 
-		/*locationTask = new LocationTask(MainActivity.this,new LocationTaskListener(){
 
-			@Override
-			public void onLocationAvailability(boolean available) {
-
-			}
-
-			@Override
-			public void oneEndTask() {
-
-			}
-
-			@Override
-			public void OnLocationChanged(Location location) {
-
-			}
-		});
-		locationTask.displayLocation();*/
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		token = prefs.getString("token", "");
 		String userid = prefs.getString(USER_ID, "");
 		String email = prefs.getString(EMAIL, "");
-		BarikoiTrace.initialize(this, "API_KEY");
-		BarikoiTrace.setEmail(email, new BarikoiTraceUserCallback() {
+
+		BarikoiTrace.setOrCreateUser("sakib 5",null,"01111111124", new BarikoiTraceUserCallback() {
 			@Override
 			public void onFailure(BarikoiTraceError barikoiError) {
-				Log.e("test", barikoiError.getMessage());
+				Log.e("userfail", barikoiError.getMessage());
 			}
 
 			@Override
@@ -143,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spinnertype.setAdapter(aa);
 
-		if (BarikoiTrace.isOnTrip()) {
+		if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
 			//Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
@@ -152,6 +135,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 			@Override
 			public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
 				if (!compoundButton.isPressed()) return;
+				/*TraceMode mode = new TraceMode.Builder().setUpdateInterval(5).build();
+				if(b) BarikoiTrace.startTracking(mode);
+				else BarikoiTrace.stopTracking();*/
 				if (b) {
 
 					TraceMode mode = null;
@@ -204,8 +190,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 								switchService.setChecked(false);
 							}
 						});
+
 					}
-				} else {
+				}
+				else {
 
 					if (BarikoiTrace.isOnTrip()) {
 						BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
