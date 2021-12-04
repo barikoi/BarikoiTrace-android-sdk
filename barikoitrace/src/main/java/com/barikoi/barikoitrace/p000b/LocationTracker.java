@@ -104,11 +104,10 @@ public final class LocationTracker implements LocationUpdateListener {
         if (!TextUtils.isEmpty(this.storageManager.getUserID())) {
             if (SystemSettingsManager.checkLocationSettings(this.context)) {
                 //this.logdb.m312a("GPS: enabled");
-                this.storageManager.m252h(false);
+                this.storageManager.m252h(true);
             } else if (!this.storageManager.getGPSCheck()) {
                 //this.logdb.m312a("GPS: disabled");
-                this.storageManager.m252h(true);
-                this.storageManager.m235c();
+                this.storageManager.m252h(false);
                 m73m();
             }
         }
@@ -233,6 +232,11 @@ public final class LocationTracker implements LocationUpdateListener {
             }
         } catch (BarikoiTraceException e) {
         }
+    }
+
+    @Override
+    public void onProviderAvailabilityChanged(boolean available) {
+
     }
 
 

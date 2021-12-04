@@ -34,6 +34,7 @@ public class BootEventReceiver extends BroadcastReceiver {
                 c = 0;
             }
             if (c == 0) {
+
                 bVar.m74a();
 
             } else if (c == 1) {

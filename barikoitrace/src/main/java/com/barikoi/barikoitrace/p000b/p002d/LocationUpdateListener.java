@@ -10,4 +10,6 @@ public interface LocationUpdateListener {
     void onLocationReceived(Location location);
 
     void onFailure(BarikoiTraceError barikoiError);
+
+    void onProviderAvailabilityChanged(boolean available);
 }

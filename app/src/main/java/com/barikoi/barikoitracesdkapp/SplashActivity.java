@@ -22,6 +22,7 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+import com.barikoi.barikoitrace.BarikoiTrace;
 import com.google.android.material.snackbar.Snackbar;
 
 import org.json.JSONException;
@@ -47,7 +48,7 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         SharedPreferences prefs= PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-
+        BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
         token = prefs.getString("token", "");
         enrolled = prefs.getBoolean("enrolled", false);
         isFirst = prefs.getBoolean("isFirst", true);

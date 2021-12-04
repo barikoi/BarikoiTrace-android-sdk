@@ -3,9 +3,11 @@ package com.barikoi.barikoitrace.service;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
@@ -14,9 +16,11 @@ import android.os.PowerManager;
 
 import androidx.core.app.NotificationCompat;
 
+import com.barikoi.barikoitrace.BuildConfig;
 import com.barikoi.barikoitrace.R;
 import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.DateTimeUtils;
+import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
@@ -31,6 +35,7 @@ import java.util.Date;
 import java.util.List;
 
 import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
+import static androidx.core.app.NotificationCompat.PRIORITY_MIN;
 
 public class BarikoiTraceLocationService extends Service implements LocationUpdateListener {
 
@@ -138,10 +143,41 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     @Override
 
     public void onFailure(BarikoiTraceError barikoiError) {
-        try {
-            BarikoiTraceLogView.onFailure(barikoiError);
-            this.locationTracker.sendLocationBroadCast((Location) null, (String) null, barikoiError);
-        } catch (BarikoiTraceException e) {
+        BarikoiTraceLogView.onFailure(barikoiError);
+        //this.locationTracker.sendLocationBroadCast((Location) null, (String) null, barikoiError);
+    }
+
+    @Override
+    public void onProviderAvailabilityChanged(boolean available) {
+        String CHANNEL_ID = "BarikoiTrace";
+        String CHANNEL_NAME = "Need to Turn on location service";
+        if(!available){
+            PackageManager pm = getPackageManager();
+            Intent intent=pm.getLaunchIntentForPackage(getApplicationContext().getPackageName());
+            PendingIntent contentIntent = PendingIntent.getActivity(this,
+                    0, intent,
+                    PendingIntent.FLAG_CANCEL_CURRENT);
+            NotificationChannel channel = null;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                channel = new NotificationChannel(CHANNEL_ID,
+                        CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
+                ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
+            }
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setCategory(Notification.CATEGORY_ERROR)
+                    .setContentText(CHANNEL_NAME)
+                    .setSmallIcon(R.drawable.ic_trace_logo)
+                    .setPriority(PRIORITY_MAX)
+                    .setContentIntent(contentIntent)
+                    .build();
+
+
+            ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(2,notification);
+
+
+        }else{
+            NotificationManager notificationManager = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.cancel(2);
         }
     }
 
@@ -159,14 +195,14 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         NotificationChannel channel = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             channel = new NotificationChannel(CHANNEL_ID,
-                    CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
+                    CHANNEL_NAME, NotificationManager.IMPORTANCE_MIN);
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
 
             Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setContentText(CHANNEL_NAME)
                     .setSmallIcon(R.drawable.ic_trace_logo)
-                    .setPriority(PRIORITY_MAX)
+                    .setPriority(PRIORITY_MIN)
                     .build();
             startForeground(1, notification);
         }else {
@@ -180,7 +216,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setContentText(CHANNEL_NAME)
                     .setSmallIcon(R.drawable.ic_trace_logo)
-                    .setPriority(PRIORITY_MAX)
+                    .setPriority(PRIORITY_MIN)
                     .build();
 
             //NotificationManager notifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);

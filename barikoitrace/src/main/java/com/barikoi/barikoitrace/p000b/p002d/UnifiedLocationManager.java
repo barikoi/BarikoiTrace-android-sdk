@@ -50,7 +50,11 @@ public class UnifiedLocationManager {
         public void onLocationAvailability(LocationAvailability locationAvailability) {
             super.onLocationAvailability(locationAvailability);
             if (!SystemSettingsManager.checkLocationSettings(UnifiedLocationManager.this.context)) {
-                UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationSettingsError());
+                UnifiedLocationManager.this.locationUpdateListener.onProviderAvailabilityChanged(false);
+                //UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationSettingsError());
+            }else{
+                UnifiedLocationManager.this.locationUpdateListener.onProviderAvailabilityChanged(true);
+
             }
         }
 
@@ -82,12 +86,14 @@ public class UnifiedLocationManager {
         @Override // android.location.LocationListener
         public void onProviderDisabled(String str) {
             if (!SystemSettingsManager.checkLocationSettings(UnifiedLocationManager.this.context)) {
-                UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationSettingsError());
+                UnifiedLocationManager.this.locationUpdateListener.onProviderAvailabilityChanged(false);
+                //UnifiedLocationManager.this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationSettingsError());
             }
         }
 
         @Override // android.location.LocationListener
         public void onProviderEnabled(String str) {
+            UnifiedLocationManager.this.locationUpdateListener.onProviderAvailabilityChanged(true);
         }
 
         @Override // android.location.LocationListener
