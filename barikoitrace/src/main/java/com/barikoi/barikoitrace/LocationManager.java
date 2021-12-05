@@ -119,8 +119,6 @@ public final class LocationManager {
 
 
 
-
-
     void m15a(String str) {
         setApiKey(str);
         syncActiveTrip(new BarikoiTraceTripStateCallback() {
@@ -137,13 +135,6 @@ public final class LocationManager {
     }
 
 
-
-
-
-
-
-
-
     public void startTracking(TraceMode traceTrackingMode) {
         try {
             if (TextUtils.isEmpty(this.confdb.getUserID())) {
@@ -151,7 +142,6 @@ public final class LocationManager {
             }  else if (!SystemSettingsManager.checkPermissions(this.context) || !SystemSettingsManager.checkLocationSettings(this.context)) {
                 BarikoiTraceLogView.onFailure(BarikoiTraceErrors.LocationPermissionError());
             } else {
-
                 BarikoiTraceLogView.onSuccess("Tracking Started " );
                 this.confdb.turnTrackingOn();
                 this.confdb.setTraceMode(traceTrackingMode);

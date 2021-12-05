@@ -55,6 +55,5 @@ public class BarikoiTraceService extends Service {
     @Override // android.app.Service
     public int onStartCommand(Intent intent, int i, int i2) {
         return START_STICKY;
-
     }
 }

@@ -38,10 +38,6 @@ public final class TraceMode {
 
         }
 
-        public Builder(int distanceFilter, int updateInterval) {
-            this.distanceFilter = distanceFilter;
-            this.stopDuration = updateInterval;
-        }
         public Builder setDistancefilter(int distanceFilter){
             this.distanceFilter=distanceFilter;
             return this;

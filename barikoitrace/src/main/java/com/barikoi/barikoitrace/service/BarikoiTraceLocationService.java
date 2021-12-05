@@ -150,7 +150,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     @Override
     public void onProviderAvailabilityChanged(boolean available) {
         String CHANNEL_ID = "BarikoiTrace";
-        String CHANNEL_NAME = "Turn on location service";
+        String CHANNEL_NAME = "Need to turn on location service";
         if(!available){
             PackageManager pm = getPackageManager();
             Intent intent=pm.getLaunchIntentForPackage(getApplicationContext().getPackageName());
