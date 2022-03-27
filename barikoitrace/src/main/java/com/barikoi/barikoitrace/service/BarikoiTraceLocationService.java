@@ -12,6 +12,7 @@ import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.util.Log;
 
 
 import androidx.core.app.NotificationCompat;
@@ -42,9 +43,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     private ConfigStorageManager configStorageManager;
 
-
     private LocationTracker locationTracker;
-
 
     private UnifiedLocationManager unifiedLocationManager;
 
@@ -156,7 +155,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             Intent intent=pm.getLaunchIntentForPackage(getApplicationContext().getPackageName());
             PendingIntent contentIntent = PendingIntent.getActivity(this,
                     0, intent,
-                    PendingIntent.FLAG_CANCEL_CURRENT);
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             NotificationChannel channel = null;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 channel = new NotificationChannel(CHANNEL_ID,
@@ -238,9 +237,9 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     @Override // android.app.Service
     public void onDestroy() {
-        if(wakeLock!=null)wakeLock.release();
+        if(wakeLock!=null) wakeLock.release();
         configStorageManager.setDataSyncing(false);
-
+        Log.d("killservice", "why did you kill the app man?");
         try {
             //this.logDbHelper.m312a("BarikoiTraceLocationService:  onDestroy");
             if (this.unifiedLocationManager != null) {
@@ -259,9 +258,12 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
         BarikoiTraceLogView.onSuccess("service started");
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        String tag = "BarikoiTrace::LocationManagerService";
+
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                "BarikoiTraceLocationService::MyWakelockTag");
-        wakeLock.acquire(180000);
+                tag);
+        wakeLock.acquire();
+
         /*if (intent.getStringExtra("type")!=null){
             try {
                 double lat =intent.getDoubleExtra("latitude",23.870769);

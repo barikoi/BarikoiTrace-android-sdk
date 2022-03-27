@@ -87,7 +87,7 @@ public final class LogDbHelper extends SQLiteOpenHelper {
     }
 
     private LogDbHelper(Context context) {
-        super(context, "log", (SQLiteDatabase.CursorFactory) null, 1);
+        super(context, "log", (SQLiteDatabase.CursorFactory) null, 2);
         //BarikoiTraceLogView.debugLog("log db created");
         this.context = context.getApplicationContext();
         this.configStorageManager = ConfigStorageManager.getInstance(context);
@@ -152,10 +152,10 @@ public final class LogDbHelper extends SQLiteOpenHelper {
         }
         do {
             JSONObject jSONObject = new JSONObject();
-            jSONObject.put("type", query.getString(query.getColumnIndex("type")));
-            jSONObject.put("start_time", query.getString(query.getColumnIndex("startDate")));
-            jSONObject.put("end_time", query.getString(query.getColumnIndex("endDate")));
-            jSONObject.put("milliseconds", query.getString(query.getColumnIndex("time")));
+//            jSONObject.put("type", query.getString(query.getColumnIndex("type")));
+//            jSONObject.put("start_time", query.getString(query.getColumnIndex("startDate")));
+//            jSONObject.put("end_time", query.getString(query.getColumnIndex("endDate")));
+//            jSONObject.put("milliseconds", query.getString(query.getColumnIndex("time")));
             jSONArray.put(jSONObject);
         } while (query.moveToNext());
         query.close();
@@ -171,9 +171,9 @@ public final class LogDbHelper extends SQLiteOpenHelper {
             query.close();
             closeDb();
         }
-        do {
-            this.logBuilder.buildDailyLog(query.getString(query.getColumnIndex("date")), query.getString(query.getColumnIndex("description")));
-        } while (query.moveToNext());
+//        do {
+//            this.logBuilder.buildDailyLog(query.getString(query.getColumnIndex("date")), query.getString(query.getColumnIndex("description")));
+//        } while (query.moveToNext());
         query.close();
         closeDb();
     }
@@ -187,7 +187,7 @@ public final class LogDbHelper extends SQLiteOpenHelper {
 
 
     public void m312a(String str) {
-        if (this.configStorageManager.isLogging()) {
+//        if (this.configStorageManager.isLogging()) {
             openDb();
             ContentValues contentValues = new ContentValues();
             contentValues.put("date", DateTimeUtils.getCurrentTimeLocal());
@@ -195,7 +195,7 @@ public final class LogDbHelper extends SQLiteOpenHelper {
             this.sqLiteDatabase.insert("log", null, contentValues);
             BarikoiTraceLogView.debugLog(str);
             closeDb();
-        }
+//        }
     }
 
     @Override // android.database.sqlite.SQLiteOpenHelper

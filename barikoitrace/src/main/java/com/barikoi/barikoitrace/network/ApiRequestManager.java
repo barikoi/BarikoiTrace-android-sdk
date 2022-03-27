@@ -229,8 +229,9 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.getMessage());
-                        if (error instanceof NetworkError || error instanceof NoConnectionError)
+                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
                             callback.onFailure(BarikoiTraceErrors.networkError());
+                        else callback.onFailure(BarikoiTraceErrors.serverError());
                     }
                 }
         ) {
@@ -284,7 +285,9 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.getMessage());
-                        callback.onFailure(BarikoiTraceErrors.serverError());
+                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
+                            callback.onFailure(BarikoiTraceErrors.networkError());
+                        else callback.onFailure(BarikoiTraceErrors.serverError());
 
                     }
                 }
@@ -301,19 +304,14 @@ public class ApiRequestManager {
                 return params;
             }
         };
-        request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
+        request.setRetryPolicy(new DefaultRetryPolicy(120 * 1000, 0,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         request.setShouldCache(false);
         requestQueue.add(request);
     }
 
-    public void startTrip(final String startTime, final String tag, final BarikoiTraceTripApiCallback callback ){
-        HashMap<String,String> params=new HashMap<>();
-        params.put("api_key",key);
-        params.put("user_id",id);
-        params.put("start_time",startTime);
-        if(tag!=null)
-            params.put("tag",tag);
+    public void startTrip(final String startTime,  final TraceMode tracemode, final String tag, final BarikoiTraceTripApiCallback callback ){
+
 
         StringRequest request = new StringRequest(Request.Method.POST,
                 Api.start_trip_url,
@@ -340,7 +338,9 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        callback.onFailure(BarikoiTraceErrors.serverError());
+                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
+                            callback.onFailure(BarikoiTraceErrors.networkError());
+                        else callback.onFailure(BarikoiTraceErrors.serverError());
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
                         //NetworkcallUtils.handleResponse(error,context);
@@ -355,10 +355,12 @@ public class ApiRequestManager {
                 params.put("start_time",startTime);
                 if(tag!=null)
                     params.put("tag",tag);
+                if(tracemode.isInDebugMode())
+                    params.put("debug", "1");
                 return params;
             }
         };
-        request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
+        request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         request.setShouldCache(false);
         requestQueue.add(request);
@@ -449,10 +451,9 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        //loading.setVisibility(View.GONE);
-                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
-                        //NetworkcallUtils.handleResponse(error,context);
-                        callback.onFailure( BarikoiTraceErrors.serverError());
+                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
+                            callback.onFailure(BarikoiTraceErrors.networkError());
+                        else callback.onFailure(BarikoiTraceErrors.serverError());
                     }
                 }
         ) {
@@ -465,7 +466,9 @@ public class ApiRequestManager {
                 return params;
             }*/
         };
-
+        request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        request.setShouldCache(false);
         requestQueue.add(request);
     }
     public void getCurrentTrips( final BarikoiTraceGetTripCallback callback ){
@@ -497,13 +500,17 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        callback.onFailure( BarikoiTraceErrors.serverError());
+                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
+                            callback.onFailure(BarikoiTraceErrors.networkError());
+                        else callback.onFailure(BarikoiTraceErrors.serverError());
                     }
                 }
         ) {
 
         };
-
+        request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        request.setShouldCache(false);
         requestQueue.add(request);
     }
 
@@ -549,7 +556,9 @@ public class ApiRequestManager {
         ) {
 
         };
-
+        request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        request.setShouldCache(false);
         requestQueue.add(request);
     }
 

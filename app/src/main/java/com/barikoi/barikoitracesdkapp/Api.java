@@ -5,7 +5,7 @@ package com.barikoi.barikoitracesdkapp;
  */
 
 public class Api {
-    public static final String base_url="https://backend.barikoi.com:8888/api/v1/";
+    public static final String base_url="https:///api/v1/";
 
     public static final String NAME="name",PHONE="phone",EMAIL="email",TOKEN="token", ENROLLED="enrolled", PATH="file_path", URI_PATH="uri_path",USER_ID="user_id",POINTS="points",SPENT_POINTS="redeemed_points",ISREFFERED="isReferred",REFCODE="ref_code";
 

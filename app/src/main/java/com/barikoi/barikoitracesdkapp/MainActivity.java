@@ -64,8 +64,7 @@ import static com.barikoi.barikoitracesdkapp.Api.USER_ID;
 import static com.barikoi.barikoitracesdkapp.NetworkcallUtils.logout;
 
 
-public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationEngineListener,
-		PermissionsListener {
+public class MainActivity extends AppCompatActivity {
 
 	private AppCompatButton btnStart, btnStop;
 	private String token, username;
@@ -89,19 +88,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		setContentView(R.layout.activity_main);
 		//btnStart = findViewById(R.id.btn_start);
 		//btnStop = findViewById(R.id.btn_stop);
+//		Telemetry.disableOnUserRequest();
 		fab = findViewById(R.id.fab);
-		Mapbox.getInstance(this, getString(R.string.mapbox_access_token));
-		Telemetry.disableOnUserRequest();
-		mapView = findViewById(R.id.mapView);
-		mapView.setStyleUrl(getString(R.string.map_view_styleUrl));
-		mapView.onCreate(savedInstanceState);
-		mapView.getMapAsync(this);
+		BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
+//		Mapbox.getInstance(this, getString(R.string.mapbox_access_token));
 
+//		mapView = findViewById(R.id.mapView);
+//		mapView.setStyleUrl(getString(R.string.map_view_styleUrl)+"MTI6SFpDRkoyN0NFOA==");
+//
+//		mapView.getMapAsync(this);
+//		mapView.onCreate(savedInstanceState);
 
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		token = prefs.getString("token", "");
-		String userid = prefs.getString(USER_ID, "");
-		String email = prefs.getString(EMAIL, "");
+//		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+//		token = prefs.getString("token", "");
+//		String userid = prefs.getString(USER_ID, "");
+//		String email = prefs.getString(EMAIL, "");
 
 		BarikoiTrace.setOrCreateUser("sakib 5",null,"01111111124", new BarikoiTraceUserCallback() {
 			@Override
@@ -115,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 			}
 		});
 		BarikoiTrace.setOfflineTracking(true);
-		username = prefs.getString(Api.NAME, "");
+		//username = prefs.getString(Api.NAME, "");
 		tv_username = findViewById(R.id.tvUserName);
 		switchService = findViewById(R.id.switchService);
 
@@ -125,12 +126,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 		ArrayAdapter aa = new ArrayAdapter(this, android.R.layout.simple_spinner_item, types);
 		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spinnertype.setAdapter(aa);
-
+		BarikoiTrace.disableBatteryOptimization();
 		if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
 			//Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
-		BarikoiTrace.openAutostartsettings(this);
+		BarikoiTrace.checkAppServicePermission(this);
+		//BarikoiTrace.openAutostartsettings(this);
 		switchService.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
 			@Override
 			public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
@@ -165,16 +167,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 						//System.out.println("already running no need to start again");
 						Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
 
-					} else if (BarikoiTrace.isBatteryOptimizationEnabled()) {
-						BarikoiTrace.disableBatteryOptimization();
-						switchService.setOnCheckedChangeListener (null);
-						switchService.setChecked(false);
-						switchService.setOnCheckedChangeListener (this);
-					} else if (!BarikoiTrace.isLocationPermissionsGranted()) {
+					}  else if (!BarikoiTrace.isLocationPermissionsGranted()) {
 						BarikoiTrace.requestLocationPermissions(MainActivity.this);
 					} else if (!BarikoiTrace.isLocationSettingsOn()) {
 						BarikoiTrace.requestLocationServices(MainActivity.this);
 					} else {
+						tb.setDebugModeOn();
 						if (mode == null) mode = tb.build();
 						BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
 							@Override
@@ -261,55 +259,54 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 	}
 
-	@Override
-	public void onMapReady(MapboxMap mapboxMap) {
-		//Log.d(TAG,"map ready");
-		mMap = mapboxMap;
-		enableLocation();
-
-		mMap.getUiSettings().setCompassEnabled(false);
-
-//        val getLocationTask = GetLocationTask(this)
-//        getLocationTask.displayLocation()
-//        mapboxMap.setStyle(Style.Builder().fromUrl(getString(R.string.map_view_styleUrl))) {
+//	@Override
+//	public void onMapReady(MapboxMap mapboxMap) {
+//		//Log.d(TAG,"map ready");
+//		mMap = mapboxMap;
+//		enableLocation();
 //
-//            // Custom map style has been loaded and map is now ready
-//            enableLocationComponent()
+//		mMap.getUiSettings().setCompassEnabled(false);
 //
-//        }
-
-		//mapView!!.setStyleUrl(getString(R.string.map_view_styleUrl))
-
-
-//        mapboxMap.setStyle(Style.MAPBOX_STREETS) {
-//            enableLocationComponent()
+////        val getLocationTask = GetLocationTask(this)
+////        getLocationTask.displayLocation()
+////        mapboxMap.setStyle(Style.Builder().fromUrl(getString(R.string.map_view_styleUrl))) {
+////
+////            // Custom map style has been loaded and map is now ready
+////            enableLocationComponent()
+////
+////        }
 //
-//        }
-		fab.setOnClickListener(new View.OnClickListener() {
-			@SuppressLint("MissingPermission")
-			@Override
-			public void onClick(View view) {
-				if (locationEngine != null) {
-
-					Location lastLocation = locationEngine.getLastLocation();
-					if (lastLocation != null) {
-						setCameraPosition(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 13.0);
-					} else {
-						locationEngine.requestLocationUpdates();
-					}
-				} else {
-					enableLocation();
-				}
-			}
-		});
-
-		/*mMap.addOnMapLongClickListener(latlng ->{
-			mMap.clear();
-			mMap.addPolygon(generatePerimeter(latlng, 50,16));
-			BarikoiTrace.startGeofence(latlng.getLatitude(),latlng.getLongitude(),50);
-		});*/
-
-	}
+//
+//
+////        mapboxMap.setStyle(Style.MAPBOX_STREETS) {
+////            enableLocationComponent()
+////
+////        }
+//		fab.setOnClickListener(new View.OnClickListener() {
+//			@SuppressLint("MissingPermission")
+//			@Override
+//			public void onClick(View view) {
+//				if (locationEngine != null) {
+//
+//					Location lastLocation = locationEngine.getLastLocation();
+//					if (lastLocation != null) {
+//						setCameraPosition(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 13.0);
+//					} else {
+//						locationEngine.requestLocationUpdates();
+//					}
+//				} else {
+//					enableLocation();
+//				}
+//			}
+//		});
+//
+//		/*mMap.addOnMapLongClickListener(latlng ->{
+//			mMap.clear();
+//			mMap.addPolygon(generatePerimeter(latlng, 50,16));
+//			BarikoiTrace.startGeofence(latlng.getLatitude(),latlng.getLongitude(),50);
+//		});*/
+//
+//	}
 
 	private PolygonOptions generatePerimeter(LatLng centerCoordinates, double radiusInmeters, int numberOfSides) {
 		List<LatLng> positions = new ArrayList<>();
@@ -336,48 +333,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 				.fillColor(Color.BLUE)
 				.alpha(0.4f);
 	}
-	private void enableLocation() {
-		if (PermissionsManager.areLocationPermissionsGranted(this)) {
-			// Create an instance of LOST location engine
-			Log.d(TAG, "enableLocation: " +locationPlugin);
-			initializeLocationEngine();
-		} else {
-			permissionsManager = new PermissionsManager(this);
-			permissionsManager.requestLocationPermissions(this);
-		}
-	}
+//	private void enableLocation() {
+//		if (PermissionsManager.areLocationPermissionsGranted(this)) {
+//			// Create an instance of LOST location engine
+//			Log.d(TAG, "enableLocation: " +locationPlugin);
+//			initializeLocationEngine();
+//		} else {
+//			permissionsManager = new PermissionsManager(this);
+//			permissionsManager.requestLocationPermissions(this);
+//		}
+//	}
 
-	@SuppressLint("MissingPermission")
-	private void initializeLocationEngine() {
-		LocationEngineProvider locationEngineProvider = new LocationEngineProvider(this);
-		locationEngine = locationEngineProvider.obtainBestLocationEngineAvailable();
-		locationEngine.setPriority(LocationEnginePriority.HIGH_ACCURACY);
-		locationEngine.activate();
-		Log.d("Search", "location Engine: " +locationEngine);
-		Log.d(TAG, "locationPlugin: " +locationPlugin);
-
-		if (locationPlugin == null) {
-			Log.d(TAG, "locationPlugin 2: " +locationPlugin);
-			locationPlugin = new LocationLayerPlugin(mapView, mMap, locationEngine, LocationLayerOptions.builder(this).maxZoom(25.0).build());
-			locationPlugin.setLocationLayerEnabled(true);
-			locationPlugin.setCameraMode(CameraMode.TRACKING);
-			locationPlugin.setRenderMode(RenderMode.COMPASS);
-			mMap.moveCamera(CameraUpdateFactory.zoomTo(13.0));
-			//map!!.animateCamera(CameraUpdateFactory.zoomTo(17.0))
-		}
-		// currentLocation.displayLocation();
-
-		locationEngine.addLocationEngineListener(this);
-		locationEngine.requestLocationUpdates();
-		Location lastLocation = locationEngine.getLastLocation();
-		if (lastLocation != null) {
-			setCameraPosition(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 13.0);
-			locationEngine.removeLocationUpdates();
-		} else {
-			locationEngine.addLocationEngineListener(this);
-		}
-
-	}
+//	@SuppressLint("MissingPermission")
+//	private void initializeLocationEngine() {
+//		LocationEngineProvider locationEngineProvider = new LocationEngineProvider(this);
+//		locationEngine = locationEngineProvider.obtainBestLocationEngineAvailable();
+//		locationEngine.setPriority(LocationEnginePriority.HIGH_ACCURACY);
+//		locationEngine.activate();
+//		Log.d("Search", "location Engine: " +locationEngine);
+//		Log.d(TAG, "locationPlugin: " +locationPlugin);
+//
+//		if (locationPlugin == null) {
+//			Log.d(TAG, "locationPlugin 2: " +locationPlugin);
+//			locationPlugin = new LocationLayerPlugin(mapView, mMap, locationEngine, LocationLayerOptions.builder(this).maxZoom(25.0).build());
+//			locationPlugin.setLocationLayerEnabled(true);
+//			locationPlugin.setCameraMode(CameraMode.TRACKING);
+//			locationPlugin.setRenderMode(RenderMode.COMPASS);
+//			mMap.moveCamera(CameraUpdateFactory.zoomTo(13.0));
+//			//map!!.animateCamera(CameraUpdateFactory.zoomTo(17.0))
+//		}
+//		// currentLocation.displayLocation();
+//
+//		locationEngine.addLocationEngineListener(this);
+//		locationEngine.requestLocationUpdates();
+//		Location lastLocation = locationEngine.getLastLocation();
+//		if (lastLocation != null) {
+//			setCameraPosition(new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 13.0);
+//			locationEngine.removeLocationUpdates();
+//		} else {
+//			locationEngine.addLocationEngineListener(this);
+//		}
+//
+//	}
 
 	private void setCameraPosition(LatLng location, Double zoom) {
 		mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new
@@ -388,7 +385,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 	}
-
+/*
 	@SuppressLint("MissingPermission")
 	@Override
 	protected void onStart() {
@@ -492,7 +489,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 	@Override
 	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-	}
+	}*/
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {

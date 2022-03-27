@@ -25,7 +25,8 @@
         </service>
         <receiver
             android:name="com.barikoi.barikoitrace.event.BootEventReceiver"
-            android:enabled="true" >
+            android:enabled="true"
+            android:exported="true">
             <intent-filter android:priority="999" >
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
 

@@ -2,7 +2,7 @@ package com.barikoi.barikoitrace.network;
 
 
 public class Api {
-    public static final String base_url=" https://backend.barikoi.com:8888/api/v1/business";
+    public static final String base_url=" https://trace.barikoi.xyz/api/v1/business";
     public static final String start_trip_url=base_url+"/start_trip";
     public static final String end_trip_url=base_url+"/end_trip";
     public static final String trip_sync_url=base_url+"/trip/offline";

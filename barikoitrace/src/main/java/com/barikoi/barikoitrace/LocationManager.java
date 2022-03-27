@@ -271,7 +271,7 @@ public final class LocationManager {
 
 
 
-    public void m34c(boolean z) {
+    public void setLogging(boolean z) {
         this.confdb.setLogging(z);
     }
 
@@ -311,7 +311,7 @@ public final class LocationManager {
 
 
 
-    public void m42f() {
+    public void enableAccuracyEngine() {
         this.confdb.setAccuracyEngine(true);
         BarikoiTraceLogView.onSuccess("Accuracy engine enabled");
     }

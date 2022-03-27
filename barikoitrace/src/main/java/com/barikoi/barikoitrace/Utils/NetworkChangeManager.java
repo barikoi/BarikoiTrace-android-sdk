@@ -7,10 +7,12 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
+import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 
 
@@ -19,8 +21,7 @@ public class NetworkChangeManager {
 
     private Context context;
 
-
-    private LocationTracker locationTracker;
+    LogDbHelper logdb;
 
 
     private ConnectivityManager.NetworkCallback networkCallback;
@@ -39,7 +40,7 @@ public class NetworkChangeManager {
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
             try {
-
+                //logdb.m312a("Network available");
                 //NetworkChangeManager.this.locationTracker.syncOfflineTrips();
             } catch (Exception e) {
             }
@@ -49,8 +50,7 @@ public class NetworkChangeManager {
         public void onLost(@NonNull Network network) {
             super.onLost(network);
             try {
-
-                //NetworkChangeManager.this.locationTracker.m83c();
+                //logdb.m312a("Network unvailable");
             } catch (Exception e) {
             }
         }
@@ -66,7 +66,6 @@ public class NetworkChangeManager {
         public void onReceive(Context context, Intent intent) {
             try {
                 if (ConnectivityManager.CONNECTIVITY_ACTION.equals(intent.getAction())) {
-
                     //NetworkChangeManager.this.locationTracker.m83c();
                 }
             } catch (Exception e) {
@@ -76,7 +75,7 @@ public class NetworkChangeManager {
 
     public NetworkChangeManager(Context context) {
         this.context = context;
-        this.locationTracker = new LocationTracker(context);
+        this.logdb= LogDbHelper.getInstance(context);
     }
 
 

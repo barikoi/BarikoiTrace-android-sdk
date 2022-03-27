@@ -117,7 +117,9 @@ public final class LocationTracker implements LocationUpdateListener {
     @Override // com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener
 
     public void onLocationReceived(Location location) {
+
         try {
+            //logdb.m312a("location update: "+location.getLatitude()+", "+location.getLongitude()+ " time: "+DateTimeUtils.getCurrentTimeLocal());
             if (this.locationCallback != null) {
                 this.locationCallback.location(location);
             } else {
@@ -153,6 +155,7 @@ public final class LocationTracker implements LocationUpdateListener {
                         BarikoiTraceLogView.onFailure(barikoiError);
                         if(barikoiError.equals(BarikoiTraceErrors.networkError()) && storageManager.isOfflineTracking()){
                             try {
+
                                 locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
                             } catch (BarikoiTraceException e) {
                                 e.printStackTrace();
@@ -171,7 +174,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
     private void uploadOfflineData(){
         storageManager.setDataSyncing(true);
-
+        //logdb.m312a("location syncing started. offline count: "+locdbhelper.getofflinecount() );
             final JSONArray data=locdbhelper.getLocationJson(Integer.parseInt(storageManager.getUserID()));
 
             ApiRequestManager.getInstance(context).sendOfflineData(data, new BarikoiTraceBulkUpdateCallback() {
@@ -286,12 +289,13 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void startLocationService() {
             if (!isTrackingOn() ) {
+                //logdb.m312a("location service starting");
                 if (VERSION.SDK_INT >= VERSION_CODES.O) {
                     this.context.startForegroundService(new Intent(this.context, BarikoiTraceLocationService.class));
                 }else{
                     this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
                 }
-            }
+            }//else logdb.m312a("location service already running ");
     }
 
     public boolean isTrackingOn() {
@@ -305,6 +309,7 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
     public void stopLocationService() {
+            //logdb.m312a("location service stopping");
             this.context.stopService(new Intent(this.context, BarikoiTraceLocationService.class));
             this.storageManager.m235c();
 
@@ -313,16 +318,22 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void startTrip(final String tag, final TraceMode traceMode, final BarikoiTraceTripStateCallback callback){
         final String startTime= DateTimeUtils.getCurrentTimeLocal();
+//        logdb.m312a("requested start trip, location permission: " +SystemSettingsManager.checkPermissions(context)+
+//                ", location settings: "+SystemSettingsManager.checkLocationSettings(context)+
+//                ", Battery optimization ignored: "+ SystemSettingsManager.isIgnoringBatteryOptimization(context));
         storageManager.setTraceMode(traceMode);
-        ApiRequestManager.getInstance(context).startTrip(startTime, tag, new BarikoiTraceTripApiCallback() {
+        ApiRequestManager.getInstance(context).startTrip(startTime, traceMode, tag, new BarikoiTraceTripApiCallback() {
             @Override
             public void onFailure(BarikoiTraceError barikoiError) {
+                //logdb.m312a("start trip failed: "+barikoiError.getMessage());
                 //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 0);
                 callback.onFailure(barikoiError);
             }
 
             @Override
             public void onSuccess() {
+                //logdb.m312a("started trip succesfully ");
+
                 storageManager.setOnTrip(true);
                 storageManager.turnTrackingOn();
                 //storageManager.turnTrackingOn(traceMode);

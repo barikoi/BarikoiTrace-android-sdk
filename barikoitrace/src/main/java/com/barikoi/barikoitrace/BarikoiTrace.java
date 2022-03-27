@@ -212,6 +212,10 @@ public class BarikoiTrace {
         getInstance().syncTripstate(callback);
     }
 
+    public static void checkAppServicePermission(Context context){
+        SystemSettingsManager.checkAppServicePermission(context);
+    }
+
 /*
     public static void updateCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i) {
         if (i > 10) {

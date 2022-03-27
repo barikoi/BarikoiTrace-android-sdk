@@ -4,9 +4,9 @@ import androidx.annotation.Keep;
 
 @Keep
 public final class TraceMode {
-    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 50, TrackingModes.ACTIVE, true);
-    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 100, TrackingModes.PASSIVE,true);
-    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 75, TrackingModes.REACTIVE,true);
+    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 50, TrackingModes.ACTIVE, true, false);
+    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 100, TrackingModes.PASSIVE,true,false);
+    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 75, TrackingModes.REACTIVE,true,false);
     private int accuracyFilter;
     private DesiredAccuracy desiredAccuracy;
     private int distanceFilter;
@@ -14,6 +14,7 @@ public final class TraceMode {
     private TrackingModes trackingModes;
     private int updateInterval;
     private boolean offline;
+    private boolean debug=false;
 
     @Keep
     public enum AppState {
@@ -34,6 +35,7 @@ public final class TraceMode {
         private int stopDuration = 0;
         private int updateInterval = 0;
         private boolean offline=true;
+        private boolean debug= false;
         public Builder() {
 
         }
@@ -50,8 +52,12 @@ public final class TraceMode {
             this.offline=offline;
             return this;
         }
+        public Builder setDebugModeOn(){
+            this.debug=true;
+            return this;
+        }
         public TraceMode build() {
-            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM,this.offline);
+            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM,this.offline,this.debug);
         }
 
         public Builder setAccuracyFilter(int i) {
@@ -114,7 +120,7 @@ public final class TraceMode {
         this.trackingModes = trackingModes;
     }
 
-    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes, boolean offline) {
+    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes, boolean offline,boolean debug) {
         this.desiredAccuracy = desiredAccuracy2;
         this.updateInterval = updateinterval;
         this.distanceFilter = distancefilter;
@@ -122,6 +128,7 @@ public final class TraceMode {
         this.accuracyFilter = accuracyfilter;
         this.trackingModes = trackingModes;
         this.offline=offline;
+        this.debug=debug;
     }
 
     public int getAccuracyFilter() {
@@ -148,5 +155,6 @@ public final class TraceMode {
         return this.updateInterval;
     }
 
+    public boolean isInDebugMode(){ return  this.debug;}
 
 }
