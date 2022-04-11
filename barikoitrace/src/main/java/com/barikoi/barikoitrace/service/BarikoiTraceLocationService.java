@@ -17,16 +17,14 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
-import com.barikoi.barikoitrace.BuildConfig;
 import com.barikoi.barikoitrace.R;
 import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.DateTimeUtils;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
-import com.barikoi.barikoitrace.models.C0089a;
+import com.barikoi.barikoitrace.models.LocationUtils;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.p000b.p002d.UnifiedLocationManager;
@@ -61,7 +59,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     private PowerManager.WakeLock wakeLock;
 
 
-    private void m522a() {
+    private void startLocationUpdate() {
         TraceMode mode=this.configStorageManager.getTraceMode();
         if (mode.getUpdateInterval() > 0) {
             UnifiedLocationManager cVar = this.unifiedLocationManager;
@@ -74,7 +72,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             this.unifiedLocationManager.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter);
             return;
         }
-        int a = C0089a.getDistFilterFromSpeed(this.configStorageManager, 0);
+        int a = LocationUtils.getDistFilterFromSpeed(this.configStorageManager, 0);
         this.activeDistFilter = a;
         this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, a);
     }
@@ -82,7 +80,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     private void m523a(Location location, int speed) throws BarikoiTraceException {
         try {
-            int a = C0089a.m404a(this.configStorageManager, this.f252e, location, speed);
+            int a = LocationUtils.m404a(this.configStorageManager, this.f252e, location, speed);
             if (this.activeDistFilter < a || this.activeDistFilter > a) {
                 if (this.unifiedLocationManager != null) {
                     this.unifiedLocationManager.removeLocationUpdate();
@@ -91,7 +89,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                 //this.logDbHelper.m312a("Distance filter updated:  " + this.activeDistFilter);
                 this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, this.activeDistFilter);
             }
-            this.locationTracker.m77a(location, C0089a.EnumC0091b.MOVING);
+            this.locationTracker.m77a(location, LocationUtils.LocationStatus.MOVING);
         } catch (Exception e) {
             throw new BarikoiTraceException(e);
         }
@@ -107,7 +105,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         if (new Date().getTime() - location.getTime() > 10000 || location.getAccuracy() < 0.0f) {
             return false;
         }
-        if (location.getAccuracy() > ((float) C0089a.getAccuracyRounded(this.configStorageManager))) {
+        if (location.getAccuracy() > ((float) LocationUtils.getAccuracyRounded(this.configStorageManager))) {
             z = false;
         }
         return z;
@@ -119,22 +117,21 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         try {
             if (isValid(location)) {
                 BarikoiTraceLogView.debugLog("location : accuracy "+location.getAccuracy() + ", time: "+ DateTimeUtils.getDateTimeLocal(location.getTime()));
-
                 this.f254g = 0;
                 //this.logDbHelper.m312a("Location " + location.getLatitude() + "--" + location.getLongitude() + "--" + this.activeDistFilter + "--" + a);
                 if (this.configStorageManager.getType() == TraceMode.TrackingModes.CUSTOM.getOption()) {
                     BarikoiTraceLogView.debugLog("custom "+ configStorageManager.getUpdateInterval());
-                    this.locationTracker.m77a(location, C0089a.EnumC0091b.MOVING);
+                    this.locationTracker.m77a(location, LocationUtils.LocationStatus.MOVING);
                     return;
                 }
-                int speed = (int) C0089a.getSpeedInKmph(location.getSpeed());
+                int speed = (int) LocationUtils.getSpeedInKmph(location.getSpeed());
                 BarikoiTraceLogView.debugLog(activeDistFilter+"");
                 m523a(location, speed);
                 return;
             }
             this.f254g++;
             /*this.unifiedLocationManager.removeLocationUpdate();
-            m522a();*/
+            startLocationUpdate();*/
         } catch (BarikoiTraceException e) {
         }
     }
@@ -230,7 +227,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             this.locationTracker = new LocationTracker(this);
             this.unifiedLocationManager = new UnifiedLocationManager(this, this);
 
-            m522a();
+            startLocationUpdate();
         } catch (Exception e) {
         }
     }

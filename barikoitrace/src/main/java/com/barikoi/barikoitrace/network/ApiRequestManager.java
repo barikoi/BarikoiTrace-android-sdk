@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi;
 import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.NetworkError;
+import com.android.volley.NetworkResponse;
 import com.android.volley.NoConnectionError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -39,6 +40,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -508,7 +512,7 @@ public class ApiRequestManager {
         ) {
 
         };
-        request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,
+        request.setRetryPolicy(new DefaultRetryPolicy(120 * 1000, 1,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         request.setShouldCache(false);
         requestQueue.add(request);
@@ -563,6 +567,67 @@ public class ApiRequestManager {
     }
 
 
+
+    public void insertLogFile(final String path, final BarikoiTraceBulkUpdateCallback callback) {
+        VolleyMultipartRequest request = new VolleyMultipartRequest(Request.Method.POST, Api.app_log_url,
+                new Response.Listener<NetworkResponse>() {
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        if (response.statusCode == 200){
+                            callback.onBulkUpdate();
+                        }
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        callback.onFailure(BarikoiTraceErrors.networkError());
+                    }
+                }){
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> parameters = new HashMap<String, String>();
+                parameters.put("user_id", id);
+                return parameters;
+            }
+
+            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+            @Override
+            protected Map<String, DataPart> getByteData() throws AuthFailureError {
+                Map<String, DataPart> parameters = new HashMap<String, DataPart>();
+                String filename = path.substring(path.lastIndexOf("/"));
+                parameters.put("log", new DataPart(filename, getFileData(path)));
+                return parameters;
+            }
+        };
+
+        request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        requestQueue.add(request);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+    public static byte[] getFileData(String f) {
+        File textFile = new File(f);
+        int size = (int) textFile.length();
+        byte[] bytes = new byte[size];
+        byte[] tmpBuff = new byte[size];
+
+        try (FileInputStream inputStream = new FileInputStream(textFile)) {
+            int read = inputStream.read(bytes, 0, size);
+            if (read < size) {
+                int remain = size - read;
+                while (remain > 0) {
+                    read = inputStream.read(tmpBuff, 0, remain);
+                    System.arraycopy(tmpBuff, 0, bytes, size - remain, read);
+                    remain -= read;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return bytes;
+    }
     private void setId(String id){
         INSTANCE.id=id;
 
@@ -590,6 +655,7 @@ public class ApiRequestManager {
         return params.substring(0,params.length()-1);
 
     }
+
 
 
 

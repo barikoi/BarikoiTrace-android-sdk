@@ -47,7 +47,7 @@ public final class ConfigStorageManager {
     }
 
     public TraceMode getTraceMode(){
-        if(this.sharedPRefHelper.getInt("updateInterval")!=0 &&  this.sharedPRefHelper.getInt("distanceFilter")!=0){
+        if(this.sharedPRefHelper.getInt("updateInterval")!=0 ||  this.sharedPRefHelper.getInt("distanceFilter")!=0){
             return new TraceMode.Builder()
                     .setAccuracyFilter(this.sharedPRefHelper.getInt("accuracyFilter"))
                     .setDistancefilter(this.sharedPRefHelper.getInt("distanceFilter"))

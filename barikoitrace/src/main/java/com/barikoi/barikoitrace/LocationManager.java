@@ -158,7 +158,7 @@ public final class LocationManager {
         ((Application) context).registerActivityLifecycleCallbacks(new ApplicationBinder(context, this.confdb, this.locationTracker));
         this.confdb.setApiKey(str);
         apiRequestManager.setKey(str);
-                
+        setLogging(true);
         if (!NetworkChecker.isNetworkAvailable(this.context)) {
             BarikoiTraceLogView.onFailure(BarikoiTraceErrors.networkError());
         } else if (TextUtils.isEmpty(str)) {
@@ -220,6 +220,8 @@ public final class LocationManager {
         this.confdb.setUserID(user_id);
     }
 
+    String getUserId(){return this.confdb.getUserID();}
+
 
     public void syncActiveTrip(final BarikoiTraceTripStateCallback callback) {
         if (!NetworkChecker.isNetworkAvailable(this.context)) {
@@ -232,14 +234,13 @@ public final class LocationManager {
         ApiRequestManager.getInstance(context).getCurrentTrips(new BarikoiTraceGetTripCallback() {
             @Override
             public void onSuccess(ArrayList<Trip> trips) {
-                if(trips.size()==1){
+                if(trips.size()>0){
                     if(!isOnTrip()){
                         confdb.setOnTrip(true);
-                        //confdb.turnTrackingOn();
+                        confdb.turnTrackingOn();
                         locationTracker.startLocationService();
                     }
                     if(!locationTracker.isTrackingOn()){
-
                         locationTracker.startLocationService();
                     }
                 }else if(trips.size()==0){

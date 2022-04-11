@@ -13,14 +13,12 @@ import androidx.annotation.NonNull;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.event.BootEventReceiver;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
-import com.barikoi.barikoitrace.models.C0089a;
 import com.barikoi.barikoitrace.network.RequestQueueSingleton;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingClient;
@@ -32,8 +30,6 @@ import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.lang.reflect.Method;
 
 import static com.android.volley.Request.Method.POST;
 

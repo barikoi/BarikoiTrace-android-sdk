@@ -12,7 +12,7 @@ import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import java.util.List;
 
 
-public final class C0089a {
+public final class LocationUtils {
 
 
     public static int f200a = 500;
@@ -39,7 +39,7 @@ public final class C0089a {
     }
 
 
-    public enum EnumC0091b {
+    public enum LocationStatus {
         STOP,
         MOVING
     }
@@ -225,8 +225,8 @@ public final class C0089a {
     }
 
 
-    public static String m409a(EnumC0091b bVar) {
-        return (bVar == null || bVar != EnumC0091b.MOVING) ? "S" : "M";
+    public static String m409a(LocationStatus bVar) {
+        return (bVar == null || bVar != LocationStatus.MOVING) ? "S" : "M";
     }
 
 

@@ -104,6 +104,14 @@ public class MainActivity extends AppCompatActivity {
 //		String userid = prefs.getString(USER_ID, "");
 //		String email = prefs.getString(EMAIL, "");
 
+		if(BarikoiTrace.getUserId()!=null){
+			Toast.makeText(this, "UserId: "+BarikoiTrace.getUserId(), Toast.LENGTH_SHORT).show();
+		}
+		else{
+			Toast.makeText(this, "UserId: "+"null", Toast.LENGTH_SHORT).show();
+		}
+
+
 		BarikoiTrace.setOrCreateUser("sakib 5",null,"01111111124", new BarikoiTraceUserCallback() {
 			@Override
 			public void onFailure(BarikoiTraceError barikoiError) {
@@ -112,9 +120,22 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onSuccess(BarikoiTraceUser traceUser) {
+				BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
 
+					@Override
+					public void onSuccess() {
+						if(BarikoiTrace.isOnTrip()) switchService.setChecked(true);
+						else switchService.setChecked(false);
+					}
+
+					@Override
+					public void onFailure(BarikoiTraceError barikoiError) {
+						Log.e("tripstate", barikoiError.getMessage());
+					}
+				});
 			}
 		});
+
 		BarikoiTrace.setOfflineTracking(true);
 		//username = prefs.getString(Api.NAME, "");
 		tv_username = findViewById(R.id.tvUserName);
@@ -308,9 +329,10 @@ public class MainActivity extends AppCompatActivity {
 //
 //	}
 
+
 	private PolygonOptions generatePerimeter(LatLng centerCoordinates, double radiusInmeters, int numberOfSides) {
 		List<LatLng> positions = new ArrayList<>();
-		double distanceX = radiusInmeters / (111319 * Math.cos(centerCoordinates.getLatitude() * Math.PI / 180));
+			double distanceX = radiusInmeters / (111319 * Math.cos(centerCoordinates.getLatitude() * Math.PI / 180));
 		double distanceY = radiusInmeters / 110574;
 
 		double slice = (2 * Math.PI) / numberOfSides;

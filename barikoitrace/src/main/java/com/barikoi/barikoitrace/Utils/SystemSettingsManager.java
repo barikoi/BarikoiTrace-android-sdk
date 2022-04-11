@@ -13,6 +13,7 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -91,8 +92,8 @@ public class SystemSettingsManager {
             String packageName = context.getPackageName();
             PowerManager powerManager = (PowerManager) context.getSystemService(context.POWER_SERVICE);
             if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
-                intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                intent.setData(Uri.parse("package:" + packageName));
+                intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                //intent.setData(Uri.parse("package:" + packageName));
                 intent.setFlags(intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
             }
@@ -169,17 +170,20 @@ public class SystemSettingsManager {
             }
 
     }
-    public static boolean isPowerSaveMode(Context context) {
-        if (Build.VERSION.SDK_INT >= 21) {
+
+    public static boolean isInPowerSaveMode(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             return ((PowerManager) context.getSystemService(context.POWER_SERVICE)).isPowerSaveMode();
         }
         return false;
     }
 
 
-    public static boolean isAirplaneModeOn(Context context) {
-        return Build.VERSION.SDK_INT < 17 || Settings.Global.getInt(context.getContentResolver(), "airplane_mode_on", 0) != 0;
+    public static boolean isinDozeMode(Context context) {
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        return Build.VERSION.SDK_INT>= Build.VERSION_CODES.M && pm.isDeviceIdleMode();
     }
+
 
 
     public static boolean isIgnoringBatteryOptimization(Context context) {
@@ -192,4 +196,5 @@ public class SystemSettingsManager {
     public static boolean isGoogleAvailable(Context context) {
         return GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == 0;
     }
+
 }

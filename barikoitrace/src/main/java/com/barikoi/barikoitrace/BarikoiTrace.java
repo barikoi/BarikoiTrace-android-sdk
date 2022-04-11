@@ -42,6 +42,7 @@ public class BarikoiTrace {
         getInstance().setUserId(id);
     }
 
+    public static String getUserId() { return getInstance().getUserId();}
     @Deprecated
     public static void setEmail(String email, BarikoiTraceUserCallback callback){
         getInstance().setEmail(email,callback);
@@ -214,6 +215,10 @@ public class BarikoiTrace {
 
     public static void checkAppServicePermission(Context context){
         SystemSettingsManager.checkAppServicePermission(context);
+    }
+
+    public static void setLoggingEnabled(boolean enabled){
+        getInstance().setLogging(enabled);
     }
 
 /*
