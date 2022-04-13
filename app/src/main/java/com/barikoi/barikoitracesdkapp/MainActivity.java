@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
 		ArrayAdapter aa = new ArrayAdapter(this, android.R.layout.simple_spinner_item, types);
 		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spinnertype.setAdapter(aa);
-		BarikoiTrace.disableBatteryOptimization();
+		BarikoiTrace.requestDisableBatteryOptimization(MainActivity.this);
 		if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
 			//Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);

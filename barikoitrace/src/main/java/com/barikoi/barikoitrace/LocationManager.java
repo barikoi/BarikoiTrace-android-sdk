@@ -14,8 +14,10 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
+import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
+import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.barikoi.barikoitrace.models.createtrip.Trip;
 import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
@@ -121,17 +123,17 @@ public final class LocationManager {
 
     void m15a(String str) {
         setApiKey(str);
-        syncActiveTrip(new BarikoiTraceTripStateCallback() {
-            @Override
-            public void onSuccess() {
-
-            }
-
-            @Override
-            public void onFailure(BarikoiTraceError barikoiError) {
-
-            }
-        });
+//        syncActiveTrip(new BarikoiTraceTripStateCallback() {
+//            @Override
+//            public void onSuccess() {
+//
+//            }
+//
+//            @Override
+//            public void onFailure(BarikoiTraceError barikoiError) {
+//
+//            }
+//        });
     }
 
 
@@ -202,7 +204,7 @@ public final class LocationManager {
             this.apiRequestManager.setUser(null, phone, callback);
         }
     }
-    void setOrCreateUser(String name, String email,String phone, BarikoiTraceUserCallback callback){
+    void setOrCreateUser(String name, String email, String phone, final BarikoiTraceUserCallback callback){
 
         if (!NetworkChecker.isNetworkAvailable(this.context)) {
             callback.onFailure(BarikoiTraceErrors.networkError());
@@ -213,7 +215,18 @@ public final class LocationManager {
         } else if(TextUtils.isEmpty(phone)){
             callback.onFailure(new BarikoiTraceError("BK402","user login or register requires phone number"));
         }else {
-            this.apiRequestManager.setorCreateUser(name,email, phone, callback);
+            this.apiRequestManager.setorCreateUser(name, email, phone, new BarikoiTraceUserCallback() {
+                @Override
+                public void onFailure(BarikoiTraceError barikoiError) {
+                    callback.onFailure(barikoiError);
+                }
+
+                @Override
+                public void onSuccess(BarikoiTraceUser traceUser) {
+                    LogDbHelper.getInstance(context).setUserid(traceUser.getUserId());
+                    callback.onSuccess(traceUser);
+                }
+            });
         }
     }
     void setUserId(String user_id){
@@ -305,8 +318,8 @@ public final class LocationManager {
 
 
 
-    void requestBatteryOptimization() {
-        SystemSettingsManager.requestBatteryOptimizationSetting(this.context);
+    void requestBatteryOptimization(Context context) {
+        SystemSettingsManager.requestBatteryOptimizationSetting(context);
     }
 
 

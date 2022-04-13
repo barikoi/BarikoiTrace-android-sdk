@@ -132,8 +132,7 @@ public final class LocationTracker implements LocationUpdateListener {
         try {
             this.storageManager.updateLastLocation(location);
             sendLocationBroadCast(location, bVar.toString(), (BarikoiTraceError) null);
-
-            DeviceInfo.updateBatteryInfo(this.context);
+            //DeviceInfo.updateBatteryInfo(this.context);
             boolean a2 = NetworkChecker.isNetworkAvailable(this.context);
             if (a2) {
                 if(storageManager.isOfflineTracking()) {
@@ -282,7 +281,6 @@ public final class LocationTracker implements LocationUpdateListener {
             }
 
     }
-
 
 
     public void startLocationService() {

@@ -98,9 +98,6 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     private boolean isValid(Location location) {
         boolean z = true;
-        if (!this.configStorageManager.getAccuracyEngine() || this.f254g >= 1) {
-            return true;
-        }
 
         if (new Date().getTime() - location.getTime() > 10000 || location.getAccuracy() < 0.0f) {
             return false;

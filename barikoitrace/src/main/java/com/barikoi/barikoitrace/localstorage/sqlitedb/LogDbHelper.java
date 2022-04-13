@@ -48,7 +48,7 @@ public final class LogDbHelper extends SQLiteOpenHelper {
 
     private Context context;
 
-    private String userid;
+    private String userid="";
     private ConfigStorageManager configStorageManager;
     private File file2;
 
@@ -116,6 +116,10 @@ public final class LogDbHelper extends SQLiteOpenHelper {
             INSTANCE = new LogDbHelper(context);
         }
         return INSTANCE;
+    }
+
+    public void setUserid(String userid){
+        this.userid=userid;
     }
 
 
@@ -311,6 +315,7 @@ public final class LogDbHelper extends SQLiteOpenHelper {
             //Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show();
             Log.d("DB", "File exported"+gpxfile.getAbsolutePath());
             for(final File f : context.getFilesDir().listFiles()) {
+                if(f.isFile() && f.getName().startsWith("Log_"))
                 ApiRequestManager.getInstance(context).insertLogFile(f.getAbsolutePath(), new BarikoiTraceBulkUpdateCallback() {
                     @Override
                     public void onBulkUpdate() {

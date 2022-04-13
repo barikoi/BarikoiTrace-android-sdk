@@ -21,7 +21,7 @@ public class BarikoiTrace {
     public static final int REQUEST_CODE_LOCATION_PERMISSION = 10221;
 
     private static LocationManager manager;
-    private Context context;
+
 
     /**
      * Initializes the BarikoiTrace module with API key and context
@@ -106,10 +106,9 @@ public class BarikoiTrace {
 
 
 
-    public static void disableBatteryOptimization() {
-        getInstance().requestBatteryOptimization();
+    public static void requestDisableBatteryOptimization(Context context) {
+        getInstance().requestBatteryOptimization(context);
     }
-
 
    /* public static void getCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i, BarikoiTraceLocationCallback traceLocationCallback) {
         if (i > 10) {
