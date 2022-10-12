@@ -10,6 +10,10 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.text.TextUtils;
 
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
 import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.DateTimeUtils;
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
@@ -33,11 +37,14 @@ import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.network.JsonResponseAdapter;
 import com.barikoi.barikoitrace.p000b.p001c.DeviceInfo;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
+import com.barikoi.barikoitrace.p000b.p002d.UnifiedLocationManager;
 import com.barikoi.barikoitrace.service.BarikoiTraceLocationService;
+import com.barikoi.barikoitrace.service.LocationWork;
 
 import org.json.JSONArray;
 
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 
 public final class LocationTracker implements LocationUpdateListener {
@@ -126,6 +133,7 @@ public final class LocationTracker implements LocationUpdateListener {
         } catch (BarikoiTraceException e) {
         }
     }
+
 
 
     public void m77a(final Location location, LocationUtils.LocationStatus bVar) throws BarikoiTraceException {
@@ -282,16 +290,31 @@ public final class LocationTracker implements LocationUpdateListener {
 
     }
 
+    private void periodicLocationUpdate() {
+        PeriodicWorkRequest workRequest = new PeriodicWorkRequest.
+                Builder(LocationWork.class,5, TimeUnit.MINUTES)
+                .build();
+
+        WorkManager.getInstance(context).
+                enqueueUniquePeriodicWork("UploadLocation",
+                        ExistingPeriodicWorkPolicy.REPLACE,workRequest);
+    }
+
+    private void stopPeriodicLocationUpdate() {
+        WorkManager.getInstance(context).cancelUniqueWork("UploadLocation");
+    }
 
     public void startLocationService() {
-            if (!isTrackingOn() ) {
-                logdb.writeLog("location service starting");
-                if (VERSION.SDK_INT >= VERSION_CODES.O) {
-                    this.context.startForegroundService(new Intent(this.context, BarikoiTraceLocationService.class));
-                }else{
-                    this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
-                }
-            }else logdb.writeLog("location service already running ");
+          periodicLocationUpdate();
+//        if (!isTrackingOn() ) {
+            logdb.writeLog("location service starting");
+            if (VERSION.SDK_INT >= VERSION_CODES.O) {
+                this.context.startForegroundService(new Intent(this.context, BarikoiTraceLocationService.class));
+            }else{
+                this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
+            }
+            periodicLocationUpdate();
+//        }else logdb.writeLog("location service already running ");
     }
 
     public boolean isTrackingOn() {
@@ -307,8 +330,13 @@ public final class LocationTracker implements LocationUpdateListener {
     public void stopLocationService() {
             logdb.writeLog("location service stopping");
             this.context.stopService(new Intent(this.context, BarikoiTraceLocationService.class));
+            stopPeriodicLocationUpdate();
             this.storageManager.m235c();
 
+    }
+
+    public void updateCurrentLocation(LocationUpdateListener singlelocUpdateListener){
+        new UnifiedLocationManager(context,singlelocUpdateListener).oneTimeLocationUpdate();
     }
 
 
@@ -383,7 +411,6 @@ public final class LocationTracker implements LocationUpdateListener {
     public boolean isOnTrip(){
         return storageManager.isOnTrip();
     }
-
 
     public void syncOfflineTrips(){
         ArrayList<Trip> trips=locdbhelper.getofflineTrips();

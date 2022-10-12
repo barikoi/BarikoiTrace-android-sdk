@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -33,8 +34,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
 import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
-import static androidx.core.app.NotificationCompat.PRIORITY_MIN;
 
 public class BarikoiTraceLocationService extends Service implements LocationUpdateListener {
 
@@ -64,17 +65,17 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         if (mode.getUpdateInterval() > 0) {
             UnifiedLocationManager cVar = this.unifiedLocationManager;
             cVar.removeLocationUpdate();
-            cVar.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter);
+            cVar.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter,mode.getPingSyncInterval());
             return;
 
         }else if(mode.getDistanceFilter()>0){
             this.unifiedLocationManager.removeLocationUpdate();
-            this.unifiedLocationManager.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter);
+            this.unifiedLocationManager.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter, mode.getPingSyncInterval());
             return;
         }
         int a = LocationUtils.getDistFilterFromSpeed(this.configStorageManager, 0);
         this.activeDistFilter = a;
-        this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, a);
+        this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, a, mode.getPingSyncInterval());
     }
 
 
@@ -87,7 +88,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                 }
                 this.activeDistFilter = a;
                 //this.logDbHelper.m312a("Distance filter updated:  " + this.activeDistFilter);
-                this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, this.activeDistFilter);
+                this.unifiedLocationManager.startLocationUpdate(this.configStorageManager, 0, this.activeDistFilter, this.configStorageManager.getTraceMode().getPingSyncInterval());
             }
             this.locationTracker.m77a(location, LocationUtils.LocationStatus.MOVING);
         } catch (Exception e) {
@@ -188,44 +189,28 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         NotificationChannel channel = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             channel = new NotificationChannel(CHANNEL_ID,
-                    CHANNEL_NAME, NotificationManager.IMPORTANCE_MIN);
+                    CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
 
             Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setContentText(CHANNEL_NAME)
                     .setSmallIcon(R.drawable.ic_trace_logo)
-                    .setPriority(PRIORITY_MIN)
+                    .setSound(RingtoneManager.getDefaultUri(RingtoneManager. TYPE_NOTIFICATION ))
+                    .setPriority(PRIORITY_LOW)
+                    .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                     .build();
             startForeground(1, notification);
         }else {
-//            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this,CHANNEL_ID)
-//                    .setSmallIcon(R.drawable.barikoi_logo)
-//                    .setContentTitle(CHANNEL_ID)
-//                    .setContentText(CHANNEL_NAME)
-//                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
             Notification notification2 = new NotificationCompat.Builder(this, CHANNEL_ID)
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setContentText(CHANNEL_NAME)
+                    .setSound(RingtoneManager.getDefaultUri(RingtoneManager. TYPE_NOTIFICATION ))
                     .setSmallIcon(R.drawable.ic_trace_logo)
-                    .setPriority(PRIORITY_MIN)
+                    .setPriority(PRIORITY_LOW)
                     .build();
-
-            //NotificationManager notifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-            //notifyMgr.notify(101, notification2);
-            //managerCompat.notify(1,mBuilder.build());
             startForeground(1, notification2);
-        }
-        try {
-
-            this.configStorageManager = ConfigStorageManager.getInstance(this);
-            this.locationTracker = new LocationTracker(this);
-            this.unifiedLocationManager = new UnifiedLocationManager(this, this);
-
-            startLocationUpdate();
-        } catch (Exception e) {
         }
     }
 
@@ -246,17 +231,21 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     }
 
 
-
     @Override // android.app.Service
     public int onStartCommand(Intent intent, int i, int i2) {
 
+        try {
+
+            this.configStorageManager = ConfigStorageManager.getInstance(this);
+            this.locationTracker = new LocationTracker(this);
+            this.unifiedLocationManager = new UnifiedLocationManager(this, this);
+            startLocationUpdate();
+        } catch (Exception e) {
+        }
         BarikoiTraceLogView.onSuccess("service started");
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
         String tag = "BarikoiTrace::LocationManagerService";
 
-        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                tag);
-        wakeLock.acquire();
 
         /*if (intent.getStringExtra("type")!=null){
             try {

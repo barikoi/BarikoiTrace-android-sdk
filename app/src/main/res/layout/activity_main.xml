@@ -53,23 +53,23 @@
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab"
-            android:visibility="visible"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
+            android:layout_alignParentRight="true"
             android:layout_alignParentBottom="true"
             android:layout_gravity="end|bottom"
+            android:layout_marginRight="11dp"
             android:layout_marginBottom="32dp"
             android:src="@drawable/gpsindicator1"
+            android:visibility="visible"
             app:backgroundTint="@android:color/white"
             app:borderWidth="0dp"
             app:elevation="6dp"
             app:fabSize="normal"
             app:layout_anchorGravity="top|end"
             app:layout_dodgeInsetEdges="bottom"
-            app:pressedTranslationZ="12dp"
-            android:layout_alignParentRight="true"
-            android:layout_marginRight="11dp" />
+            app:pressedTranslationZ="12dp" />
     </RelativeLayout>
     <LinearLayout
         android:id="@+id/layoutService"

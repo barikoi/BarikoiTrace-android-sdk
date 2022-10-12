@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
@@ -110,6 +111,10 @@ public class BarikoiTrace {
         getInstance().requestBatteryOptimization(context);
     }
 
+    public static void disableBatteryOptimization(Activity activity) {
+        SystemSettingsManager.requestBatteryOptimization(activity);
+    }
+
    /* public static void getCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i, BarikoiTraceLocationCallback traceLocationCallback) {
         if (i > 10) {
             getInstance().m10a(desiredAccuracy, i, traceLocationCallback);
@@ -210,6 +215,10 @@ public class BarikoiTrace {
     }
     public static void syncTripstate(BarikoiTraceTripStateCallback callback){
         getInstance().syncTripstate(callback);
+    }
+
+    public static void updateCurrentLocation(BarikoiTraceLocationUpdateCallback callback){
+        manager.updateCurrentLocation(callback);
     }
 
     public static void checkAppServicePermission(Context context){

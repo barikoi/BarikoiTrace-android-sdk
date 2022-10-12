@@ -2,6 +2,7 @@ package com.barikoi.barikoitrace;
 
 import android.app.Application;
 import android.content.Context;
+import android.location.Location;
 import android.os.Bundle;
 import android.text.TextUtils;
 
@@ -9,6 +10,7 @@ import android.text.TextUtils;
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
+import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
@@ -22,6 +24,7 @@ import com.barikoi.barikoitrace.models.createtrip.Trip;
 import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p001c.ApplicationBinder;
+import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -325,6 +328,7 @@ public final class LocationManager {
 
 
 
+
     public void enableAccuracyEngine() {
         this.confdb.setAccuracyEngine(true);
         BarikoiTraceLogView.onSuccess("Accuracy engine enabled");
@@ -377,6 +381,25 @@ public final class LocationManager {
 
     public boolean isOnTrip(){
         return locationTracker.isOnTrip();
+    }
+
+    public void updateCurrentLocation(BarikoiTraceLocationUpdateCallback callback){
+        locationTracker.updateCurrentLocation(new LocationUpdateListener() {
+            @Override
+            public void onLocationReceived(Location location) {
+                apiRequestManager.sendLocation(location, callback);
+            }
+
+            @Override
+            public void onFailure(BarikoiTraceError barikoiError) {
+                callback.onFailure(barikoiError);
+            }
+
+            @Override
+            public void onProviderAvailabilityChanged(boolean available) {
+
+            }
+        });
     }
 
     public void getCompanySettings(BarikoiTraceSettingsCallback callback){

@@ -42,6 +42,7 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putInt("distanceFilter", traceTrackingMode.getDistanceFilter());
         this.sharedPRefHelper.putInt("stopDuration", traceTrackingMode.getStopDuration());
         this.sharedPRefHelper.putInt("accuracyFilter", traceTrackingMode.getAccuracyFilter());
+        this.sharedPRefHelper.putInt("pingSyncInterval", traceTrackingMode.getPingSyncInterval());
         this.sharedPRefHelper.putInt("type", traceTrackingMode.getTrackingModes().getOption());
         //BarikoiTraceLogView.debugLog("desiredAccuracy: " +this.getDesiredAccuracy()+", updateInterval: "+this.getUpdateInterval()+",distanceFilter:"+this.getDistanceFilter()+",accuracyFilter:"+getAccuracyFilter());
     }
@@ -53,6 +54,7 @@ public final class ConfigStorageManager {
                     .setDistancefilter(this.sharedPRefHelper.getInt("distanceFilter"))
                     .setUpdateInterval(this.sharedPRefHelper.getInt("updateInterval"))
                     .setOfflineSync(this.sharedPRefHelper.getBoolean("offlineTracking"))
+                    .setPingSyncInterval(this.sharedPRefHelper.getInt("pingSyncInterval"))
                     .setDesiredAccuracy(TraceMode.DesiredAccuracy.toEnum(this.sharedPRefHelper.getString("desiredAccuracy")))
                     .build();
         }else return new TraceMode.Builder()
@@ -70,6 +72,7 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.remove("distanceFilter");
         this.sharedPRefHelper.remove("stopDuration");
         this.sharedPRefHelper.remove("accuracyFilter");
+        this.sharedPRefHelper.remove("pingSyncInterval");
         this.sharedPRefHelper.remove("type");
     }
 

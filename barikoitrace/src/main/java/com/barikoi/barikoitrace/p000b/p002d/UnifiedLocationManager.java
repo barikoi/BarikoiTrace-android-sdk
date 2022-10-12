@@ -8,6 +8,8 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
 
+import androidx.annotation.NonNull;
+
 import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
@@ -21,7 +23,11 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
+import com.google.android.gms.location.Priority;
 import com.google.android.gms.location.SettingsClient;
+import com.google.android.gms.tasks.CancellationToken;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnTokenCanceledListener;
 import com.google.android.gms.tasks.Task;
 
 
@@ -139,20 +145,55 @@ public class UnifiedLocationManager {
             LocationRequest locationRequest = new LocationRequest();
             int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(aVar.getDesiredAccuracy()).ordinal()];
             if (i3 == 1) {
-                locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+                locationRequest.setPriority(Priority.PRIORITY_HIGH_ACCURACY);
             } else if (i3 == 2) {
-                locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+                locationRequest.setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY);
             } else if (i3 == 3) {
-                locationRequest.setPriority(LocationRequest.PRIORITY_LOW_POWER );
+                locationRequest.setPriority(Priority.PRIORITY_LOW_POWER );
             }
             if (timeInterval > 0) {
                 long j = (long) (timeInterval * 1000);
                 locationRequest.setInterval(j);
                 locationRequest.setFastestInterval(j);
+                locationRequest.setMaxWaitTime(j*5);
+                locationRequest.setWaitForAccurateLocation(true);
             } else {
                 locationRequest.setInterval(0);
                 locationRequest.setFastestInterval(0);
                 locationRequest.setSmallestDisplacement((float) smallestDisplacement);
+                locationRequest.setWaitForAccurateLocation(true);
+            }
+            FusedLocationProviderClient fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.context);
+            this.fusedLocationProviderClient = fusedLocationProviderClient;
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, this.googleLocationCallback, Looper.getMainLooper());
+            return;
+        }
+        this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());
+    }
+
+    @SuppressLint("MissingPermission")
+    private void createGoogleLocationUpdate(ConfigStorageManager aVar, int timeInterval, int smallestDisplacement, int maxWaitTime) {
+        if (SystemSettingsManager.checkPermissions(this.context)) {
+            LocationRequest locationRequest = new LocationRequest();
+            int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(aVar.getDesiredAccuracy()).ordinal()];
+            if (i3 == 1) {
+                locationRequest.setPriority(Priority.PRIORITY_HIGH_ACCURACY);
+            } else if (i3 == 2) {
+                locationRequest.setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY);
+            } else if (i3 == 3) {
+                locationRequest.setPriority(Priority.PRIORITY_LOW_POWER );
+            }
+            if (timeInterval > 0) {
+                long j = (long) (timeInterval * 1000);
+                locationRequest.setInterval(j);
+                locationRequest.setFastestInterval(j);
+                if(maxWaitTime>0)locationRequest.setMaxWaitTime(maxWaitTime);
+                locationRequest.setWaitForAccurateLocation(true);
+            } else {
+                locationRequest.setInterval(0);
+                locationRequest.setFastestInterval(0);
+                locationRequest.setSmallestDisplacement((float) smallestDisplacement);
+                locationRequest.setWaitForAccurateLocation(true);
             }
             FusedLocationProviderClient fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.context);
             this.fusedLocationProviderClient = fusedLocationProviderClient;
@@ -183,21 +224,94 @@ public class UnifiedLocationManager {
         }
     }
 
+    public void startLocationUpdate(ConfigStorageManager configStorageManager, int minTime, int minDistance, int pingSyncInterval) {
+        if (SystemSettingsManager.isGoogleAvailable(this.context)) {
+            createGoogleLocationUpdate(configStorageManager, minTime, minDistance, pingSyncInterval);
+        } else {
+            nativeLocationUpdate(configStorageManager, minTime, minDistance);
+        }
+    }
 
     @SuppressLint("MissingPermission")
-    public void nativeLocationUpdate(ConfigStorageManager configStorageManager, int minTime, int minDistance) {
+    private void nativeLocationUpdate(ConfigStorageManager configStorageManager, int minTime, int minDistance) {
         if (SystemSettingsManager.checkPermissions(this.context)) {
             int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(configStorageManager.getDesiredAccuracy()).ordinal()];
             String str = i3 != 2 ? i3 != 3 ? "gps" : "passive" : "network";
             LocationManager locationManager = (LocationManager) this.context.getSystemService(Context.LOCATION_SERVICE);
             this.locationManager = locationManager;
             if (minTime > 0) {
-                locationManager.requestLocationUpdates(str, (long) (minTime * 1000), 0.0f, this.nativeLocationListenerimp, Looper.getMainLooper());
+                locationManager.requestLocationUpdates(str, (long) (minTime * 1000L), 0.0f, this.nativeLocationListenerimp, Looper.getMainLooper());
             } else {
                 locationManager.requestLocationUpdates(str, 0, (float) minDistance, this.nativeLocationListenerimp, Looper.getMainLooper());
             }
         } else {
             this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());
+        }
+    }
+    @SuppressLint("MissingPermission")
+    private void oneTimeGoogleLocationUpdate(final LocationUpdateListener singlelocationlistener ){
+        if(SystemSettingsManager.checkPermissions(this.context)){
+            if(fusedLocationProviderClient==null)
+                this.fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.context);
+
+            fusedLocationProviderClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, new CancellationToken() {
+                @NonNull
+                @Override
+                public CancellationToken onCanceledRequested(@NonNull OnTokenCanceledListener onTokenCanceledListener) {
+                    return null;
+                }
+
+                @Override
+                public boolean isCancellationRequested() {
+                    return false;
+                }
+            }).addOnCompleteListener(new OnCompleteListener<Location>() {
+                @Override
+                public void onComplete(@NonNull Task<Location> task) {
+                    if(task.isSuccessful() && task.getResult()!=null){
+                        Location location = task.getResult();
+                        if(location != null){
+                            singlelocationlistener.onLocationReceived(location);
+                        }
+                    }
+                }
+            });
+        }
+    }
+    @SuppressLint("MissingPermission")
+    private void oneTimeNativeLocationUpodate(final LocationUpdateListener singlelocationlistener ){
+        if(SystemSettingsManager.checkPermissions(this.context)){
+            LocationManager locationManager = (LocationManager) this.context.getSystemService(Context.LOCATION_SERVICE);
+            this.locationManager = locationManager;
+            this.locationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    singlelocationlistener.onLocationReceived(location);
+                }
+
+                @Override
+                public void onStatusChanged(String s, int i, Bundle bundle) {
+
+                }
+
+                @Override
+                public void onProviderEnabled(String s) {
+
+                }
+
+                @Override
+                public void onProviderDisabled(String s) {
+
+                }
+            }, Looper.getMainLooper());
+        }
+    }
+
+    public void oneTimeLocationUpdate(){
+        if (SystemSettingsManager.isGoogleAvailable(this.context)) {
+            oneTimeGoogleLocationUpdate(locationUpdateListener);
+        } else {
+            oneTimeNativeLocationUpodate(locationUpdateListener);
         }
     }
 

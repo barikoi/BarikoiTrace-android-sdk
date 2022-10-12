@@ -4,9 +4,9 @@ import androidx.annotation.Keep;
 
 @Keep
 public final class TraceMode {
-    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 50, TrackingModes.ACTIVE, true, false);
-    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 100, TrackingModes.PASSIVE,true,false);
-    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 0, 0, 75, TrackingModes.REACTIVE,true,false);
+    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 5, 0, 0, 50, TrackingModes.ACTIVE, true, false, 0);
+    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.MEDIUM, 0, 100, 0, 300, TrackingModes.PASSIVE,true,false, 120);
+    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 100, 0, 100, TrackingModes.REACTIVE,true,false, 30);
     private int accuracyFilter;
     private DesiredAccuracy desiredAccuracy;
     private int distanceFilter;
@@ -15,6 +15,7 @@ public final class TraceMode {
     private int updateInterval;
     private boolean offline;
     private boolean debug=false;
+    private int pingSyncInterval= 0;
 
     @Keep
     public enum AppState {
@@ -36,6 +37,7 @@ public final class TraceMode {
         private int updateInterval = 0;
         private boolean offline=true;
         private boolean debug= false;
+        private int pingSyncInterval= 0;
         public Builder() {
 
         }
@@ -56,8 +58,12 @@ public final class TraceMode {
             this.debug=true;
             return this;
         }
+        public Builder setPingSyncInterval(int pingSyncInterval){
+            this.pingSyncInterval=pingSyncInterval;
+            return this;
+        }
         public TraceMode build() {
-            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM,this.offline,this.debug);
+            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM,this.offline,this.debug, this.pingSyncInterval);
         }
 
         public Builder setAccuracyFilter(int i) {
@@ -120,7 +126,7 @@ public final class TraceMode {
         this.trackingModes = trackingModes;
     }
 
-    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes, boolean offline,boolean debug) {
+    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes, boolean offline,boolean debug, int pingSyncInterval) {
         this.desiredAccuracy = desiredAccuracy2;
         this.updateInterval = updateinterval;
         this.distanceFilter = distancefilter;
@@ -129,6 +135,7 @@ public final class TraceMode {
         this.trackingModes = trackingModes;
         this.offline=offline;
         this.debug=debug;
+        this.pingSyncInterval=pingSyncInterval;
     }
 
     public int getAccuracyFilter() {
@@ -156,5 +163,13 @@ public final class TraceMode {
     }
 
     public boolean isInDebugMode(){ return  this.debug;}
+
+    public int getPingSyncInterval(){ return this.pingSyncInterval;}
+
+    public String toString(){ return "TraceMode "+getTrackingModes()+", updateInterval: "
+            +getUpdateInterval()+", distancefilter: "
+            +getDistanceFilter()+", pingsyncinterval: "
+            +getPingSyncInterval();
+    }
 
 }
