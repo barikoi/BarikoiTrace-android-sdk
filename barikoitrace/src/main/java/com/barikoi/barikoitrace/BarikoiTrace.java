@@ -221,6 +221,10 @@ public class BarikoiTrace {
         manager.updateCurrentLocation(callback);
     }
 
+    public static void uploadOfflineData(){
+        manager.uploadOfflineData();
+    }
+
     public static void checkAppServicePermission(Context context){
         SystemSettingsManager.checkAppServicePermission(context);
     }

@@ -14,6 +14,7 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
+import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
@@ -383,11 +384,30 @@ public final class LocationManager {
         return locationTracker.isOnTrip();
     }
 
+    public void uploadOfflineData(){
+        locationTracker.uploadOfflineData();
+    }
+
     public void updateCurrentLocation(BarikoiTraceLocationUpdateCallback callback){
         locationTracker.updateCurrentLocation(new LocationUpdateListener() {
             @Override
             public void onLocationReceived(Location location) {
-                apiRequestManager.sendLocation(location, callback);
+                apiRequestManager.sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
+                    @Override
+                    public void onlocationUpdate(Location location) {
+                        callback.onlocationUpdate(location);
+                    }
+
+                    @Override
+                    public void onFailure(BarikoiTraceError barikoiError) {
+                        try {
+                            locationTracker.saveLoctoDb(location);
+                        } catch (BarikoiTraceException e) {
+                            e.printStackTrace();
+                        }
+                        callback.onFailure(barikoiError);
+                    }
+                });
             }
 
             @Override

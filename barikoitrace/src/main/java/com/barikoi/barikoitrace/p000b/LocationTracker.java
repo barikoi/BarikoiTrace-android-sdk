@@ -177,7 +177,7 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
 
-    private void uploadOfflineData(){
+    public void uploadOfflineData(){
         storageManager.setDataSyncing(true);
         logdb.writeLog("location syncing started. offline count: "+locdbhelper.getofflinecount() );
             final JSONArray data=locdbhelper.getLocationJson(Integer.parseInt(storageManager.getUserID()));
@@ -336,8 +336,14 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
     public void updateCurrentLocation(LocationUpdateListener singlelocUpdateListener){
-        new UnifiedLocationManager(context,singlelocUpdateListener).oneTimeLocationUpdate();
+        new UnifiedLocationManager(context, singlelocUpdateListener).oneTimeLocationUpdate();
     }
+
+    public void saveLoctoDb(Location location) throws BarikoiTraceException {
+        locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
+    }
+
+
 
 
     public void startTrip(final String tag, final TraceMode traceMode, final BarikoiTraceTripStateCallback callback){
