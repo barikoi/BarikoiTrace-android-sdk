@@ -27,7 +27,7 @@ android {
 
 dependencies {
     implementation project(':barikoitrace')
-//    implementation 'com.github.barikoi:barikoitrace-android-sdk:0.2.4-beta'
+//    implementation 'com.github.barikoi:barikoitrace-android-sdk:f7ff029770'
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.appcompat:appcompat:1.2.0'
