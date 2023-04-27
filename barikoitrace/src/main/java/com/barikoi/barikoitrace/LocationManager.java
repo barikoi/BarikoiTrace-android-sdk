@@ -388,10 +388,10 @@ public final class LocationManager {
         locationTracker.uploadOfflineData();
     }
 
-    public void updateCurrentLocation(BarikoiTraceLocationUpdateCallback callback){
+    public void updateCurrentLocation(final BarikoiTraceLocationUpdateCallback callback){
         locationTracker.updateCurrentLocation(new LocationUpdateListener() {
             @Override
-            public void onLocationReceived(Location location) {
+            public void onLocationReceived(final Location location) {
                 apiRequestManager.sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
                     @Override
                     public void onlocationUpdate(Location location) {

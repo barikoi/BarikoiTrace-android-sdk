@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
 				if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
 					Log.d("locationupdate", "already running no need to start again");
 					//System.out.println("already running no need to start again");
-					Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
+			 		Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
 
 				}  else if (!BarikoiTrace.isLocationPermissionsGranted()) {
 					BarikoiTrace.requestLocationPermissions(MainActivity.this);

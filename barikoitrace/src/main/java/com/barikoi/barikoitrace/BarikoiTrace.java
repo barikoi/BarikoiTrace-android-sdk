@@ -112,7 +112,7 @@ public class BarikoiTrace {
     }
 
     public static void disableBatteryOptimization(Activity activity) {
-        SystemSettingsManager.requestBatteryOptimization(activity);
+        SystemSettingsManager.requestBatteryOptimizationSetting(activity);
     }
 
    /* public static void getCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i, BarikoiTraceLocationCallback traceLocationCallback) {

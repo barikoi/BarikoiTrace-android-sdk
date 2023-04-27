@@ -1,12 +1,9 @@
 package com.barikoi.barikoitrace.Utils;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
@@ -14,14 +11,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
-import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -29,7 +21,6 @@ import com.barikoi.barikoitrace.BarikoiTrace;
 import com.google.android.gms.common.GoogleApiAvailability;
 
 import java.security.Permission;
-import java.util.Arrays;
 import java.util.List;
 
 
@@ -94,46 +85,18 @@ public class SystemSettingsManager {
         return Build.VERSION.SDK_INT >= 19 && ContextCompat.checkSelfPermission(context, WRITE_EXTERNAL_STORAGE) == 0;
     }
 
-    public static void requestBatteryOptimization(@NonNull Activity context){
-        try {
-            PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
-            String[] permissions = info.requestedPermissions;
-            for ( String permission: permissions){
-                if(permission.equals(Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)){
-                    Intent intent = new Intent();
-                    intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                    intent.setData(Uri.parse("package:" + context.getPackageName()));
-                    context.startActivityForResult(intent,9996);
-                    return;
-                }
+
+    public static void requestBatteryOptimizationSetting(Context context) {
+        if (Build.VERSION.SDK_INT >= 23) {
+            Intent intent = new Intent();
+            String packageName = context.getPackageName();
+            PowerManager powerManager = (PowerManager) context.getSystemService(context.POWER_SERVICE);
+            if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+//                intent.setData(Uri.parse("package:" + packageName));
+                intent.setFlags(intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
             }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        requestBatteryOptimizationSetting(context);
-
-    }
-
-    public static void requestBatteryOptimizationSetting(final Context context) {
-        if (Build.VERSION.SDK_INT >= 23 && !isIgnoringBatteryOptimization(context)) {
-
-            new AlertDialog.Builder(context).setTitle("Battery Optimization")
-                    .setMessage("Battery Optimization is not enabled.\nPlease enable it from settings: \n1. Click SETTINGS\n2. change the filter on top from \"Not Optimized\" to \"All\"\n3. Search for \""+context.getApplicationInfo().loadLabel(context.getPackageManager()).toString()+"\"\n4. Select \"Do not Optimize\" for the app")
-                    .setPositiveButton("Settings", new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            Intent intent = new Intent();
-                            String packageName = context.getPackageName();
-                            PowerManager powerManager = (PowerManager) context.getSystemService(context.POWER_SERVICE);
-                            if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
-                                intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-                                //intent.setData(Uri.parse("package:" + packageName));
-                                intent.setFlags(intent.FLAG_ACTIVITY_NEW_TASK);
-                                context.startActivity(intent);
-                            }
-                        }
-                    }).show();
-
         }
     }
     public static void openAutostartSettings( Context context) {

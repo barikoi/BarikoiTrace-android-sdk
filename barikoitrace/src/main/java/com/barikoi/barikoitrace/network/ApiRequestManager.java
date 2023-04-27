@@ -481,7 +481,7 @@ public class ApiRequestManager {
         params.put("user_id",id);
 
         StringRequest request = new StringRequest(Request.Method.GET,
-                Api.activ_trip_url+paramString(params),
+                Api.active_trip_url+paramString(params),
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
@@ -541,8 +541,7 @@ public class ApiRequestManager {
                             }
                         } catch (JSONException e) {
                             if(configStorageManager.getTraceMode()==null)
-
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError());
+                                callback.onFailure(BarikoiTraceErrors.jsonResponseError());
                         }
                     }
 
