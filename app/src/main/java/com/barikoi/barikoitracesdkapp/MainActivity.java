@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		BarikoiTrace.initialize(this, "API_KEY");
+		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
 
 
 		if(BarikoiTrace.getUserId()!=null){
@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
 				Log.e("tripstate", barikoiError.getMessage());
 			}
 		});
-		BarikoiTrace.startTracking(new TraceMode.Builder().setUpdateInterval(7).setPingSyncInterval(21).build());
+//		BarikoiTrace.startTracking(new TraceMode.Builder().setUpdateInterval(7).setPingSyncInterval(21).build());
 		//BarikoiTrace.openAutostartsettings(this);
 		switchService.setOnCheckedChangeListener((compoundButton, b) -> {
 			if (!compoundButton.isPressed()) return;
@@ -156,8 +156,8 @@ public class MainActivity extends AppCompatActivity {
 				} else {
 					tb.setDebugModeOn();
 					if (mode == null) mode = tb.build();
-					BarikoiTrace.startTracking(mode);
-					/*BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
+//					BarikoiTrace.startTracking(mode);
+					BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
 						@Override
 						public void onSuccess() {
 							Toast.makeText(getApplicationContext(), "trip started!!", Toast.LENGTH_SHORT).show();
@@ -170,13 +170,13 @@ public class MainActivity extends AppCompatActivity {
 
 							switchService.setChecked(false);
 						}
-					});*/
+					});
 
 				}
 			}
 			else {
-				BarikoiTrace.stopTracking();
-				/*if (BarikoiTrace.isOnTrip()) {
+//				BarikoiTrace.stopTracking();
+				if (BarikoiTrace.isOnTrip()) {
 					BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
 						@Override
 						public void onSuccess() {
@@ -194,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
 					//if (!BarikoiTrace.isOnTrip()) {
 						//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
 					//}
-				}else Toast.makeText(getApplicationContext(), "no trip to end!", Toast.LENGTH_SHORT).show();*/
+				}else Toast.makeText(getApplicationContext(), "no trip to end!", Toast.LENGTH_SHORT).show();
 			}
 		});
 
