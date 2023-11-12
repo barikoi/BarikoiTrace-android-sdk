@@ -159,9 +159,9 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putBoolean("sdk_tracking", true);
     }
 
-    /*public boolean isSdkTracking() {
+    public boolean isSdkTracking() {
         return this.sharedPRefHelper.getBoolean("sdk_tracking");
-    }*/
+    }
 
 
     public void stopSdkTracking() {

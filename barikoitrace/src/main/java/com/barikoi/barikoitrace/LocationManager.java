@@ -127,6 +127,10 @@ public final class LocationManager {
 
     void m15a(String str) {
         setApiKey(str);
+        if(confdb.isSdkTracking() && !locationTracker.isTrackingOn()){
+            if(confdb.getTraceMode()!=null)
+                startTracking(confdb.getTraceMode());
+        }
 //        syncActiveTrip(new BarikoiTraceTripStateCallback() {
 //            @Override
 //            public void onSuccess() {

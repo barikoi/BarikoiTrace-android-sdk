@@ -1,5 +1,6 @@
 package com.barikoi.barikoitrace.Utils;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
@@ -13,7 +14,8 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Log;
 
-import androidx.annotation.RequiresApi;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -24,17 +26,19 @@ import java.security.Permission;
 import java.util.List;
 
 
+import static android.Manifest.permission.ACCESS_BACKGROUND_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.Manifest.permission.POST_NOTIFICATIONS;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
 
 public class SystemSettingsManager {
 
-    /*public static void requestAndroidPbackgroundLocationPermission(Activity activity) {
+    public static void requestAndroidPbackgroundLocationPermission(Activity activity) {
         if (Build.VERSION.SDK_INT >= 29) {
             ActivityCompat.requestPermissions(activity, new String[]{ACCESS_BACKGROUND_LOCATION}, (int) BarikoiTrace.REQUEST_CODE_BACKGROUND_LOCATION_PERMISSION);
         }
-    }*/
+    }
 
 
     public static boolean checkOreo() {
@@ -53,9 +57,15 @@ public class SystemSettingsManager {
 
 
     public static void requestLocationPermissions(Activity activity) {
+
         ActivityCompat.requestPermissions(activity, new String[]{ACCESS_FINE_LOCATION}, (int) BarikoiTrace.REQUEST_CODE_LOCATION_PERMISSION);
     }
 
+    public static void requestNotificationPermission(Activity activity) {
+        if(ActivityCompat.checkSelfPermission(activity, POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT>=33) {
+            ActivityCompat.requestPermissions(activity, new String[]{POST_NOTIFICATIONS},  BarikoiTrace.REQUEST_CODE_NOTIFICATION_PERMISSION);
+        }
+    }
 
     public static boolean checkPermissions(Context context) {
         return ( ContextCompat.checkSelfPermission(context, ACCESS_FINE_LOCATION) == 0) /*&& (Build.VERSION.SDK_INT <29||ContextCompat.checkSelfPermission(context, ACCESS_BACKGROUND_LOCATION) == 0)*/;
@@ -93,7 +103,7 @@ public class SystemSettingsManager {
             PowerManager powerManager = (PowerManager) context.getSystemService(context.POWER_SERVICE);
             if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
                 intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-//                intent.setData(Uri.parse("package:" + packageName));
+                intent.setData(Uri.parse("package:" + packageName));
                 intent.setFlags(intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
             }
@@ -196,5 +206,6 @@ public class SystemSettingsManager {
     public static boolean isGoogleAvailable(Context context) {
         return GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == 0;
     }
+
 
 }

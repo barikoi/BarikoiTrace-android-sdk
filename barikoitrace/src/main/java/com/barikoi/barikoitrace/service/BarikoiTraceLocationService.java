@@ -36,6 +36,7 @@ import java.util.List;
 
 import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
 import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
+import static androidx.core.app.NotificationCompat.PRIORITY_MIN;
 
 public class BarikoiTraceLocationService extends Service implements LocationUpdateListener {
 
@@ -208,7 +209,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                     .setContentText(CHANNEL_NAME)
                     .setSound(RingtoneManager.getDefaultUri(RingtoneManager. TYPE_NOTIFICATION ))
                     .setSmallIcon(R.drawable.ic_trace_logo)
-                    .setPriority(PRIORITY_LOW)
+                    .setPriority(PRIORITY_MIN)
                     .build();
             startForeground(1, notification2);
         }
