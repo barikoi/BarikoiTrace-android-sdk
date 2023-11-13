@@ -130,67 +130,61 @@ public class UnifiedLocationManager {
     @SuppressLint("MissingPermission")
     private void createGoogleLocationUpdate(ConfigStorageManager aVar, int timeInterval, int smallestDisplacement) {
         if (SystemSettingsManager.checkPermissions(this.context)) {
-            LocationRequest.Builder locationRequest = new LocationRequest.Builder(timeInterval);
+            LocationRequest locationRequest = new LocationRequest();
             int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(aVar.getDesiredAccuracy()).ordinal()];
             if (i3 == 1) {
                 locationRequest.setPriority(Priority.PRIORITY_HIGH_ACCURACY);
-            } else if (i3 == 2) {
-                locationRequest.setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY);
-            } else if (i3 == 3) {
-                locationRequest.setPriority(Priority.PRIORITY_LOW_POWER );
+                locationRequest.setPriority(Priority.PRIORITY_LOW_POWER);
             }
             if (timeInterval > 0) {
-                long j = timeInterval * 1000L;
-                locationRequest.setIntervalMillis(j);
-                locationRequest.setMinUpdateIntervalMillis(j);
-                locationRequest.setMaxUpdateDelayMillis(j*5);
+                long j = (long) (timeInterval * 1000);
+                locationRequest.setInterval(j);
+                locationRequest.setFastestInterval(j);
+                locationRequest.setMaxWaitTime(j * 5);
                 locationRequest.setWaitForAccurateLocation(true);
             } else {
-                locationRequest.setMaxUpdateAgeMillis(0);
-                locationRequest.setMinUpdateIntervalMillis(0);
-                locationRequest.setMinUpdateDistanceMeters((float) smallestDisplacement);
+                locationRequest.setInterval(0);
+                locationRequest.setFastestInterval(0);
+                locationRequest.setSmallestDisplacement((float) smallestDisplacement);
                 locationRequest.setWaitForAccurateLocation(true);
             }
             FusedLocationProviderClient fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.context);
             this.fusedLocationProviderClient = fusedLocationProviderClient;
-            fusedLocationProviderClient.requestLocationUpdates(locationRequest.build(), this.googleLocationCallback, Looper.getMainLooper());
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, this.googleLocationCallback, Looper.getMainLooper());
             return;
         }
         this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());
+
     }
 
     @SuppressLint("MissingPermission")
     private void createGoogleLocationUpdate(ConfigStorageManager aVar, int timeInterval, int smallestDisplacement, int maxWaitTime) {
         if (SystemSettingsManager.checkPermissions(this.context)) {
-            LocationRequest.Builder locationRequest = new LocationRequest.Builder(timeInterval);
+            LocationRequest locationRequest = new LocationRequest();
             int i3 = C0033c.f81a[TraceMode.DesiredAccuracy.toEnum(aVar.getDesiredAccuracy()).ordinal()];
             if (i3 == 1) {
                 locationRequest.setPriority(Priority.PRIORITY_HIGH_ACCURACY);
-            } else if (i3 == 2) {
-                locationRequest.setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY);
-            } else if (i3 == 3) {
                 locationRequest.setPriority(Priority.PRIORITY_LOW_POWER );
             }
             if (timeInterval > 0) {
-                long j = timeInterval * 1000L;
-                locationRequest.setIntervalMillis(j);
-                locationRequest.setMinUpdateIntervalMillis(j);
-                if(maxWaitTime>0)locationRequest.setMaxUpdateDelayMillis(maxWaitTime);
+                long j = (long) (timeInterval * 1000);
+                locationRequest.setInterval(j);
+                locationRequest.setFastestInterval(j);
+                if(maxWaitTime>0)locationRequest.setMaxWaitTime(maxWaitTime);
                 locationRequest.setWaitForAccurateLocation(true);
             } else {
-                locationRequest.setMaxUpdateAgeMillis(0);
-                locationRequest.setMinUpdateIntervalMillis(0);
-                locationRequest.setMinUpdateDistanceMeters((float) smallestDisplacement);
+                locationRequest.setInterval(0);
+                locationRequest.setFastestInterval(0);
+                locationRequest.setSmallestDisplacement((float) smallestDisplacement);
                 locationRequest.setWaitForAccurateLocation(true);
             }
             FusedLocationProviderClient fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.context);
             this.fusedLocationProviderClient = fusedLocationProviderClient;
-            fusedLocationProviderClient.requestLocationUpdates(locationRequest.build(), this.googleLocationCallback, Looper.getMainLooper());
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, this.googleLocationCallback, Looper.getMainLooper());
             return;
         }
         this.locationUpdateListener.onFailure(BarikoiTraceErrors.LocationPermissionError());
     }
-
 
     public void removeLocationUpdate() {
         LocationManager locationManager = this.locationManager;
