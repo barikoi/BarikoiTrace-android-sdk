@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
+		BarikoiTrace.initialize(this, "bkoi_17ae25b5a00ab63bfeaaba72f906f50e7ce53fcd9bfe315baecccd18b2abac65");
 
 
 		if(BarikoiTrace.getUserId()!=null){
@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
 		}
 
 
-		BarikoiTrace.setOrCreateUser("sakib 5",null,"01111111124", new BarikoiTraceUserCallback() {
+		BarikoiTrace.setOrCreateUser("sakib 6",null,"01914221144", new BarikoiTraceUserCallback() {
 			@Override
 			public void onFailure(BarikoiTraceError barikoiError) {
 				Log.e("userfail", barikoiError.getMessage());
@@ -60,18 +60,31 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onSuccess(BarikoiTraceUser traceUser) {
-				BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
+				BarikoiTrace.requestDisableBatteryOptimization(MainActivity.this);
+				/*BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
 
 					@Override
 					public void onSuccess() {
 						switchService.setChecked(BarikoiTrace.isOnTrip());
+						BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback(){
+
+							@Override
+							public void onSuccess() {
+
+							}
+
+							@Override
+							public void onFailure(BarikoiTraceError barikoiError) {
+
+							}
+						});
 					}
 
 					@Override
 					public void onFailure(BarikoiTraceError barikoiError) {
 						Log.e("tripstate", barikoiError.getMessage());
 					}
-				});
+				});*/
 			}
 		});
 
@@ -98,23 +111,12 @@ public class MainActivity extends AppCompatActivity {
 		ArrayAdapter<String> aa = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, types);
 		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spinnertype.setAdapter(aa);
-		BarikoiTrace.requestDisableBatteryOptimization(MainActivity.this);
+
 		if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
 			Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
 		BarikoiTrace.checkAppServicePermission(this);
-		BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
-			@Override
-			public void onSuccess() {
-//				if(BarikoiTrace.isOnTrip()) switchService.setChecked(true);
-//				else switchService.setChecked(false);
-			}
-			@Override
-			public void onFailure(BarikoiTraceError barikoiError) {
-				Log.e("tripstate", barikoiError.getMessage());
-			}
-		});
 //		BarikoiTrace.startTracking(new TraceMode.Builder().setUpdateInterval(7).setPingSyncInterval(21).build());
 		//BarikoiTrace.openAutostartsettings(this);
 		switchService.setOnCheckedChangeListener((compoundButton, b) -> {
@@ -156,45 +158,45 @@ public class MainActivity extends AppCompatActivity {
 				} else {
 					tb.setDebugModeOn();
 					if (mode == null) mode = tb.build();
-//					BarikoiTrace.startTracking(mode);
-					BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
-						@Override
-						public void onSuccess() {
-							Toast.makeText(getApplicationContext(), "trip started!!", Toast.LENGTH_SHORT).show();
-
-						}
-
-						@Override
-						public void onFailure(BarikoiTraceError barikoiError) {
-							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
-
-							switchService.setChecked(false);
-						}
-					});
+					BarikoiTrace.startTracking(mode);
+//					BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
+//						@Override
+//						public void onSuccess() {
+//							Toast.makeText(getApplicationContext(), "trip started!!", Toast.LENGTH_SHORT).show();
+//
+//						}
+//
+//						@Override
+//						public void onFailure(BarikoiTraceError barikoiError) {
+//							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+//
+//							switchService.setChecked(false);
+//						}
+//					});
 
 				}
 			}
 			else {
-//				BarikoiTrace.stopTracking();
-				if (BarikoiTrace.isOnTrip()) {
-					BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
-						@Override
-						public void onSuccess() {
-							Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
-
-						}
-
-						@Override
-						public void onFailure(BarikoiTraceError barikoiError) {
-							switchService.setChecked(true);
-							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
-
-						}
-					});
-					//if (!BarikoiTrace.isOnTrip()) {
-						//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
-					//}
-				}else Toast.makeText(getApplicationContext(), "no trip to end!", Toast.LENGTH_SHORT).show();
+				BarikoiTrace.stopTracking();
+//				if (BarikoiTrace.isOnTrip()) {
+//					BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
+//						@Override
+//						public void onSuccess() {
+//							Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
+//
+//						}
+//
+//						@Override
+//						public void onFailure(BarikoiTraceError barikoiError) {
+//							switchService.setChecked(true);
+//							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+//
+//						}
+//					});
+//					//if (!BarikoiTrace.isOnTrip()) {
+//						//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
+//					//}
+//				}else Toast.makeText(getApplicationContext(), "no trip to end!", Toast.LENGTH_SHORT).show();
 			}
 		});
 

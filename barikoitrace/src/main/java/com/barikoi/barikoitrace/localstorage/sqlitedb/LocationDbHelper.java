@@ -110,7 +110,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
             return ids.toArray(new String[0]);
         }
     }
-    public JSONArray getLocationJson(int userid) {
+    public JSONArray getLocationJson(String userid) {
         JSONArray arrayList = new JSONArray();
         try {
             openDb();

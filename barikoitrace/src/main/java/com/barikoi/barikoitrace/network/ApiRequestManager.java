@@ -74,7 +74,7 @@ public class ApiRequestManager {
     public void setUser(final String email, final String phone, final BarikoiTraceUserCallback callback){
         id=configStorageManager.getUserID();
         key=configStorageManager.getApiKey();
-        StringRequest request = new StringRequest(Request.Method.GET,
+        StringRequest request = new StringRequest(Request.Method.POST,
                 Api.user_url,
                 new Response.Listener<String>() {
                     @Override
@@ -84,7 +84,7 @@ public class ApiRequestManager {
                             int status= responsejson.getInt("status");
                             if(status==200 || status==201){
                                 JSONObject userjson=responsejson.getJSONObject("user");
-                                int id= userjson.getInt("id");
+                                String id= userjson.getString("_id");
                                 String name= userjson.getString("name");
                                 String email=userjson.getString("email");
                                 String phone=userjson.getString("phone");
@@ -113,20 +113,14 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            protected Map<String, String> getParams() throws AuthFailureError {
+            public byte[] getBody() throws AuthFailureError {
                 HashMap<String,String> params=new HashMap<>();
                 params.put("api_key",key);
                 if(!TextUtils.isEmpty(email)) params.put("email",email);
                 if(!TextUtils.isEmpty(phone)) params.put("phone",phone);
-                return params;
+                return new JSONObject(params).toString().getBytes();
             }
 
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String,String> params = new HashMap<String, String>();
-                params.put("Content-Type","application/x-www-form-urlencoded");
-                return params;
-            }
         };
         request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
@@ -149,7 +143,7 @@ public class ApiRequestManager {
                             Log.d("userjson",responsejson.toString());
                             if(status==200 || status==201){
                                 JSONObject userjson=responsejson.getJSONObject("user");
-                                int id= userjson.getInt("id");
+                                String id= userjson.getString("_id");
                                 String name= userjson.getString("name");
                                 String email=userjson.getString("email");
                                 String phone=userjson.getString("phone");
@@ -171,7 +165,7 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
+                        Log.d("locationupdate","error:"+error.networkResponse.toString());
                         callback.onFailure(BarikoiTraceErrors.serverError());
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
@@ -180,13 +174,20 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            protected Map<String, String> getParams() throws AuthFailureError {
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                HashMap<String,String> header= new HashMap<>();
+                header.put("Content-Type","application/json");
+                return header;
+            }
+
+            @Override
+            public byte[] getBody() throws AuthFailureError {
                 HashMap<String,String> params=new HashMap<>();
                 params.put("api_key",key);
                 if(!TextUtils.isEmpty(name)) params.put("name",name);
                 if(!TextUtils.isEmpty(email)) params.put("email",email);
                 if(!TextUtils.isEmpty(phone)) params.put("phone",phone);
-                return params;
+                return new JSONObject(params).toString().getBytes();
             }
         };
         request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
@@ -240,21 +241,26 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            protected Map<String, String> getParams() throws AuthFailureError {
-                HashMap<String,String> params=new HashMap<>();
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                HashMap<String,String> header= new HashMap<>();
+                header.put("Content-Type","application/json");
+                return header;
+            }
+
+            @Override
+            public byte[] getBody()  throws AuthFailureError {
+                HashMap<String,Object> params=new HashMap<>();
                 params.put("api_key",key);
                 params.put("user_id",id);
 
-                params.put("latitude",latitude+"");
-                params.put("longitude",longitude+"");
-                params.put("altitude",altitude+"");
-                params.put("speed",speed+"");
-                params.put("bearing",bearing+"");
+                params.put("latitude",latitude);
+                params.put("longitude",longitude);
+                params.put("altitude",altitude);
+                params.put("speed",speed);
+                params.put("bearing",bearing);
                 params.put("gpx_time",timestring);
-                params.put("accuracy",accuracy+"");
-
-
-                 return params;
+                params.put("accuracy",accuracy);
+                return new JSONObject(params).toString().getBytes();
             }
         };
         request.setRetryPolicy(new DefaultRetryPolicy(20 * 1000, 0,
@@ -297,15 +303,21 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            protected Map<String, String> getParams() throws AuthFailureError {
-                HashMap<String,String> params=new HashMap<>();
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                HashMap<String,String> header= new HashMap<>();
+                header.put("Content-Type","application/json");
+                return header;
+            }
+            @Override
+            public byte[] getBody() throws AuthFailureError {
+                HashMap<String,Object> params=new HashMap<>();
                 params.put("api_key",key);
                 params.put("user_id",id);
 
-                params.put("gpx_bulk", data.toString());
+                params.put("gpx_bulk", data);
 
 
-                return params;
+                return new JSONObject(params).toString().getBytes();
             }
         };
         request.setRetryPolicy(new DefaultRetryPolicy(120 * 1000, 0,
@@ -352,7 +364,7 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            protected Map<String, String> getParams() throws AuthFailureError {
+            public byte[] getBody() throws AuthFailureError {
                 HashMap<String,String> params=new HashMap<>();
                 params.put("api_key",key);
                 params.put("user_id",id);
@@ -361,7 +373,14 @@ public class ApiRequestManager {
                     params.put("tag",tag);
                 if(tracemode.isInDebugMode())
                     params.put("debug", "1");
-                return params;
+                return new JSONObject(params).toString().getBytes();
+            }
+
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                HashMap<String,String> header= new HashMap<>();
+                header.put("Content-Type","application/json");
+                return header;
             }
         };
         request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,

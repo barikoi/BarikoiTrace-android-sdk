@@ -99,12 +99,11 @@ public class SystemSettingsManager {
     public static void requestBatteryOptimizationSetting(Context context) {
         if (Build.VERSION.SDK_INT >= 23) {
             Intent intent = new Intent();
-            String packageName = context.getPackageName();
+            String packageName = context.getApplicationContext().getPackageName();
             PowerManager powerManager = (PowerManager) context.getSystemService(context.POWER_SERVICE);
             if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
                 intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-                intent.setData(Uri.parse("package:" + packageName));
-                intent.setFlags(intent.FLAG_ACTIVITY_NEW_TASK);
+//                intent.setData(Uri.parse("package:" + packageName));
                 context.startActivity(intent);
             }
         }
@@ -206,6 +205,7 @@ public class SystemSettingsManager {
     public static boolean isGoogleAvailable(Context context) {
         return GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == 0;
     }
+
 
 
 }

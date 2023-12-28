@@ -180,7 +180,7 @@ public final class LocationTracker implements LocationUpdateListener {
     public void uploadOfflineData(){
         storageManager.setDataSyncing(true);
         logdb.writeLog("location syncing started. offline count: "+locdbhelper.getofflinecount() );
-            final JSONArray data=locdbhelper.getLocationJson(Integer.parseInt(storageManager.getUserID()));
+            final JSONArray data=locdbhelper.getLocationJson(storageManager.getUserID());
 
             ApiRequestManager.getInstance(context).sendOfflineData(data, new BarikoiTraceBulkUpdateCallback() {
                 @Override
