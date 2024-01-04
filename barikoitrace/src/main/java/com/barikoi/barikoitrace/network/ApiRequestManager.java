@@ -494,7 +494,7 @@ public class ApiRequestManager {
         request.setShouldCache(false);
         requestQueue.add(request);
     }
-    public void getCurrentTrips( final BarikoiTraceGetTripCallback callback ){
+    public void getCurrentTrip( final BarikoiTraceGetTripCallback callback ){
         HashMap<String,String> params=new HashMap<>();
         params.put("api_key",key);
         params.put("user_id",id);
@@ -506,12 +506,13 @@ public class ApiRequestManager {
                     public void onResponse(String response) {
                         try {
                             JSONObject responsejson=new JSONObject(response);
-                            int status= responsejson.getInt("status");
-                            if(status==200 || status ==201){
-                                callback.onSuccess(JsonResponseAdapter.getTrips(responsejson.getJSONObject("data").getJSONArray("trips")));
+                            boolean active= responsejson.getBoolean("active");
+                            if(active){
+                                if(JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip")) != null)
+                                    callback.onSuccess(JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip")));
+                                else callback.onFailure(BarikoiTraceErrors.jsonResponseError());
                             }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
+                                callback.onSuccess(null);
                             }
                         } catch (JSONException e) {
                             callback.onFailure(BarikoiTraceErrors.jsonResponseError());
@@ -536,6 +537,8 @@ public class ApiRequestManager {
         request.setShouldCache(false);
         requestQueue.add(request);
     }
+
+
 
     public void syncSettings(final BarikoiTraceSettingsCallback callback){
         HashMap<String,String> params=new HashMap<>();

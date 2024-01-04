@@ -58,10 +58,10 @@ public class JsonResponseAdapter {
         try{
             for(int i = 0; i <array.length(); i++){
                 JSONObject tripjson= array.getJSONObject(i).getJSONObject("trip_info");
-                int id= tripjson.has("id")?tripjson.getInt("id"): i;
+                String id= tripjson.has("id")?tripjson.getString("id"): "";
                 String startTime= tripjson.getString("start_time");
                 int state = tripjson.getInt("state");
-                int user_id=tripjson.has("id")?tripjson.getInt("user_id"):0;
+                String user_id=tripjson.has("id")?tripjson.getString("user_id"):"";
                 String tag = tripjson.getString("tag");
                 String endTime =null;
                 if(tripjson.has("start_time")) endTime= tripjson.getString("start_time");
@@ -73,6 +73,24 @@ public class JsonResponseAdapter {
         return trips;
     }
 
+
+    public static Trip getTrip(JSONObject tripjson){
+
+        try{
+            String id= tripjson.has("_id")?tripjson.getString("id"): "";
+            String startTime= tripjson.getString("start_time");
+            int state = tripjson.getInt("status");
+            String user_id=tripjson.has("user")?tripjson.getString("user"):"";
+            String tag = tripjson.getString("tag");
+            String endTime =null;
+            if(tripjson.has("end_time")) endTime= tripjson.getString("start_time");
+            return new Trip(id,startTime,endTime,tag,state,user_id,1);
+
+        } catch (JSONException e) {
+            return null;
+        }
+
+    }
     public static TraceMode getCompanySettings(JSONObject obj) throws JSONException{
 
         return new TraceMode.Builder().setUpdateInterval(obj.getInt("update_time_interval"))

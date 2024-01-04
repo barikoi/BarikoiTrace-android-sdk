@@ -430,7 +430,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
                 @Override
                 public void onSuccess() {
-                    locdbhelper.removeTrip(trip.getId());
+                    locdbhelper.removeTrip(trip.getTrip_id());
                 }
             });
             else if(trip.getSynced()==2){
@@ -442,7 +442,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
                     @Override
                     public void onSuccess() {
-                        locdbhelper.removeTrip(trip.getId());
+                        locdbhelper.removeTrip(trip.getTrip_id());
                     }
                 });
             }

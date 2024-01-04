@@ -7,7 +7,7 @@ import java.util.ArrayList;
 
 public interface BarikoiTraceGetTripCallback {
 
-    void onSuccess(ArrayList<Trip> trips);
+    void onSuccess(Trip trip);
     void onFailure(BarikoiTraceError barikoiError);
 
 }

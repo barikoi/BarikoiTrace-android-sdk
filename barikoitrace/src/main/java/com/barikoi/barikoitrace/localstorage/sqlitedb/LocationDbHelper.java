@@ -32,7 +32,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
     private SQLiteDatabase db;
 
     private LocationDbHelper(Context context) {
-        super(context, "location", (SQLiteDatabase.CursorFactory) null, 3);
+        super(context, "location", (SQLiteDatabase.CursorFactory) null, 4);
     }
 
 
@@ -159,7 +159,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
         }else{
             if (query.moveToFirst()){
                 while(!query.isAfterLast()){
-                    Trip trip = new Trip( query.getInt(query.getColumnIndex("id")),query.getString(query.getColumnIndex("start_time")),query.getString(query.getColumnIndex("end_time")),query.getString(query.getColumnIndex("tag")),query.getInt(query.getColumnIndex("state")),query.getInt(query.getColumnIndex("user_id")),query.getInt(query.getColumnIndex("synced")));
+                    Trip trip = new Trip( query.getString(query.getColumnIndex("id")),query.getString(query.getColumnIndex("start_time")),query.getString(query.getColumnIndex("end_time")),query.getString(query.getColumnIndex("tag")),query.getInt(query.getColumnIndex("state")),query.getString(query.getColumnIndex("user_id")),query.getInt(query.getColumnIndex("synced")));
                     trips.add(trip);
                     query.moveToNext();
                 }
@@ -208,13 +208,13 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
             }
         }*/
         for (Trip trip : activeTrips){
-            this.db.update("trip",contentValues,"id=?",new String[]{trip.getId()+""});
+            this.db.update("trip",contentValues,"id=?",new String[]{trip.getTrip_id()});
         }
     }
 
-    public void removeTrip(int id){
+    public void removeTrip(String id){
         openDb();
-        this.db.delete("trip","id=?",new String[]{id+""});
+        this.db.delete("trip","id=?",new String[]{id});
     }
 
     public ArrayList<Trip> getofflineTrips(){
@@ -227,7 +227,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
         }else{
             if (query.moveToFirst()){
                 while(!query.isAfterLast()){
-                    Trip trip = new Trip( query.getInt(query.getColumnIndex("id")),query.getString(query.getColumnIndex("start_time")),query.getString(query.getColumnIndex("end_time")),query.getString(query.getColumnIndex("tag")),query.getInt(query.getColumnIndex("state")),query.getInt(query.getColumnIndex("user_id")),query.getInt(query.getColumnIndex("synced")));
+                    Trip trip = new Trip( query.getString(query.getColumnIndex("id")),query.getString(query.getColumnIndex("start_time")),query.getString(query.getColumnIndex("end_time")),query.getString(query.getColumnIndex("tag")),query.getInt(query.getColumnIndex("state")),query.getString(query.getColumnIndex("user_id")),query.getInt(query.getColumnIndex("synced")));
                     trips.add(trip);
                     query.moveToNext();
                 }
@@ -240,7 +240,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
     @Override // android.database.sqlite.SQLiteOpenHelper
     public void onCreate(SQLiteDatabase sQLiteDatabase) {
         sQLiteDatabase.execSQL("CREATE TABLE location ( id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL  ) ");
-        sQLiteDatabase.execSQL("CREATE TABLE trip ( id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT NOT NULL,end_time TEXT ,tag TEXT ,user_id INTEGER NOT NULL,state INTEGER NOT NULL , synced INTEGER NOT NULL) ");
+        sQLiteDatabase.execSQL("CREATE TABLE trip (trip_id TEXT, start_time TEXT NOT NULL,end_time TEXT ,tag TEXT ,user_id INTEGER NOT NULL,state INTEGER NOT NULL , synced INTEGER NOT NULL) ");
 
     }
 

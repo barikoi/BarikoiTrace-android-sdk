@@ -252,10 +252,10 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
             callback.onFailure(BarikoiTraceErrors.noKeyError());
         }else
-        ApiRequestManager.getInstance(context).getCurrentTrips(new BarikoiTraceGetTripCallback() {
+        ApiRequestManager.getInstance(context).getCurrentTrip(new BarikoiTraceGetTripCallback() {
             @Override
-            public void onSuccess(ArrayList<Trip> trips) {
-                if(trips.size()>0){
+            public void onSuccess(Trip trip) {
+                if(trip!=null){
                     if(!isOnTrip()){
                         confdb.setOnTrip(true);
                         confdb.turnTrackingOn();
@@ -264,13 +264,10 @@ public final class LocationManager {
                     if(!locationTracker.isTrackingOn()){
                         locationTracker.startLocationService();
                     }
-                }else if(trips.size()==0){
-                    if(isOnTrip()){
-                        confdb.setOnTrip(false);
-                        //confdb.stopSdkTracking();
-                        locationTracker.stopLocationService();
-                    }
-
+                }else if(isOnTrip()){
+                    confdb.setOnTrip(false);
+                    //confdb.stopSdkTracking();
+                    locationTracker.stopLocationService();
                 }
                 callback.onSuccess();
             }
