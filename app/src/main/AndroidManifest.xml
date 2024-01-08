@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.barikoi.barikoitracesdkapp"
     xmlns:tools="http://schemas.android.com/tools">
 
 <!--    <uses-permission android:name="android.permission.INTERNET" />-->
@@ -12,11 +11,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme"
-        tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".CompanyNameActivity">
+        android:theme="@style/AppTheme">
 
-        </activity>
         <activity
             android:name=".MainActivity"
             android:label="BarikoiTrace Location Tracking"
@@ -28,23 +24,7 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".SignupActivity"
-            android:theme="@style/AppTheme.NoActionBar"
-            android:windowSoftInputMode="stateHidden" />
-        <activity
-            android:name=".LoginActivity"
-            android:theme="@style/AppTheme.NoActionBar"
-            android:windowSoftInputMode="stateHidden">
 
-        </activity>
-
-        <meta-data
-            android:name="io.sentry.dsn"
-            android:value="https://37b81fb348bd4560ad20ad7fb3021406@o437144.ingest.sentry.io/5565651" />
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="@string/google_maps_key" />
 
 
 

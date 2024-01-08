@@ -37,17 +37,6 @@ public class BarikoiTraceReceiver extends BroadcastReceiver {
         BarikoiTraceLogView.debugLog(traceLocation.getLocation().toString());
     }
 
-    public void setAlarm(Context context)
-    {
-        AlarmManager  alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(context, BarikoiTraceReceiver.class);
-        PendingIntent alarmIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
-
-        alarmMgr.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() +
-                        60 * 1000, alarmIntent);
-
-    }
 
     @Override // android.content.BroadcastReceiver
     public void onReceive(Context context, Intent intent) {

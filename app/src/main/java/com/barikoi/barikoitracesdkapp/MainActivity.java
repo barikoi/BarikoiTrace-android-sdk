@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		BarikoiTrace.initialize(this, "bkoi_17ae25b5a00ab63bfeaaba72f906f50e7ce53fcd9bfe315baecccd18b2abac65");
+		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
 
 
 		if(BarikoiTrace.getUserId()!=null){
