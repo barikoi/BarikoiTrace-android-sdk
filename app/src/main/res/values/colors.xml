@@ -1,60 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#43bc5d</color>
-    <color name="colorprimarytemp">#43bc5d</color>
     <color name="colorPrimaryDark">#17a44f</color>
     <color name="colorAccent">#3cee83</color>
-    <color name="colorTransparentAsh">#64afe1e4</color>
-    <color name="colorhintText">#cc79363a</color>
-    <color name="colorlistBackground">#ffffff</color>
-    <color name="white">#ffffff</color>
-    <color name="colorredlink">#9b2a2a</color>
-    <color name="colortransparent">#00ffffff</color>
-    <color name="colortag">#888888</color>
-    <color name="navbackground">#8043bc5d</color>
-    <color name="jetblack">#010d01</color>
-    <color name="black">#000000</color>
-    <color name="colorRed">#d30000</color>
-    <color name="slightfadedblack">#FF585858</color>
-
-    <color name="bg_screen1">#00C853</color>
-    <color name="bg_screen2">#00C853</color>
-    <color name="bg_screen3">#00C853</color>
-    <color name="bg_screen4">#00C853</color>
 
     <!-- dots inactive colors -->
-    <color name="dot_dark_screen1">#FFFFFF</color>
-    <color name="dot_dark_screen2">#FFFFFF</color>
-    <color name="dot_dark_screen3">#FFFFFF</color>
-    <color name="dot_dark_screen4">#FFFFFF</color>
 
     <!-- dots active colors -->
-    <color name="dot_light_screen1">#FFEE58</color>
-    <color name="dot_light_screen2">#8cf9eb</color>
-    <color name="dot_light_screen3">#93c6fd</color>
-    <color name="dot_light_screen4">#e4b5fc</color>
-    <color name="colorTextdarkGreen">#115a0f</color>
-    <color name="colorLightGray">#a6abae</color>
-    <color name="colorGray">#49674e</color>
-    <color name="colorBackroundWhite">#f0f2ea</color>
-    <color name="textcolorblue">#181a2b</color>
-    <color name="color_transparent_image_back">#62cac8c8</color>
-    <color name="transparent_black">#28000000</color>
-    <color name="goodroad">#55AA55</color>
-    <color name="badroad">#D4A76A</color>
-    <color name="disasterroad">#F0DA776A</color>
 
-    <array name="array_dot_active">
-        <item>@color/dot_light_screen1</item>
-        <item>@color/dot_light_screen2</item>
-        <item>@color/dot_light_screen3</item>
-        <item>@color/dot_light_screen4</item>
-    </array>
-
-    <array name="array_dot_inactive">
-        <item>@color/dot_dark_screen1</item>
-        <item>@color/dot_dark_screen2</item>
-        <item>@color/dot_dark_screen3</item>
-        <item>@color/dot_dark_screen4</item>
-    </array>
 </resources>
