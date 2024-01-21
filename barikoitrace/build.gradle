@@ -24,6 +24,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    publishing {
+        publishing {
+            singleVariant("release") {
+                withSourcesJar()
+                withJavadocJar()
+            }
+        }
+    }
     namespace 'com.barikoi.barikoitrace'
 
 }
@@ -42,4 +50,18 @@ dependencies {
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
     implementation 'com.google.code.gson:gson:2.10'
 
+}
+
+publishing {
+    publications {
+        release(MavenPublication) {
+            groupId = 'com.github.barikoi'
+            artifactId = 'barikoitrace'
+            version = '0.3.0'
+
+            afterEvaluate {
+                from components.release
+            }
+        }
+    }
 }
