@@ -9,6 +9,7 @@ import android.content.IntentFilter;
 import android.location.Location;
 import android.location.LocationManager;
 import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
@@ -44,6 +45,7 @@ import com.barikoi.barikoitrace.service.LocationWork;
 import org.json.JSONArray;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 
@@ -320,7 +322,8 @@ public final class LocationTracker implements LocationUpdateListener {
     public boolean isTrackingOn() {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (BarikoiTraceLocationService.class.getName().equals(service.service.getClassName())) {
+            if (BarikoiTraceLocationService.class.getName().equals(service.service.getClassName()) && service.started) {
+                Log.d("locationservice",service.process+ " "+service.foreground+ " "+ new Date(service.activeSince).toString());
                 return true;
             }
         }
@@ -395,7 +398,7 @@ public final class LocationTracker implements LocationUpdateListener {
                     storageManager.setOnTrip(false);
                     logdb.writeLog("Trip ended successfully ");
                     logdb.generateDBFile();
-                    //storageManager.stopSdkTracking();
+                    storageManager.stopSdkTracking();
                     stopLocationService();
                     callback.onSuccess();
                     //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 1);
@@ -408,6 +411,8 @@ public final class LocationTracker implements LocationUpdateListener {
             }*/
         }else {
             logdb.writeLog("Trip end failed, "+BarikoiTraceErrors.tripStateError().getMessage());
+            storageManager.stopSdkTracking();
+            stopLocationService();
             callback.onFailure(BarikoiTraceErrors.tripStateError());
         }
     }

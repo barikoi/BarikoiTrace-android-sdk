@@ -237,6 +237,10 @@ public final class LocationManager {
             });
         }
     }
+
+    public BarikoiTraceUser getUser() {
+        return this.confdb.getUser();
+    }
     void setUserId(String user_id){
         this.confdb.setUserID(user_id);
     }
@@ -436,4 +440,6 @@ public final class LocationManager {
     public void setTraceMode(TraceMode mode) {
         confdb.setTraceMode(mode);
     }
+
+
 }

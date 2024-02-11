@@ -11,6 +11,7 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.exceptions.ContextException;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
+import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 
 /**
  * Barikoi trace base class. entry point for all trace related functions.
@@ -67,6 +68,11 @@ public class BarikoiTrace {
      * @return the user id
      */
     public static String getUserId() { return getInstance().getUserId();}
+
+
+    public static BarikoiTraceUser getUser(){
+        return getInstance().getUser();
+    }
 
     /**
      * Set email.
@@ -190,14 +196,14 @@ public class BarikoiTrace {
     }
 
 
-    /**
-     * set Barikoi User by the user ID
-     *
-     * @param user_id ID of the BarikoiTrace user in STRING
-     */
-    public static void setUser(String user_id){
-        getInstance().setUserId(user_id);
-    }
+//    /**
+//     * set Barikoi User by the user ID
+//     *
+//     * @param user_id ID of the BarikoiTrace user in STRING
+//     */
+//    public static void setUser(String user_id){
+//        getInstance().setUserId(user_id);
+//    }
 
     /**
      * Is battery optimization enabled boolean.

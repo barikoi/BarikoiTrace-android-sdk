@@ -1,10 +1,12 @@
 package com.barikoi.barikoitrace.models;
 
 
+import org.json.JSONException;
+
 public final class BarikoiTraceErrors {
 
-    public static BarikoiTraceError jsonResponseError() {
-        return new BarikoiTraceError("BK402", "JSON response error");
+    public static BarikoiTraceError jsonResponseError(JSONException e) {
+        return new BarikoiTraceError("BK402", "JSON response error: "+ e.getMessage());
     }
 
 

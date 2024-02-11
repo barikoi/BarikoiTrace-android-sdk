@@ -22,11 +22,16 @@ public class JsonResponseAdapter {
             int status= responsejson.getInt("status");
             if(status==200){
                 JSONObject userjson=responsejson.getJSONObject("user");
-                int id= userjson.getInt("id");
+                String id= userjson.getString("_id");
                 String name= userjson.getString("name");
                 String email=userjson.getString("email");
                 String phone=userjson.getString("phone");
-                BarikoiTraceUser user=new BarikoiTraceUser(id+"", email,phone);
+                BarikoiTraceUser user= new BarikoiTraceUser.Builder()
+                        .setUserId(id)
+                        .setName(name)
+                        .setEmail(email)
+                        .setPhone(phone)
+                        .build();
                 return user;
             }else {
                 return null;
@@ -74,22 +79,15 @@ public class JsonResponseAdapter {
     }
 
 
-    public static Trip getTrip(JSONObject tripjson){
-
-        try{
-            String id= tripjson.has("_id")?tripjson.getString("id"): "";
-            String startTime= tripjson.getString("start_time");
-            int state = tripjson.getInt("status");
-            String user_id=tripjson.has("user")?tripjson.getString("user"):"";
-            String tag = tripjson.getString("tag");
-            String endTime =null;
-            if(tripjson.has("end_time")) endTime= tripjson.getString("start_time");
-            return new Trip(id,startTime,endTime,tag,state,user_id,1);
-
-        } catch (JSONException e) {
-            return null;
-        }
-
+    public static Trip getTrip(JSONObject tripjson) throws JSONException{
+        String id= tripjson.has("_id")?tripjson.getString("_id"): "";
+        String startTime= tripjson.getString("start_time");
+        int state = tripjson.getInt("status");
+        String user_id=tripjson.has("user")?tripjson.getString("user"):"";
+        String tag = tripjson.getString("tag");
+        String endTime =null;
+        if(tripjson.has("end_time")) endTime= tripjson.getString("end_time");
+        return new Trip(id,startTime,endTime,tag,state,user_id,1);
     }
     public static TraceMode getCompanySettings(JSONObject obj) throws JSONException{
 

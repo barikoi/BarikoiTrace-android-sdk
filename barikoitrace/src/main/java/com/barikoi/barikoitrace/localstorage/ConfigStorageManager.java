@@ -6,6 +6,7 @@ import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
+import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 
 import java.util.UUID;
 
@@ -233,6 +234,7 @@ public final class ConfigStorageManager {
     }
 
     public void removeUser() {
+        this.sharedPRefHelper.remove("name");
         this.sharedPRefHelper.remove("user_id");
         this.sharedPRefHelper.remove("email");
         this.sharedPRefHelper.remove("phone");
@@ -319,7 +321,21 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putString("user_id", str);
     }
 
-
+    public void setUser(BarikoiTraceUser user){
+        removeUser();
+        this.sharedPRefHelper.putString("user_id", user.getUserId());
+        this.sharedPRefHelper.putString("name", user.getName());
+        this.sharedPRefHelper.putString("phone", user.getPhone());
+        this.sharedPRefHelper.putString("email", user.getEmail());
+    }
+    public BarikoiTraceUser getUser(){
+        return new BarikoiTraceUser.Builder()
+                .setUserId(this.sharedPRefHelper.getString("user_id"))
+                .setName(this.sharedPRefHelper.getString("name"))
+                .setPhone(this.sharedPRefHelper.getString("phone"))
+                .setEmail(this.sharedPRefHelper.getString("email"))
+                .build();
+    }
 
     public String getBatteryState() {
         return TextUtils.isEmpty(this.sharedPRefHelper.getString("batteryState")) ? "unknown" : this.sharedPRefHelper.getString("batteryState");
