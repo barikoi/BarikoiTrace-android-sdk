@@ -163,10 +163,18 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.networkResponse.toString());
-                        callback.onFailure(BarikoiTraceErrors.serverError());
-                        //loading.setVisibility(View.GONE);
-                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
-                        //NetworkcallUtils.handleResponse(error,context);
+                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
+                            callback.onFailure(BarikoiTraceErrors.networkError());
+                        else if (error.networkResponse!=null && error.networkResponse.data!=null){
+                            String errorstring = new String(error.networkResponse.data);
+                            try {
+                                JSONObject responsejson=new JSONObject(errorstring);
+                                String msg= responsejson.getString("error");
+                                callback.onFailure(new BarikoiTraceError(error.networkResponse.statusCode+"",msg));
+                            } catch (JSONException e) {
+                                callback.onFailure(BarikoiTraceErrors.serverError());
+                            }
+                        }else callback.onFailure(BarikoiTraceErrors.serverError());
                     }
                 }
         ) {
@@ -233,7 +241,16 @@ public class ApiRequestManager {
                         Log.d("locationupdate","error:"+error.getMessage());
                         if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
                             callback.onFailure(BarikoiTraceErrors.networkError());
-                        else callback.onFailure(BarikoiTraceErrors.serverError());
+                        else if (error.networkResponse!=null && error.networkResponse.data!=null){
+                            String errorstring = new String(error.networkResponse.data);
+                            try {
+                                JSONObject responsejson=new JSONObject(errorstring);
+                                String msg= responsejson.getString("error");
+                                callback.onFailure(new BarikoiTraceError(error.networkResponse.statusCode+"",msg));
+                            } catch (JSONException e) {
+                                callback.onFailure(BarikoiTraceErrors.serverError());
+                            }
+                        }else callback.onFailure(BarikoiTraceErrors.serverError());
                     }
                 }
         ) {
