@@ -9,6 +9,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Spinner;
@@ -42,57 +43,91 @@ public class MainActivity extends AppCompatActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
-
-
-		if(BarikoiTrace.getUserId()!=null){
-			Toast.makeText(this, "UserId: "+BarikoiTrace.getUserId(), Toast.LENGTH_SHORT).show();
+		BarikoiTrace.requestNotificationPermission(this);
+		if (!BarikoiTrace.isLocationPermissionsGranted()) {
+			BarikoiTrace.requestLocationPermissions(MainActivity.this);
 		}
-		else{
-			Toast.makeText(this, "UserId: "+"null", Toast.LENGTH_SHORT).show();
+		if (!BarikoiTrace.isLocationSettingsOn()) {
+			BarikoiTrace.requestLocationServices(MainActivity.this);
 		}
-
-
-		BarikoiTrace.setOrCreateUser("sakib 6",null,"01914221144", new BarikoiTraceUserCallback() {
+		//set UI components
+		EditText tv_username = findViewById(R.id.tvUserName);
+		switchService = findViewById(R.id.switchService);
+		tagloc=findViewById(R.id.fab);
+		Button setuser=findViewById(R.id.button_set_user);
+		setuser.setOnClickListener(new View.OnClickListener(){
 			@Override
-			public void onFailure(BarikoiTraceError barikoiError) {
-				Log.e("userfail", barikoiError.getMessage());
-			}
-
-			@Override
-			public void onSuccess(BarikoiTraceUser traceUser) {
-				BarikoiTrace.requestDisableBatteryOptimization(MainActivity.this);
-				/*BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
+			public void onClick(View view) {
+				if(BarikoiTrace.isOnTrip()){
+					Toast.makeText(MainActivity.this, "cannot change user mid journey!", Toast.LENGTH_SHORT).show();
+					return;
+				}
+				BarikoiTrace.setOrCreateUser("sakib 4",null,tv_username.getText().toString(), new BarikoiTraceUserCallback() {
+					@Override
+					public void onFailure(BarikoiTraceError barikoiError) {
+						Toast.makeText(MainActivity.this, barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+					}
 
 					@Override
-					public void onSuccess() {
-						switchService.setChecked(BarikoiTrace.isOnTrip());
-						BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback(){
+					public void onSuccess(BarikoiTraceUser traceUser) {
+						Toast.makeText(MainActivity.this, "user set: " +traceUser.getName(), Toast.LENGTH_SHORT).show();
+						tv_username.setText(traceUser.getPhone());
+						BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
 
 							@Override
 							public void onSuccess() {
+								switchService.setChecked(BarikoiTrace.isOnTrip());
 
 							}
 
 							@Override
 							public void onFailure(BarikoiTraceError barikoiError) {
-
+								Log.e("tripstate", barikoiError.getMessage());
 							}
 						});
 					}
-
-					@Override
-					public void onFailure(BarikoiTraceError barikoiError) {
-						Log.e("tripstate", barikoiError.getMessage());
-					}
-				});*/
+				});
 			}
 		});
 
+		//set user
+		if(BarikoiTrace.getUserId()==null){
+			BarikoiTrace.setOrCreateUser("sakib 5",null,"01111111124", new BarikoiTraceUserCallback() {
+				@Override
+				public void onFailure(BarikoiTraceError barikoiError) {
+					Toast.makeText(MainActivity.this, barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+				}
+
+				@Override
+				public void onSuccess(BarikoiTraceUser traceUser) {
+					Toast.makeText(MainActivity.this, "user set: " +traceUser.getName(), Toast.LENGTH_SHORT).show();
+					tv_username.setText(traceUser.getPhone());
+					BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
+
+						@Override
+						public void onSuccess() {
+							switchService.setChecked(BarikoiTrace.isOnTrip());
+
+						}
+
+						@Override
+						public void onFailure(BarikoiTraceError barikoiError) {
+							Log.e("tripstate", barikoiError.getMessage());
+						}
+					});
+				}
+			});
+		}
+		else{
+			tv_username.setText(BarikoiTrace.getUser().getPhone());
+		}
+
+
+
+
 		BarikoiTrace.setOfflineTracking(true);
 		//username = prefs.getString(Api.NAME, "");
-		TextView tv_username = findViewById(R.id.tvUserName);
-		switchService = findViewById(R.id.switchService);
-		tagloc=findViewById(R.id.fab);
+
 		tagloc.setOnClickListener(view ->
 				BarikoiTrace.updateCurrentLocation(new BarikoiTraceLocationUpdateCallback() {
 			@Override
@@ -105,14 +140,13 @@ public class MainActivity extends AppCompatActivity {
 
 			}
 		}));
-		tv_username.setText(BarikoiTrace.getUserId());
 		String[] types = new String[]{"NONE", "ACTIVE", "REACTIVE", "PASSIVE"};
 		spinnertype = findViewById(R.id.spinnerType);
 		ArrayAdapter<String> aa = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, types);
 		aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		spinnertype.setAdapter(aa);
 
-		if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
+		if (BarikoiTrace.isOnTrip()) {
 			Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
@@ -151,53 +185,47 @@ public class MainActivity extends AppCompatActivity {
 					//System.out.println("already running no need to start again");
 			 		Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
 
-				}  else if (!BarikoiTrace.isLocationPermissionsGranted()) {
-					BarikoiTrace.requestLocationPermissions(MainActivity.this);
-				} else if (!BarikoiTrace.isLocationSettingsOn()) {
-					BarikoiTrace.requestLocationServices(MainActivity.this);
-				} else {
+				}  else {
 					tb.setDebugModeOn();
 					if (mode == null) mode = tb.build();
-					BarikoiTrace.startTracking(mode);
-//					BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
-//						@Override
-//						public void onSuccess() {
-//							Toast.makeText(getApplicationContext(), "trip started!!", Toast.LENGTH_SHORT).show();
-//
-//						}
-//
-//						@Override
-//						public void onFailure(BarikoiTraceError barikoiError) {
-//							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
-//
-//							switchService.setChecked(false);
-//						}
-//					});
+//					BarikoiTrace.startTracking(mode);
+					BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
+						@Override
+						public void onSuccess() {
+							Toast.makeText(getApplicationContext(), "trip started!!", Toast.LENGTH_SHORT).show();
+
+						}
+
+						@Override
+						public void onFailure(BarikoiTraceError barikoiError) {
+							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+
+							switchService.setChecked(false);
+						}
+					});
 
 				}
 			}
 			else {
-				BarikoiTrace.stopTracking();
-//				if (BarikoiTrace.isOnTrip()) {
-//					BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
-//						@Override
-//						public void onSuccess() {
-//							Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
-//
-//						}
-//
-//						@Override
-//						public void onFailure(BarikoiTraceError barikoiError) {
-//							switchService.setChecked(true);
-//							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
-//
-//						}
-//					});
-//					//if (!BarikoiTrace.isOnTrip()) {
-//						//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
-//					//}
-//				}else Toast.makeText(getApplicationContext(), "no trip to end!", Toast.LENGTH_SHORT).show();
-			}
+//				BarikoiTrace.stopTracking();
+					BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
+						@Override
+						public void onSuccess() {
+							Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
+
+						}
+
+						@Override
+						public void onFailure(BarikoiTraceError barikoiError) {
+							switchService.setChecked(true);
+							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+
+						}
+					});
+					//if (!BarikoiTrace.isOnTrip()) {
+						//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
+					//}
+				}
 		});
 
 	}
