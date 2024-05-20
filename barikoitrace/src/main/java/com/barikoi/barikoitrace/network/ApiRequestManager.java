@@ -5,6 +5,7 @@ import android.location.Location;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
@@ -162,7 +163,7 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.networkResponse.toString());
+//                        Log.d("locationupdate","error:"+error.networkResponse.toString());
                         if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
                             callback.onFailure(BarikoiTraceErrors.networkError());
                         else if (error.networkResponse!=null && error.networkResponse.data!=null){
@@ -293,7 +294,6 @@ public class ApiRequestManager {
                             JSONObject responsejson=new JSONObject(response);
                             int status= responsejson.getInt("status");
                             if(status==200){
-
                                 callback.onBulkUpdate();
                             }else {
                                 String msg= responsejson.getString("message");
