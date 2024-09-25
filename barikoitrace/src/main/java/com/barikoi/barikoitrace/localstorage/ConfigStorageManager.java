@@ -17,7 +17,7 @@ public final class ConfigStorageManager {
     private static ConfigStorageManager INSTANCE;
 
 
-    private SharedPRefHelper sharedPRefHelper;
+    private final SharedPRefHelper sharedPRefHelper;
 
     private ConfigStorageManager(Context context) {
         this.sharedPRefHelper = new SharedPRefHelper(context);
@@ -89,10 +89,6 @@ public final class ConfigStorageManager {
 
 
 
-    public String getOauth() {
-        return this.sharedPRefHelper.getString("oauth");
-    }
-
 
     public TraceMode.AppState getAppstate() {
         return TraceMode.AppState.toEnum(this.sharedPRefHelper.getString("appTrackingState"));
@@ -104,9 +100,6 @@ public final class ConfigStorageManager {
     }
 
 
-    public String getSubscribeTrip() {
-        return this.sharedPRefHelper.getString("subscribe_trip");
-    }
 
 
     public int getType() {
@@ -124,12 +117,12 @@ public final class ConfigStorageManager {
     }
 
 
-    public String getUUID() {
+    /*public String getUUID() {
         if (TextUtils.isEmpty(this.sharedPRefHelper.getString("uuid"))) {
             this.sharedPRefHelper.putString("uuid", UUID.randomUUID().toString());
         }
         return this.sharedPRefHelper.getString("uuid");
-    }
+    }*/
 
 
 
@@ -192,7 +185,24 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putString("speed", String.valueOf(location.getSpeed()));
     }
 
+    public Location getLastLocation() {
+        Location location = new Location("center");
+        String d = this.sharedPRefHelper.getString("latitude");
+        String d2 = this.sharedPRefHelper.getString("longitude");
+        String d3 = this.sharedPRefHelper.getString("time");
+        String d4 = this.sharedPRefHelper.getString("speed");
+        if (!(d == null || d2 == null || d3 == null || d4 == null)) {
+            location.setLatitude(Double.parseDouble(d));
+            location.setLongitude(Double.parseDouble(d2));
+            location.setTime(Long.parseLong(d3));
+            location.setSpeed((float) Math.round(Double.parseDouble(d4)));
+        }
+        return location;
+    }
 
+
+
+/*
     public void updateAppTrackingState(TraceMode.AppState appState) {
         this.sharedPRefHelper.putString("appTrackingState", appState.toString());
     }
@@ -210,7 +220,7 @@ public final class ConfigStorageManager {
 
     public void setTripTrackingOff() {
         this.sharedPRefHelper.putBoolean("trip_tracking", false);
-    }
+    }*/
 
 
 
@@ -248,14 +258,6 @@ public final class ConfigStorageManager {
 
 
 
-    public String m241e() {
-        return this.sharedPRefHelper.getString("account_id");
-    }
-
-
-    public void m242e(String str) {
-        this.sharedPRefHelper.putString("device_token", str);
-    }
 
 
     public void setAccuracyEngine(boolean z) {
@@ -275,9 +277,6 @@ public final class ConfigStorageManager {
     }
 
 
-    public void m248g(String str) {
-        this.sharedPRefHelper.putString("project_id", str);
-    }
 
 
 
@@ -297,11 +296,6 @@ public final class ConfigStorageManager {
 
 
 
-
-
-    public String getBaseUrl() {
-        return this.sharedPRefHelper.getString("baseurl");
-    }
 
 
 
@@ -381,26 +375,8 @@ public final class ConfigStorageManager {
         return this.sharedPRefHelper.getBoolean("onTrip");
     }
 
-    public Location getLastLocation() {
-        Location location = new Location("center");
-        String d = this.sharedPRefHelper.getString("latitude");
-        String d2 = this.sharedPRefHelper.getString("longitude");
-        String d3 = this.sharedPRefHelper.getString("time");
-        String d4 = this.sharedPRefHelper.getString("speed");
-        if (!(d == null || d2 == null || d3 == null || d4 == null)) {
-            location.setLatitude(Double.parseDouble(d));
-            location.setLongitude(Double.parseDouble(d2));
-            location.setTime(Long.parseLong(d3));
-            location.setSpeed((float) Math.round(Double.parseDouble(d4)));
-        }
-        return location;
-    }
 
 
-
-    public int m278t() {
-        return this.sharedPRefHelper.getInt("locationCount");
-    }
 
 
 

@@ -5,7 +5,6 @@ import android.location.Location;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
@@ -43,13 +42,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ApiRequestManager {
     private static ApiRequestManager INSTANCE;
-    private ConfigStorageManager configStorageManager;
-    private RequestQueue requestQueue;
+    private final ConfigStorageManager configStorageManager;
+    private final RequestQueue requestQueue;
     private String id, key;
     public static ApiRequestManager getInstance(Context context) {
         if (INSTANCE == null){
@@ -70,31 +70,27 @@ public class ApiRequestManager {
         key=configStorageManager.getApiKey();
         StringRequest request = new StringRequest(Request.Method.POST,
                 Api.user_url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            int status= responsejson.getInt("status");
-                            if(status==200 || status==201){
-                                JSONObject userjson=responsejson.getJSONObject("user");
-                                String id= userjson.getString("_id");
-                                String name= userjson.getString("name");
-                                String email=userjson.getString("email");
-                                String phone=userjson.getString("phone");
-                                BarikoiTraceUser user=new BarikoiTraceUser.Builder().setUserId(id).setPhone(phone).setEmail(email).build();
-                                configStorageManager.setUser(user);
-                                callback.onSuccess(user);
-                            }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
-                            }
-                        } catch (JSONException e) {
-
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        int status= responsejson.getInt("status");
+                        if(status==200 || status==201){
+                            JSONObject userjson=responsejson.getJSONObject("user");
+                            String id= userjson.getString("_id");
+                            String name= userjson.getString("name");
+                            String email1 =userjson.getString("email");
+                            String phone1 =userjson.getString("phone");
+                            BarikoiTraceUser user=new BarikoiTraceUser.Builder().setUserId(id).setPhone(phone1).setEmail(email1).build();
+                            configStorageManager.setUser(user);
+                            callback.onSuccess(user);
+                        }else {
+                            String msg= responsejson.getString("message");
+                            callback.onFailure(new BarikoiTraceError(status+"",msg));
                         }
-                    }
+                    } catch (JSONException e) {
 
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                    }
                 },
                 new Response.ErrorListener() {
                     @Override
@@ -147,7 +143,7 @@ public class ApiRequestManager {
                                         .setName(name)
                                         .build();
                                 configStorageManager.setUser(user);
-                                setId(id+"");
+                                setId(id);
                                 callback.onSuccess(user);
                             }else {
                                 String msg= responsejson.getString("message");
@@ -224,7 +220,6 @@ public class ApiRequestManager {
                             JSONObject responsejson=new JSONObject(response);
                             int status= responsejson.getInt("status");
                             if(status==200){
-
                                 callback.onlocationUpdate(location);
                             }else {
                                 String msg= responsejson.getString("message");
@@ -350,13 +345,14 @@ public class ApiRequestManager {
                     public void onResponse(String response) {
                         try {
                             JSONObject responsejson=new JSONObject(response);
+                            Log.d("tripstart", responsejson.toString());
                             String status= responsejson.getString("status");
                             if(status.equals("success")){
-
-                                callback.onSuccess();
+                                Trip trip = JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip"));
+                                callback.onSuccess(trip);
                             }else {
                                 String msg= responsejson.getString("error");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
+                                callback.onFailure(new BarikoiTraceError(status,msg));
                             }
                         } catch (JSONException e) {
                             callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
@@ -367,7 +363,7 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d("BarikoiTraceTrip","error:"+error.networkResponse.statusCode);
+//                        Log.d("BarikoiTraceTrip","error:"+error.networkResponse.statusCode);
                         if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
                             callback.onFailure(BarikoiTraceErrors.networkError());
                         else if (error.networkResponse!=null && error.networkResponse.data!=null){
@@ -430,7 +426,7 @@ public class ApiRequestManager {
                             int status= responsejson.getInt("status");
                             if(status==200 || status ==201){
 
-                                callback.onSuccess();
+                                callback.onSuccess(trip);
 
                             }else {
                                 String msg= responsejson.getString("message");
@@ -472,11 +468,12 @@ public class ApiRequestManager {
                         try {
                             JSONObject responsejson=new JSONObject(response);
                             String status= responsejson.getString("status");
+                            Log.d("tripend", responsejson.toString());
                             if(status.equals("success")){
-                                callback.onSuccess();
+                                callback.onSuccess(JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip")));
                             }else {
                                 String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
+                                callback.onFailure(new BarikoiTraceError(status,msg));
                             }
                         } catch (JSONException e) {
                             callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
@@ -634,8 +631,8 @@ public class ApiRequestManager {
                     }
                 }){
             @Override
-            protected Map<String, String> getParams() throws AuthFailureError {
-                Map<String, String> parameters = new HashMap<String, String>();
+            protected Map<String, String> getParams() {
+                Map<String, String> parameters = new HashMap<>();
                 parameters.put("user_id", id);
                 return parameters;
             }
@@ -643,7 +640,7 @@ public class ApiRequestManager {
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             protected Map<String, DataPart> getByteData() throws AuthFailureError {
-                Map<String, DataPart> parameters = new HashMap<String, DataPart>();
+                Map<String, DataPart> parameters = new HashMap<>();
                 String filename = path.substring(path.lastIndexOf("/"));
                 parameters.put("log", new DataPart(filename, getFileData(path)));
                 return parameters;
@@ -689,20 +686,29 @@ public class ApiRequestManager {
 
 
 
-    private String paramString(HashMap<String,String> map){
+    private String paramString(HashMap<String,String> params){
+        StringBuilder result = new StringBuilder();
+        boolean first = true;
 
-        String params="?";
-        for (Map.Entry<String, String> mapElement : map.entrySet()) {
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (first) {
+                first = false;
+                result.append("?");
+            }
+            else
+                result.append("&");
 
             try {
-                params=params+(mapElement.getKey() + "=" + URLEncoder.encode(String.valueOf(mapElement.getValue()), "UTF-8" )+"&");
-
+                result.append(URLEncoder.encode(entry.getKey(), "UTF-8"));
+                result.append("=");
+                result.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                // This exception should never occur for UTF-8 encoding
+                throw new RuntimeException("Failed to encode parameters", e);
             }
         }
-        return params.substring(0,params.length()-1);
 
+        return result.toString();
     }
 
 

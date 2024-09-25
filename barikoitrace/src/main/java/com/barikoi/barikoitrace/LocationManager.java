@@ -3,8 +3,8 @@ package com.barikoi.barikoitrace;
 import android.app.Application;
 import android.content.Context;
 import android.location.Location;
-import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 
 
 import com.barikoi.barikoitrace.Utils.NetworkChecker;
@@ -26,9 +26,6 @@ import com.barikoi.barikoitrace.network.ApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p001c.ApplicationBinder;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
-
-import java.util.ArrayList;
-import java.util.Map;
 
 
 public final class LocationManager {
@@ -128,6 +125,7 @@ public final class LocationManager {
     void m15a(String str) {
         setApiKey(str);
         if(confdb.isSdkTracking() && !locationTracker.isTrackingOn()){
+            Log.d("tracestate", "tracking needs restart");
             if(confdb.getTraceMode()!=null)
                 startTracking(confdb.getTraceMode());
         }
@@ -165,7 +163,7 @@ public final class LocationManager {
 
     public void setApiKey(String str) {
         Context context = this.context;
-        ((Application) context).registerActivityLifecycleCallbacks(new ApplicationBinder(context, this.confdb, this.locationTracker));
+        ((Application) context).registerActivityLifecycleCallbacks(new ApplicationBinder(context, this.confdb));
         this.confdb.setApiKey(str);
         apiRequestManager.setKey(str);
         setLogging(true);
@@ -270,10 +268,10 @@ public final class LocationManager {
                     }
                 }else if(isOnTrip()){
                     confdb.setOnTrip(false);
-                    //confdb.stopSdkTracking();
+                    confdb.stopSdkTracking();
                     locationTracker.stopLocationService();
                 }
-                callback.onSuccess();
+                callback.onSuccess(trip);
             }
 
             @Override
@@ -291,9 +289,6 @@ public final class LocationManager {
 
 
 
-
-
-
     public void setLogging(boolean z) {
         this.confdb.setLogging(z);
     }
@@ -304,11 +299,6 @@ public final class LocationManager {
         return SystemSettingsManager.checkLocationSettings(this.context);
     }
 
-
-    public void m36d() {
-        this.confdb.setAccuracyEngine(false);
-        BarikoiTraceLogView.onSuccess("Accuracy engine disabled");
-    }
 
     /*
     *//*
@@ -341,10 +331,15 @@ public final class LocationManager {
     }
 
 
-
-
-    public String m47h() {
-        return this.confdb.getDeviceToken();
+    public void refreshTracking() {
+        Log.d("tracestate", this.confdb.isSdkTracking() +" "+m50j() +" "+this.confdb.getLastLocation().getTime() +" "+this.confdb.isOnTrip());
+        if (this.confdb.isSdkTracking() || m50j()) {
+            Log.d("BarikoiTrace", "refreshing tracking " +System.currentTimeMillis()/1000 + " " +this.confdb.getLastLocation().getTime()/1000+" " +this.confdb.getUpdateInterval() );
+            if(System.currentTimeMillis() - this.confdb.getLastLocation().getTime()> this.confdb.getUpdateInterval()*1000){
+                this.locationTracker.stopLocationService();
+                this.locationTracker.startLocationService();
+            }
+        }
     }
 
 

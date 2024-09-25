@@ -17,7 +17,6 @@ import com.barikoi.barikoitrace.models.BarikoiTraceUser;
  * Barikoi trace base class. entry point for all trace related functions.
  */
 public class BarikoiTrace {
-    private static final String TAG=BarikoiTrace.class.getName();
     /**
      * The constant EXTRA.
      */
@@ -53,14 +52,6 @@ public class BarikoiTrace {
         getInstance().m15a(apikey);
     }
 
-    /**
-     * set Barikoi User by the user ID
-     *
-     * @param id ID of the BarikoiTrace user in STRING
-     */
-    public void setUserId(String id){
-        getInstance().setUserId(id);
-    }
 
     /**
      * Gets user id.
@@ -146,7 +137,7 @@ public class BarikoiTrace {
     }
 
     /**
-     * Opents Autostart settings intent for some custom android OS. Autostart settings is needed for loation service management
+     * Opens Autostart settings intent for some custom android OS. Autostart settings is needed for loation service management
      *
      * @param context the context
      */

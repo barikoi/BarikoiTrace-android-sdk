@@ -1,12 +1,9 @@
 package com.barikoi.barikoitrace.service;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
-import android.os.SystemClock;
 
 import androidx.annotation.Keep;
 
@@ -52,7 +49,7 @@ public class BarikoiTraceReceiver extends BroadcastReceiver {
                         onLocationUpdated(context, new BarikoiTraceLocation(a.getUserID(), location, string, DateTimeUtils.getCurrentDateTimeUTC(), DateTimeUtils.getCurrentDateTimeStringPST()));
                     }
                     Gson gson = new Gson();
-                    BarikoiTraceEvents traceEvents = (BarikoiTraceEvents) gson.fromJson(intent.getExtras().getString("com.barikoi.trace.android.EVENTS", null), BarikoiTraceEvents.class);
+                    BarikoiTraceEvents traceEvents =  gson.fromJson(intent.getExtras().getString("com.barikoi.trace.android.EVENTS", null), BarikoiTraceEvents.class);
                     if (traceEvents != null && traceEvents.getEvents().size() > 0) {
                         onEventReceived(context, traceEvents.getEvents().get(0));
                     }

@@ -10,6 +10,7 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
@@ -154,7 +155,7 @@ public final class LocationTracker implements LocationUpdateListener {
                 ApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
                     @Override
                     public void onlocationUpdate(Location location) {
-
+                        Toast.makeText(context, "Location Updated", Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
@@ -162,7 +163,7 @@ public final class LocationTracker implements LocationUpdateListener {
                         BarikoiTraceLogView.onFailure(barikoiError);
                         if(barikoiError.equals(BarikoiTraceErrors.networkError()) && storageManager.isOfflineTracking()){
                             try {
-
+                                Toast.makeText(context, "Location update failed, saved offline", Toast.LENGTH_SHORT).show();
                                 locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
                             } catch (BarikoiTraceException e) {
                                 e.printStackTrace();
@@ -332,6 +333,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void stopLocationService() {
             logdb.writeLog("location service stopping");
+            logdb.generateDBFile();
             this.context.stopService(new Intent(this.context, BarikoiTraceLocationService.class));
             stopPeriodicLocationUpdate();
             this.storageManager.m235c();
@@ -363,14 +365,14 @@ public final class LocationTracker implements LocationUpdateListener {
             }
 
             @Override
-            public void onSuccess() {
+            public void onSuccess(Trip trip) {
                 logdb.writeLog("trip started succesfully ");
 
                 storageManager.setOnTrip(true);
                 storageManager.turnTrackingOn();
                 //storageManager.turnTrackingOn(traceMode);
                 startLocationService();
-                callback.onSuccess();
+                callback.onSuccess(trip);
                 //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 1);
             }
         });
@@ -394,13 +396,13 @@ public final class LocationTracker implements LocationUpdateListener {
                 }
 
                 @Override
-                public void onSuccess() {
+                public void onSuccess(Trip trip) {
                     storageManager.setOnTrip(false);
                     logdb.writeLog("Trip ended successfully ");
                     logdb.generateDBFile();
                     storageManager.stopSdkTracking();
                     stopLocationService();
-                    callback.onSuccess();
+                    callback.onSuccess(trip);
                     //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 1);
                 }
             });
@@ -434,7 +436,7 @@ public final class LocationTracker implements LocationUpdateListener {
                 }
 
                 @Override
-                public void onSuccess() {
+                public void onSuccess(Trip trip) {
                     locdbhelper.removeTrip(trip.getTrip_id());
                 }
             });
@@ -446,7 +448,7 @@ public final class LocationTracker implements LocationUpdateListener {
                     }
 
                     @Override
-                    public void onSuccess() {
+                    public void onSuccess(Trip trip) {
                         locdbhelper.removeTrip(trip.getTrip_id());
                     }
                 });

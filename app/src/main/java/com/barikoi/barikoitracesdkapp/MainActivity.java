@@ -1,19 +1,15 @@
 package com.barikoi.barikoitracesdkapp;
 
-import android.content.DialogInterface;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -28,6 +24,7 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
+import com.barikoi.barikoitrace.models.createtrip.Trip;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 
@@ -65,7 +62,13 @@ public class MainActivity extends AppCompatActivity {
 				BarikoiTrace.setOrCreateUser("sakib 4",null,tv_username.getText().toString(), new BarikoiTraceUserCallback() {
 					@Override
 					public void onFailure(BarikoiTraceError barikoiError) {
-						Toast.makeText(MainActivity.this, barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+						//if user not fetched from online, alternatively check if user already saved in device storage for trace
+						if(BarikoiTrace.getUser().getPhone().equals("01676529696")){
+							Toast.makeText(MainActivity.this, "user not found in online , found in local storage",Toast.LENGTH_SHORT).show();
+							//user found offline, prceed to call same operations as in onSuccess method
+						}else{
+							Toast.makeText(MainActivity.this, barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+						}
 					}
 
 					@Override
@@ -75,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
 						BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
 
 							@Override
-							public void onSuccess() {
+							public void onSuccess(Trip trip) {
 								switchService.setChecked(BarikoiTrace.isOnTrip());
 
 							}
@@ -105,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
 					BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
 
 						@Override
-						public void onSuccess() {
+						public void onSuccess(Trip trip) {
 							switchService.setChecked(BarikoiTrace.isOnTrip());
 
 						}
@@ -168,7 +171,11 @@ public class MainActivity extends AppCompatActivity {
 				int df = Integer.parseInt(dftext.getText().toString());
 				int af = Integer.parseInt(aftext.getText().toString());
 				TraceMode.Builder tb = new TraceMode.Builder();
-				if (ui > 0) tb.setUpdateInterval(ui);
+				if (ui > 0) {
+					tb.setUpdateInterval(ui);
+					tb.setPingSyncInterval(ui * 3);
+				}
+
 				if (df > 0) tb.setDistancefilter(df);
 				if (af > 0) tb.setAccuracyFilter(af);
 
@@ -178,21 +185,29 @@ public class MainActivity extends AppCompatActivity {
 						mode = TraceMode.REACTIVE;
 					if (spinnertype.getSelectedItem().equals("PASSIVE"))
 						mode = TraceMode.PASSIVE;
+					if (mode == null) mode = tb.build();
+					BarikoiTrace.startTracking(mode);
 				}
 
 				if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
-					Log.d("locationupdate", "already running no need to start again");
-					//System.out.println("already running no need to start again");
+					Log.d("locationupdate", "already running no need to start again"+ BarikoiTrace.isOnTrip() + " "+BarikoiTrace.isLocationTracking());
 			 		Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
 
 				}  else {
 					tb.setDebugModeOn();
 					if (mode == null) mode = tb.build();
-//					BarikoiTrace.startTracking(mode);
+					TraceMode finalMode = mode;
+					if(BarikoiTrace.isLocationPermissionsGranted()){
+//						BarikoiTrace.startTracking(finalMode);
+					}else{
+						switchService.setChecked(false);
+						Toast.makeText(this, "location permission denied", Toast.LENGTH_SHORT).show();
+					}
+					
 					BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
 						@Override
-						public void onSuccess() {
-							Toast.makeText(getApplicationContext(), "trip started!!", Toast.LENGTH_SHORT).show();
+						public void onSuccess(Trip trip) {
+							Toast.makeText(getApplicationContext(), "trip started!! id: "+ trip.getTrip_id(), Toast.LENGTH_SHORT).show();
 
 						}
 
@@ -210,8 +225,8 @@ public class MainActivity extends AppCompatActivity {
 //				BarikoiTrace.stopTracking();
 					BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
 						@Override
-						public void onSuccess() {
-							Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
+						public void onSuccess(Trip trip) {
+							Toast.makeText(getApplicationContext(), "trip stopped!!: id" +trip.getTrip_id(), Toast.LENGTH_SHORT).show();
 
 						}
 
@@ -231,7 +246,11 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 
-
+	@Override
+	protected void onResume() {
+		super.onResume();
+//		BarikoiTrace.refreshtracking();
+	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
