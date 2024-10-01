@@ -10,7 +10,6 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.PeriodicWorkRequest;
@@ -155,7 +154,7 @@ public final class LocationTracker implements LocationUpdateListener {
                 ApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
                     @Override
                     public void onlocationUpdate(Location location) {
-                        Toast.makeText(context, "Location Updated", Toast.LENGTH_SHORT).show();
+                        Log.d("trace", "Location Updated");
                     }
 
                     @Override
@@ -163,7 +162,7 @@ public final class LocationTracker implements LocationUpdateListener {
                         BarikoiTraceLogView.onFailure(barikoiError);
                         if(barikoiError.equals(BarikoiTraceErrors.networkError()) && storageManager.isOfflineTracking()){
                             try {
-                                Toast.makeText(context, "Location update failed, saved offline", Toast.LENGTH_SHORT).show();
+                                Log.d("trace", "Location sned failed, saved offline");
                                 locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
                             } catch (BarikoiTraceException e) {
                                 e.printStackTrace();
