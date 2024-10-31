@@ -10,8 +10,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
 
-    <application
-        android:usesCleartextTraffic="true">
+    <application>
         <service
             android:name="com.barikoi.barikoitrace.service.BarikoiTraceLocationService"
             android:foregroundServiceType="location|dataSync"

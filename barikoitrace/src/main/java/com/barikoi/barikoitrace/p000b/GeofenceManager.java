@@ -17,7 +17,7 @@ import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.event.BootEventReceiver;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
-import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
+//import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.network.RequestQueueSingleton;
 import com.google.android.gms.location.Geofence;
@@ -52,11 +52,11 @@ public final class GeofenceManager {
     private LocationTracker locationTracker;
 
     /* renamed from: e */
-    private LogDbHelper logDbHelper;
+//    private LogDbHelper logDbHelper;
 
     private GeofenceManager(Context context) {
         this.f39a = context;
-        this.logDbHelper = LogDbHelper.getInstance(context);
+//        this.logDbHelper = LogDbHelper.getInstance(context);
         this.f40b = ConfigStorageManager.getInstance(context);
         this.locationTracker = new LocationTracker(context);
         this.geoclient = LocationServices.getGeofencingClient(context);

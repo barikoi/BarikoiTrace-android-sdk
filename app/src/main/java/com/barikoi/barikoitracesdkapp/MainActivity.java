@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
+		BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
 		BarikoiTrace.requestNotificationPermission(this);
 		if (!BarikoiTrace.isLocationPermissionsGranted()) {
 			BarikoiTrace.requestLocationPermissions(MainActivity.this);

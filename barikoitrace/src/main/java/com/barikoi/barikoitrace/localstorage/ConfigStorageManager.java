@@ -321,6 +321,7 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putString("name", user.getName());
         this.sharedPRefHelper.putString("phone", user.getPhone());
         this.sharedPRefHelper.putString("email", user.getEmail());
+        this.sharedPRefHelper.putLong("user_live_time", System.currentTimeMillis());
     }
     public BarikoiTraceUser getUser(){
         return new BarikoiTraceUser.Builder()
@@ -328,6 +329,7 @@ public final class ConfigStorageManager {
                 .setName(this.sharedPRefHelper.getString("name"))
                 .setPhone(this.sharedPRefHelper.getString("phone"))
                 .setEmail(this.sharedPRefHelper.getString("email"))
+                .setUpdatedAt(this.sharedPRefHelper.getLong("user_live_time"))
                 .build();
     }
 

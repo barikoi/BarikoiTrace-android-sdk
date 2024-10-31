@@ -29,7 +29,7 @@ import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.localstorage.sqlitedb.LocationDbHelper;
-import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
+//import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.LocationUtils;
@@ -64,7 +64,7 @@ public final class LocationTracker implements LocationUpdateListener {
     private LocationDbHelper locdbhelper;
 
 
-    private LogDbHelper logdb;
+//    private LogDbHelper logdb;
 
 
     private BarikoiTraceLocationCallback locationCallback;
@@ -74,7 +74,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public LocationTracker(Context context) {
         this.context = context;
-        this.logdb = LogDbHelper.getInstance(context);
+//        this.logdb = LogDbHelper.getInstance(context);
         this.locdbhelper = LocationDbHelper.getInstance(context);
         this.storageManager = ConfigStorageManager.getInstance(context);
     }
@@ -110,10 +110,10 @@ public final class LocationTracker implements LocationUpdateListener {
     public void m74a() {
         if (!TextUtils.isEmpty(this.storageManager.getUserID())) {
             if (SystemSettingsManager.checkLocationSettings(this.context)) {
-                this.logdb.writeLog("GPS: enabled");
+//                this.logdb.writeLog("GPS: enabled");
                 this.storageManager.m252h(true);
             } else if (!this.storageManager.getGPSCheck()) {
-                this.logdb.writeLog("GPS: disabled");
+//                this.logdb.writeLog("GPS: disabled");
                 this.storageManager.m252h(false);
                 m73m();
             }
@@ -181,7 +181,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void uploadOfflineData(){
         storageManager.setDataSyncing(true);
-        logdb.writeLog("location syncing started. offline count: "+locdbhelper.getofflinecount() );
+//        logdb.writeLog("location syncing started. offline count: "+locdbhelper.getofflinecount() );
             final JSONArray data=locdbhelper.getLocationJson(storageManager.getUserID());
 
             ApiRequestManager.getInstance(context).sendOfflineData(data, new BarikoiTraceBulkUpdateCallback() {
@@ -309,7 +309,7 @@ public final class LocationTracker implements LocationUpdateListener {
     public void startLocationService() {
           periodicLocationUpdate();
 //        if (!isTrackingOn() ) {
-            logdb.writeLog("location service starting");
+//            logdb.writeLog("location service starting");
             if (VERSION.SDK_INT >= VERSION_CODES.O) {
                 this.context.startForegroundService(new Intent(this.context, BarikoiTraceLocationService.class));
             }else{
@@ -331,8 +331,8 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
     public void stopLocationService() {
-            logdb.writeLog("location service stopping");
-            logdb.generateDBFile();
+//            logdb.writeLog("location service stopping");
+//            logdb.generateDBFile();
             this.context.stopService(new Intent(this.context, BarikoiTraceLocationService.class));
             stopPeriodicLocationUpdate();
             this.storageManager.m235c();
@@ -352,20 +352,20 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void startTrip(final String tag, final TraceMode traceMode, final BarikoiTraceTripStateCallback callback){
         final String startTime= DateTimeUtils.getCurrentTimeLocal();
-        logdb.writeLog("requested start trip");
-        logdb.writeDeviceLog();
+//        logdb.writeLog("requested start trip");
+//        logdb.writeDeviceLog();
         storageManager.setTraceMode(traceMode);
         ApiRequestManager.getInstance(context).startTrip(startTime, traceMode, tag, new BarikoiTraceTripApiCallback() {
             @Override
             public void onFailure(BarikoiTraceError barikoiError) {
-                logdb.writeLog("start trip failed: "+barikoiError.getMessage());
+//                logdb.writeLog("start trip failed: "+barikoiError.getMessage());
                 //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 0);
                 callback.onFailure(barikoiError);
             }
 
             @Override
             public void onSuccess(Trip trip) {
-                logdb.writeLog("trip started succesfully ");
+//                logdb.writeLog("trip started succesfully ");
 
                 storageManager.setOnTrip(true);
                 storageManager.turnTrackingOn();
@@ -390,15 +390,15 @@ public final class LocationTracker implements LocationUpdateListener {
                 @Override
                 public void onFailure(BarikoiTraceError barikoiError) {
                     callback.onFailure(barikoiError);
-                    logdb.writeLog("trip end failed: "+barikoiError.getMessage());
+//                    logdb.writeLog("trip end failed: "+barikoiError.getMessage());
                     //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 2);
                 }
 
                 @Override
                 public void onSuccess(Trip trip) {
                     storageManager.setOnTrip(false);
-                    logdb.writeLog("Trip ended successfully ");
-                    logdb.generateDBFile();
+//                    logdb.writeLog("Trip ended successfully ");
+//                    logdb.generateDBFile();
                     storageManager.stopSdkTracking();
                     stopLocationService();
                     callback.onSuccess(trip);
@@ -411,7 +411,7 @@ public final class LocationTracker implements LocationUpdateListener {
                 syncOfflineTrips();
             }*/
         }else {
-            logdb.writeLog("Trip end failed, "+BarikoiTraceErrors.tripStateError().getMessage());
+//            logdb.writeLog("Trip end failed, "+BarikoiTraceErrors.tripStateError().getMessage());
             storageManager.stopSdkTracking();
             stopLocationService();
             callback.onFailure(BarikoiTraceErrors.tripStateError());

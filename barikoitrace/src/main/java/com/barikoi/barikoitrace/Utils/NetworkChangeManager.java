@@ -12,7 +12,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
-import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
+//import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 
 
@@ -21,7 +21,7 @@ public class NetworkChangeManager {
 
     private Context context;
 
-    LogDbHelper logdb;
+//    LogDbHelper logdb;
 
 
     private ConnectivityManager.NetworkCallback networkCallback;
@@ -75,7 +75,7 @@ public class NetworkChangeManager {
 
     public NetworkChangeManager(Context context) {
         this.context = context;
-        this.logdb= LogDbHelper.getInstance(context);
+//        this.logdb= LogDbHelper.getInstance(context);
     }
 
 

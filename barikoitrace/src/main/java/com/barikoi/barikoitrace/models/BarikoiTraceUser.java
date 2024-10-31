@@ -11,6 +11,7 @@ public class BarikoiTraceUser {
     private double lastLat;
     private double lastLon;
     private String group;
+    private  long updatedAt;
     private BarikoiTraceUser(){
 
     }
@@ -36,6 +37,7 @@ public class BarikoiTraceUser {
         this.lastLat=builder.lastLat;
         this.lastLon=builder.lastLon;
         this.group=builder.group;
+        this.updatedAt=builder.updatedAt;
     }
 
     public String getPhone() {
@@ -50,6 +52,10 @@ public class BarikoiTraceUser {
         return name;
     }
 
+    public long getUpdatedAt() {
+        return updatedAt;
+    }
+
     public static class Builder{
         private String name;
         private String email;
@@ -58,7 +64,7 @@ public class BarikoiTraceUser {
         private double lastLat;
         private double lastLon;
         private String group;
-
+        private long updatedAt;
         public Builder(){
 
         }
@@ -80,6 +86,9 @@ public class BarikoiTraceUser {
             return this;
         }public Builder setEmail(String email){
             this.email=email;
+            return this;
+        }public Builder setUpdatedAt(long updatedAt){
+            this.updatedAt=updatedAt;
             return this;
         }
 

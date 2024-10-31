@@ -2,8 +2,7 @@ package com.barikoi.barikoitrace.network;
 
 
 public class Api {
-    public static final String base_url="https://tracev2.barikoimaps.dev";
-
+    public static final String base_url="https://trace.bmapsbd.com";
     public static final String start_trip_url=base_url+"/trip/create";
     public static final String end_trip_url=base_url+"/trip/end";
     public static final String trip_sync_url=base_url+"/trip/offline";

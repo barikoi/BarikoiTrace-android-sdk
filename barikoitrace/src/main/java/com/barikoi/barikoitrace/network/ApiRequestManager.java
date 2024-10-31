@@ -5,6 +5,7 @@ import android.location.Location;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
@@ -96,7 +97,7 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.getMessage());
-                        callback.onFailure(BarikoiTraceErrors.serverError());
+                        callback.onFailure(handleError(error));
 
                     }
                 }
@@ -118,8 +119,6 @@ public class ApiRequestManager {
     }
 
     public void setorCreateUser(final String name, final String email, final String phone, final BarikoiTraceUserCallback callback){
-
-
         key=configStorageManager.getApiKey();
         StringRequest request = new StringRequest(Request.Method.POST,
                 Api.get_create_user_url,
@@ -159,19 +158,9 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-//                        Log.d("locationupdate","error:"+error.networkResponse.toString());
-                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
-                            callback.onFailure(BarikoiTraceErrors.networkError());
-                        else if (error.networkResponse!=null && error.networkResponse.data!=null){
-                            String errorstring = new String(error.networkResponse.data);
-                            try {
-                                JSONObject responsejson=new JSONObject(errorstring);
-                                String msg= responsejson.getString("error");
-                                callback.onFailure(new BarikoiTraceError(error.networkResponse.statusCode+"",msg));
-                            } catch (JSONException e) {
-                                callback.onFailure(BarikoiTraceErrors.serverError());
-                            }
-                        }else callback.onFailure(BarikoiTraceErrors.serverError());
+                        Log.d( "locationupdate", error.getMessage());
+
+                        callback.onFailure(handleError(error));
                     }
                 }
         ) {
@@ -235,18 +224,7 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.getMessage());
-                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
-                            callback.onFailure(BarikoiTraceErrors.networkError());
-                        else if (error.networkResponse!=null && error.networkResponse.data!=null){
-                            String errorstring = new String(error.networkResponse.data);
-                            try {
-                                JSONObject responsejson=new JSONObject(errorstring);
-                                String msg= responsejson.getString("error");
-                                callback.onFailure(new BarikoiTraceError(error.networkResponse.statusCode+"",msg));
-                            } catch (JSONException e) {
-                                callback.onFailure(BarikoiTraceErrors.serverError());
-                            }
-                        }else callback.onFailure(BarikoiTraceErrors.serverError());
+                        callback.onFailure(handleError(error));
                     }
                 }
         ) {
@@ -304,9 +282,7 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         Log.d("locationupdate","error:"+error.getMessage());
-                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
-                            callback.onFailure(BarikoiTraceErrors.networkError());
-                        else callback.onFailure(BarikoiTraceErrors.serverError());
+                        callback.onFailure(handleError(error));
 
                     }
                 }
@@ -363,19 +339,7 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-//                        Log.d("BarikoiTraceTrip","error:"+error.networkResponse.statusCode);
-                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
-                            callback.onFailure(BarikoiTraceErrors.networkError());
-                        else if (error.networkResponse!=null && error.networkResponse.data!=null){
-                            String errorstring = new String(error.networkResponse.data);
-                            try {
-                                JSONObject responsejson=new JSONObject(errorstring);
-                                String msg= responsejson.getString("error");
-                                callback.onFailure(new BarikoiTraceError(error.networkResponse.statusCode+"",msg));
-                            } catch (JSONException e) {
-                                callback.onFailure(BarikoiTraceErrors.serverError());
-                            }
-                        }else callback.onFailure(BarikoiTraceErrors.serverError());
+                        callback.onFailure(handleError(error));
                     }
                 }
         ) {
@@ -445,7 +409,7 @@ public class ApiRequestManager {
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
                         //NetworkcallUtils.handleResponse(error,context);
-                        callback.onFailure( BarikoiTraceErrors.serverError());
+                        callback.onFailure( handleError(error));
                     }
                 }
         ) {
@@ -485,18 +449,7 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
-                            callback.onFailure(BarikoiTraceErrors.networkError());
-                        else if (error.networkResponse!=null && error.networkResponse.data!=null){
-                            String errorstring = new String(error.networkResponse.data);
-                            try {
-                                JSONObject responsejson=new JSONObject(errorstring);
-                                String msg= responsejson.getString("error");
-                                callback.onFailure(new BarikoiTraceError(error.networkResponse.statusCode+"",msg));
-                            } catch (JSONException e) {
-                                callback.onFailure(BarikoiTraceErrors.serverError());
-                            }
-                        }else callback.onFailure(BarikoiTraceErrors.serverError());
+                        callback.onFailure(handleError(error));
                     }
                 }
         ) {
@@ -549,9 +502,7 @@ public class ApiRequestManager {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        if (error instanceof NetworkError || error instanceof NoConnectionError || error instanceof  TimeoutError)
-                            callback.onFailure(BarikoiTraceErrors.networkError());
-                        else callback.onFailure(BarikoiTraceErrors.serverError());
+                        callback.onFailure(handleError(error));
                     }
                 }
         ) {
@@ -600,7 +551,7 @@ public class ApiRequestManager {
                         //loading.setVisibility(View.GONE);
                         //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
                         //NetworkcallUtils.handleResponse(error,context);
-                        callback.onFailure( BarikoiTraceErrors.serverError());
+                        callback.onFailure( handleError(error));
                     }
                 }
         ) {
@@ -627,7 +578,7 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        callback.onFailure(BarikoiTraceErrors.networkError());
+                        callback.onFailure(handleError(error));
                     }
                 }){
             @Override
@@ -683,6 +634,23 @@ public class ApiRequestManager {
         INSTANCE.key=key;
     }
 
+
+    private BarikoiTraceError handleError(VolleyError error){
+        if(error==null)
+            return BarikoiTraceErrors.serverError();
+        else if (error instanceof NetworkError || error instanceof TimeoutError)
+            return BarikoiTraceErrors.networkError();
+        /*else if (error.networkResponse!=null && error.networkResponse.data!=null){
+            String errorstring = new String(error.networkResponse.data);
+            try {
+                JSONObject responsejson=new JSONObject(errorstring);
+                String msg= responsejson.getString("error");
+                return new BarikoiTraceError(error.networkResponse.statusCode+"",msg);
+            } catch (JSONException e) {
+                return BarikoiTraceErrors.serverError();
+            }
+        }*/else return BarikoiTraceErrors.serverError();
+    }
 
 
 

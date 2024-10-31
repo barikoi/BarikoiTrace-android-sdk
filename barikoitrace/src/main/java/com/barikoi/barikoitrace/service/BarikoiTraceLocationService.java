@@ -121,11 +121,8 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                 if(location.isMock()){
                     Toast.makeText(this, "Mock location detected", Toast.LENGTH_SHORT).show();
                 }
-            }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                if (location.isFromMockProvider()){
-                    Toast.makeText(this, "Mock location detected", Toast.LENGTH_SHORT).show();
-                }
-            }
+            }else if (location.isFromMockProvider())
+                Toast.makeText(this, "Mock location detected", Toast.LENGTH_SHORT).show();
 
             if (isValid(location)) {
                 BarikoiTraceLogView.debugLog("location : accuracy "+location.getAccuracy() + ", time: "+ DateTimeUtils.getDateTimeLocal(location.getTime()));
