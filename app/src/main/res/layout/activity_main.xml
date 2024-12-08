@@ -2,54 +2,55 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:layout_width="match_parent"
     android:orientation="vertical"
-    tools:context=".MainActivity">
+    tools:context=".MainActivity"
+    >
 
-<!--    <androidx.appcompat.widget.AppCompatButton-->
-<!--        android:id="@+id/btn_start"-->
-<!--        style="@style/buttonStyle"-->
-<!--        android:layout_width="fill_parent"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_marginBottom="24dp"-->
-<!--        android:layout_marginTop="100dp"-->
-<!--        android:layout_marginRight="24dp"-->
-<!--        android:layout_marginLeft="24dp"-->
-<!--        android:layout_gravity="center"-->
-<!--        android:padding="12dp"-->
-<!--        android:text="Start Service" />-->
+    <!--    <androidx.appcompat.widget.AppCompatButton-->
+    <!--        android:id="@+id/btn_start"-->
+    <!--        style="@style/buttonStyle"-->
+    <!--        android:layout_width="fill_parent"-->
+    <!--        android:layout_height="wrap_content"-->
+    <!--        android:layout_marginBottom="24dp"-->
+    <!--        android:layout_marginTop="100dp"-->
+    <!--        android:layout_marginRight="24dp"-->
+    <!--        android:layout_marginLeft="24dp"-->
+    <!--        android:layout_gravity="center"-->
+    <!--        android:padding="12dp"-->
+    <!--        android:text="Start Service" />-->
 
-<!--    <androidx.appcompat.widget.AppCompatButton-->
-<!--        android:id="@+id/btn_stop"-->
-<!--        style="@style/buttonStyle"-->
-<!--        android:layout_width="fill_parent"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_marginBottom="24dp"-->
-<!--        android:layout_marginTop="24dp"-->
-<!--        android:layout_marginRight="24dp"-->
-<!--        android:layout_marginLeft="24dp"-->
-<!--        android:background="@color/colorRed"-->
-<!--        android:padding="12dp"-->
-<!--        android:text="Stop Service" />-->
+    <!--    <androidx.appcompat.widget.AppCompatButton-->
+    <!--        android:id="@+id/btn_stop"-->
+    <!--        style="@style/buttonStyle"-->
+    <!--        android:layout_width="fill_parent"-->
+    <!--        android:layout_height="wrap_content"-->
+    <!--        android:layout_marginBottom="24dp"-->
+    <!--        android:layout_marginTop="24dp"-->
+    <!--        android:layout_marginRight="24dp"-->
+    <!--        android:layout_marginLeft="24dp"-->
+    <!--        android:background="@color/colorRed"-->
+    <!--        android:padding="12dp"-->
+    <!--        android:text="Stop Service" />-->
 
     <RelativeLayout
         android:id="@+id/layoutMap"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_behavior=".CustomMapBehaviour"
         app:layout_constraintBottom_toTopOf="@+id/layoutService"
-        app:layout_behavior=".CustomMapBehaviour">
+        app:layout_constraintTop_toTopOf="parent">
 
-<!--        <com.mapbox.mapboxsdk.maps.MapView-->
-<!--            android:id="@+id/mapView"-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="match_parent"-->
-<!--            app:mapbox_uiAttribution="false"-->
-<!--            app:mapbox_uiAttributionMarginLeft="5dp"-->
-<!--            app:mapbox_uiLogo="false">-->
+        <!--        <com.mapbox.mapboxsdk.maps.MapView-->
+        <!--            android:id="@+id/mapView"-->
+        <!--            android:layout_width="match_parent"-->
+        <!--            android:layout_height="match_parent"-->
+        <!--            app:mapbox_uiAttribution="false"-->
+        <!--            app:mapbox_uiAttributionMarginLeft="5dp"-->
+        <!--            app:mapbox_uiLogo="false">-->
 
-<!--        </com.mapbox.mapboxsdk.maps.MapView>-->
+        <!--        </com.mapbox.mapboxsdk.maps.MapView>-->
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/fab"
@@ -62,6 +63,7 @@
             android:layout_marginRight="11dp"
             android:layout_marginBottom="32dp"
             android:src="@drawable/gpsindicator1"
+            android:contentDescription="@string/gps_indicator"
             android:visibility="visible"
             app:backgroundTint="@android:color/white"
             app:borderWidth="0dp"
@@ -71,13 +73,14 @@
             app:layout_dodgeInsetEdges="bottom"
             app:pressedTranslationZ="12dp" />
     </RelativeLayout>
+
     <LinearLayout
         android:id="@+id/layoutService"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:orientation="vertical"
         android:padding="8dp"
-        android:orientation="vertical">
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -90,6 +93,7 @@
                 android:layout_height="match_parent"
                 android:layout_gravity="center"
                 android:layout_weight="1"
+                android:contentDescription="@string/user_icon"
                 android:src="@drawable/ic_user_icon">
 
             </ImageView>
@@ -112,34 +116,46 @@
                 android:id="@+id/button_set_user"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:layout_gravity="center_vertical"
-                android:text="Set User" />
+                android:layout_weight="1"
+                android:text="@string/set_user" />
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:orientation="horizontal">
-<!--            <TextView-->
-<!--                android:layout_width="match_parent"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_weight="1"-->
-<!--                android:text="User_name">-->
+            android:orientation="vertical">
+            <!--            <TextView-->
+            <!--                android:layout_width="match_parent"-->
+            <!--                android:layout_height="wrap_content"-->
+            <!--                android:layout_weight="1"-->
+            <!--                android:text="User_name">-->
 
-<!--            </TextView>-->
+            <!--            </TextView>-->
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/switchService"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Location Service"
-                app:switchPadding="8dp"
-                android:textSize="17sp"
-                android:textOn="Start"
                 android:textOff="Stop"
-                app:track="@drawable/switch_track"
+                android:textOn="Start"
+                android:layout_marginBottom="12dp"
+                android:textSize="17sp"
                 android:thumb="@drawable/switch_thumb"
-                />
+                app:switchPadding="8dp"
+                app:track="@drawable/switch_track" />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchBroadcast"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Get updates"
+                android:textOff="Stop"
+                android:textOn="Start"
+                android:textSize="17sp"
+                android:thumb="@drawable/switch_thumb"
+                app:switchPadding="8dp"
+                app:track="@drawable/switch_track" />
         </LinearLayout>
 
         <Spinner
@@ -150,47 +166,57 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:weightSum="3"
-            android:orientation="horizontal">
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_weight="1"
-                android:layout_marginBottom="8dp">
-                <EditText android:id="@+id/input_updateinterval"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="numberSigned"
-                    android:text="0"
+            android:baselineAligned="false"
+            android:orientation="horizontal"
+            android:weightSum="3">
 
-                    android:hint="U.I.(s)" />
-            </com.google.android.material.textfield.TextInputLayout>
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:layout_weight="1"
-                android:layout_marginBottom="8dp">
-                <EditText android:id="@+id/input_distancefilter"
+                android:layout_marginBottom="8dp"
+                android:layout_weight="1">
+
+                <EditText
+                    android:id="@+id/input_updateinterval"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:hint="U.I.(s)"
                     android:inputType="numberSigned"
-                    android:text="0"
-                    android:hint="D.F.(m)" />
+
+                    android:text="0" />
             </com.google.android.material.textfield.TextInputLayout>
+
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp">
-                <EditText android:id="@+id/input_accuracy"
+                android:layout_marginBottom="8dp"
+                android:layout_weight="1">
+
+                <EditText
+                    android:id="@+id/input_distancefilter"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:hint="D.F.(m)"
                     android:inputType="numberSigned"
-                    android:text="0"
-                    android:hint="A.F.(m)" />
+                    android:text="0" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:layout_weight="1">
+
+                <EditText
+                    android:id="@+id/input_accuracy"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="A.F.(m)"
+                    android:inputType="numberSigned"
+                    android:text="0" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 

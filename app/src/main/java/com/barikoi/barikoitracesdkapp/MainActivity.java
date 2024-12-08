@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
+		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
 		BarikoiTrace.setBroadcastingEnabled(true);
 		receiver.setEventCallback(new BarikoiTreaceEventCallback() {
 			@Override
