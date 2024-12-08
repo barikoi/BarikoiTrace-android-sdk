@@ -1,6 +1,8 @@
 package com.barikoi.barikoitrace.network;
 
 
+import android.util.Log;
+
 import com.android.volley.AuthFailureError;
 import com.android.volley.NetworkResponse;
 import com.android.volley.ParseError;
@@ -70,7 +72,7 @@ public class VolleyMultipartRequest extends Request<NetworkResponse> {
     }
 
     @Override
-    public byte[] getBody() throws AuthFailureError {
+    public byte[] getBody()  throws AuthFailureError {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(bos);
 
@@ -92,7 +94,7 @@ public class VolleyMultipartRequest extends Request<NetworkResponse> {
 
             return bos.toByteArray();
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e("VolleyMultipartRequest", "error while uploading data to server", e);
         }
         return null;
     }
@@ -101,9 +103,9 @@ public class VolleyMultipartRequest extends Request<NetworkResponse> {
      * Custom method handle data payload.
      *
      * @return Map data part label with data byte
-     * @throws AuthFailureError
+     * @
      */
-    protected Map<String, DataPart> getByteData() throws AuthFailureError {
+    protected Map<String, DataPart> getByteData()  {
         return null;
     }
 

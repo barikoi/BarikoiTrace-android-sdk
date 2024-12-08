@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.Toast;
 
 
@@ -23,8 +24,11 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
+import com.barikoi.barikoitrace.models.BarikoiTraceLocationInfo;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.barikoi.barikoitrace.models.createtrip.Trip;
+import com.barikoi.barikoitrace.service.BarikoiTreaceEventCallback;
+import com.barikoi.barikoitrace.service.BarikoiTraceReceiver;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 
@@ -34,12 +38,31 @@ public class MainActivity extends AppCompatActivity {
 	private SwitchCompat switchService;
 
 	private Spinner spinnertype;
-	private FloatingActionButton tagloc;
-	@Override
+
+	private BarikoiTraceReceiver receiver = new BarikoiTraceReceiver();
+
+    @Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
+		BarikoiTrace.setBroadcastingEnabled(true);
+		receiver.setEventCallback(new BarikoiTreaceEventCallback() {
+			@Override
+			public void onError(BarikoiTraceError barikoiError) {
+				Toast.makeText(MainActivity.this, barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+			}
+
+			@Override
+			public void onLocationReceived(BarikoiTraceLocationInfo barikoiLocationInfo) {
+				Toast.makeText(MainActivity.this, "Location received", Toast.LENGTH_SHORT).show();
+			}
+
+			@Override
+			public void onLocationUpdated(Location location) {
+				Toast.makeText(MainActivity.this, "Location updated: "+location.getLatitude()+ " "+ location.getLongitude(), Toast.LENGTH_SHORT).show();
+			}
+		});
 		BarikoiTrace.requestNotificationPermission(this);
 		if (!BarikoiTrace.isLocationPermissionsGranted()) {
 			BarikoiTrace.requestLocationPermissions(MainActivity.this);
@@ -50,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
 		//set UI components
 		EditText tv_username = findViewById(R.id.tvUserName);
 		switchService = findViewById(R.id.switchService);
-		tagloc=findViewById(R.id.fab);
+        FloatingActionButton tagloc = findViewById(R.id.fab);
 		Button setuser=findViewById(R.id.button_set_user);
 		setuser.setOnClickListener(new View.OnClickListener(){
 			@Override
@@ -92,7 +115,15 @@ public class MainActivity extends AppCompatActivity {
 				});
 			}
 		});
+		SwitchCompat switchupdate = findViewById(R.id.switchBroadcast);
+		switchupdate.setOnCheckedChangeListener((compoundButton, b) -> {
+			if (b) {
+				BarikoiTrace.setBroadcastingEnabled(true);
 
+			} else {
+				BarikoiTrace.setBroadcastingEnabled(false);
+			}
+		});
 		//set user
 		if(BarikoiTrace.getUserId()==null){
 			BarikoiTrace.setOrCreateUser("sakib 5",null,"01111111124", new BarikoiTraceUserCallback() {
@@ -133,16 +164,18 @@ public class MainActivity extends AppCompatActivity {
 
 		tagloc.setOnClickListener(view ->
 				BarikoiTrace.updateCurrentLocation(new BarikoiTraceLocationUpdateCallback() {
-			@Override
-			public void onlocationUpdate(Location location) {
-				Toast.makeText(MainActivity.this,"Location Tagged", Toast.LENGTH_SHORT).show();
-			}
+					@Override
+					public void onlocationUpdate(Location location) {
+						Toast.makeText(MainActivity.this,"Location Tagged, service running:"+BarikoiTrace.isLocationTracking(), Toast.LENGTH_SHORT).show();
+					}
 
-			@Override
-			public void onFailure(BarikoiTraceError barikoiError) {
+					@Override
+					public void onFailure(BarikoiTraceError barikoiError) {
 
-			}
-		}));
+					}
+				})
+		);
+
 		String[] types = new String[]{"NONE", "ACTIVE", "REACTIVE", "PASSIVE"};
 		spinnertype = findViewById(R.id.spinnerType);
 		ArrayAdapter<String> aa = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, types);
@@ -198,13 +231,13 @@ public class MainActivity extends AppCompatActivity {
 					if (mode == null) mode = tb.build();
 					TraceMode finalMode = mode;
 					if(BarikoiTrace.isLocationPermissionsGranted()){
-//						BarikoiTrace.startTracking(finalMode);
+						BarikoiTrace.startTracking(finalMode);
 					}else{
 						switchService.setChecked(false);
 						Toast.makeText(this, "location permission denied", Toast.LENGTH_SHORT).show();
 					}
 					
-					BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
+					/*BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
 						@Override
 						public void onSuccess(Trip trip) {
 							Toast.makeText(getApplicationContext(), "trip started!! id: "+ trip.getTrip_id(), Toast.LENGTH_SHORT).show();
@@ -217,13 +250,13 @@ public class MainActivity extends AppCompatActivity {
 
 							switchService.setChecked(false);
 						}
-					});
+					});*/
 
 				}
 			}
 			else {
-//				BarikoiTrace.stopTracking();
-					BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
+				BarikoiTrace.stopTracking();
+					/*BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
 						@Override
 						public void onSuccess(Trip trip) {
 							Toast.makeText(getApplicationContext(), "trip stopped!!: id" +trip.getTrip_id(), Toast.LENGTH_SHORT).show();
@@ -236,7 +269,7 @@ public class MainActivity extends AppCompatActivity {
 							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
 
 						}
-					});
+					});*/
 					//if (!BarikoiTrace.isOnTrip()) {
 						//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
 					//}
@@ -246,9 +279,11 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 
+
 	@Override
 	protected void onResume() {
 		super.onResume();
+		BarikoiTrace.registerlocationupdate(receiver);
 //		BarikoiTrace.refreshtracking();
 	}
 
@@ -260,5 +295,9 @@ public class MainActivity extends AppCompatActivity {
 		return true;
 	}
 
-
+	@Override
+	protected void onPause() {
+		super.onPause();
+		BarikoiTrace.unregisterLocationUpdate(receiver);
+	}
 }

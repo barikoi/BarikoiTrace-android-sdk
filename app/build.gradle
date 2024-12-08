@@ -37,4 +37,5 @@ dependencies {
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'com.android.volley:volley:1.2.1'
+    debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.14'
 }

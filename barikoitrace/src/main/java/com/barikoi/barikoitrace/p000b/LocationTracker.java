@@ -16,9 +16,9 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.DateTimeUtils;
-import com.barikoi.barikoitrace.Utils.NetworkChecker;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.utils.DateTimeUtils;
+import com.barikoi.barikoitrace.utils.NetworkChecker;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
@@ -165,7 +165,7 @@ public final class LocationTracker implements LocationUpdateListener {
                                 Log.d("trace", "Location sned failed, saved offline");
                                 locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
                             } catch (BarikoiTraceException e) {
-                                e.printStackTrace();
+                                Log.e("trace", e.getMessage());
                             }
                         }
                     }
@@ -294,7 +294,7 @@ public final class LocationTracker implements LocationUpdateListener {
 
     private void periodicLocationUpdate() {
         PeriodicWorkRequest workRequest = new PeriodicWorkRequest.
-                Builder(LocationWork.class,5, TimeUnit.MINUTES)
+                Builder(LocationWork.class,15, TimeUnit.MINUTES)
                 .build();
 
         WorkManager.getInstance(context).

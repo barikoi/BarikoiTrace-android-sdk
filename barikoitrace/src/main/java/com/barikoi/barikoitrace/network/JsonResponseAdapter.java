@@ -1,9 +1,10 @@
 package com.barikoi.barikoitrace.network;
 
 import android.location.Location;
+import android.util.Log;
 
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.DateTimeUtils;
+import com.barikoi.barikoitrace.utils.DateTimeUtils;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.barikoi.barikoitrace.models.createtrip.Trip;
@@ -12,7 +13,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class JsonResponseAdapter {
@@ -26,13 +26,12 @@ public class JsonResponseAdapter {
                 String name= userjson.getString("name");
                 String email=userjson.getString("email");
                 String phone=userjson.getString("phone");
-                BarikoiTraceUser user= new BarikoiTraceUser.Builder()
+                return new BarikoiTraceUser.Builder()
                         .setUserId(id)
                         .setName(name)
                         .setEmail(email)
                         .setPhone(phone)
                         .build();
-                return user;
             }else {
                 return null;
             }
@@ -73,7 +72,7 @@ public class JsonResponseAdapter {
                 trips.add(new Trip(id,startTime,endTime,tag,state,user_id,1));
             }
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e("Tracejson",e.getMessage());
         }
         return trips;
     }
@@ -94,7 +93,7 @@ public class JsonResponseAdapter {
         return new TraceMode.Builder().setUpdateInterval(obj.getInt("update_time_interval"))
                 .setDistancefilter(obj.getInt("distance_interval"))
                 .setAccuracyFilter(obj.getInt("accuracy_filter"))
-                .setOfflineSync(obj.getInt("offline_sync")==1?true:false)
+                .setOfflineSync(obj.getInt("offline_sync") == 1)
                 .build();
 
     }

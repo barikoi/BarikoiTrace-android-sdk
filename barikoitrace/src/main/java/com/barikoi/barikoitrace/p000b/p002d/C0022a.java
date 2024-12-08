@@ -1,7 +1,9 @@
 package com.barikoi.barikoitrace.p000b.p002d;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -10,11 +12,11 @@ import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.NetworkChecker;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
-import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
+import com.barikoi.barikoitrace.utils.NetworkChecker;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -30,13 +32,13 @@ import com.google.android.gms.tasks.OnSuccessListener;
 public class C0022a {
 
 
-    private Context context;
+    private final Context context;
 
 
     private Location location = null;
 
 
-    private LocationUpdateListener locationUpdateListener;
+    private final LocationUpdateListener locationUpdateListener;
 
 
     private FusedLocationProviderClient fusedLocationProviderClient;
@@ -48,16 +50,16 @@ public class C0022a {
     private Handler handler = new Handler(Looper.getMainLooper());
 
 
-    private int f61g;
+    private final int f61g;
 
 
-    private ConfigStorageManager configStorageManager;
+   // private final ConfigStorageManager configStorageManager;
 
 
-    private LocationCallback locationCallback = new C0025c();
+    private final LocationCallback locationCallback = new C0025c();
 
 
-    private LocationListener locationListener = new C0026d();
+    private final LocationListener locationListener = new C0026d();
 
 
     private Runnable f65k = new RunnableC0027e();
@@ -75,7 +77,7 @@ public class C0022a {
 
 
 
-    public class C0024b implements OnSuccessListener<Location> {
+    public static class C0024b implements OnSuccessListener<Location> {
         C0024b() {
         }
 
@@ -94,25 +96,25 @@ public class C0022a {
     }
 
 
-    class C0025c extends LocationCallback {
+    static class C0025c extends LocationCallback {
         C0025c() {
         }
 
-        public void onLocationAvailability(LocationAvailability locationAvailability) {
+        public void onLocationAvailability(@NonNull LocationAvailability locationAvailability) {
             /*C0022a.super.onLocationAvailability(locationAvailability);
             if (!SystemSettingsManager.checkLocationSettings(C0022a.this.context)) {
                 C0022a.this.m106a(BarikoiTraceErrors.LocationPermissionError());
             }*/
         }
 
-        public void onLocationResult(LocationResult locationResult) {
-            for (Location location : locationResult.getLocations()) {
-               /* if ((!SystemSettingsManager.m374a(C0022a.this.context, location) || !C0022a.this.configStorageManager.isMock()) && SystemSettingsManager.m374a(C0022a.this.context, location)) {
-                    C0022a.this.m106a(BarikoiTraceErrors.MockAppError());
-                } else {
-                    C0022a.this.m103a(location);
-                }*/
-            }
+        public void onLocationResult(@NonNull LocationResult locationResult) {
+//            for (Location location : locationResult.getLocations()) {
+//               /* if ((!SystemSettingsManager.m374a(C0022a.this.context, location) || !C0022a.this.configStorageManager.isMock()) && SystemSettingsManager.m374a(C0022a.this.context, location)) {
+//                    C0022a.this.m106a(BarikoiTraceErrors.MockAppError());
+//                } else {
+//                    C0022a.this.m103a(location);
+//                }*/
+//            }
         }
     }
 
@@ -122,7 +124,7 @@ public class C0022a {
         }
 
         @Override // android.location.LocationListener
-        public void onLocationChanged(Location location) {
+        public void onLocationChanged(@NonNull Location location) {
             /*if ((!SystemSettingsManager.m374a(C0022a.this.context, location) || !C0022a.this.configStorageManager.isMock()) && SystemSettingsManager.m374a(C0022a.this.context, location)) {
                 C0022a.this.m106a(BarikoiTraceErrors.MockAppError());
             } else {
@@ -131,14 +133,14 @@ public class C0022a {
         }
 
         @Override // android.location.LocationListener
-        public void onProviderDisabled(String str) {
+        public void onProviderDisabled(@NonNull String str) {
             if (!SystemSettingsManager.checkLocationSettings(C0022a.this.context)) {
                 C0022a.this.m106a(BarikoiTraceErrors.LocationPermissionError());
             }
         }
 
         @Override // android.location.LocationListener
-        public void onProviderEnabled(String str) {
+        public void onProviderEnabled(@NonNull String str) {
         }
 
         @Override // android.location.LocationListener
@@ -191,7 +193,6 @@ public class C0022a {
         this.context = context;
         this.locationUpdateListener = bVar;
         this.f61g = i;
-        this.configStorageManager = ConfigStorageManager.getInstance(context);
     }
 
 
@@ -233,6 +234,10 @@ public class C0022a {
             this.handler.postDelayed(this.f65k, 30000);
             FusedLocationProviderClient fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.context);
             this.fusedLocationProviderClient = fusedLocationProviderClient;
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                return;
+            }
             fusedLocationProviderClient.requestLocationUpdates(locationRequest, this.locationCallback, Looper.getMainLooper());
             return;
         }
@@ -305,6 +310,10 @@ public class C0022a {
         if (SystemSettingsManager.checkPermissions(this.context)) {
             FusedLocationProviderClient fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this.context);
             this.fusedLocationProviderClient = fusedLocationProviderClient;
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                return;
+            }
             fusedLocationProviderClient.getLastLocation().addOnSuccessListener(new C0024b()).addOnFailureListener(new C0023a());
             return;
         }

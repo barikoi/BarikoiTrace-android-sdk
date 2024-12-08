@@ -3,7 +3,8 @@ package com.barikoi.barikoitrace;
 import android.app.Activity;
 import android.content.Context;
 
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.service.BarikoiTraceReceiver;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
@@ -368,12 +369,14 @@ public class BarikoiTrace {
         getInstance().setLogging(enabled);
     }
 
-/*
-    public static void updateCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i) {
-        if (i > 10) {
-            getInstance().m9a(desiredAccuracy, i);
-        } else {
-            getInstance().m9a(desiredAccuracy, 10);
-        }
-    }*/
+    public static void setBroadcastingEnabled(boolean enabled){
+        getInstance().setBroadcasting(enabled);
+    }
+    public static void registerlocationupdate(BarikoiTraceReceiver receiver){
+        getInstance().registerLocatioUupdate(receiver);
+    }
+
+    public static void unregisterLocationUpdate(BarikoiTraceReceiver receiver){
+        getInstance().unregisterLocationUpdate(receiver);
+    }
 }

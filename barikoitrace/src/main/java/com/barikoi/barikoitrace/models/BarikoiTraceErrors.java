@@ -58,10 +58,6 @@ public final class BarikoiTraceErrors {
     }
 
 
-    public static BarikoiTraceError PlayServiceError() {
-        return new BarikoiTraceError("BK408", "PlayServices error");
-    }
-
 
     public static BarikoiTraceError serverError() {
         return new BarikoiTraceError("BK500", "Server error");

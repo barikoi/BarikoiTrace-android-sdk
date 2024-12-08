@@ -1,4 +1,4 @@
-package com.barikoi.barikoitrace.Utils;
+package com.barikoi.barikoitrace.utils;
 
 
 import android.app.Activity;
@@ -45,7 +45,7 @@ public class SystemSettingsManager {
 
 
     public static boolean checkifMockprovider(Context context, Location location) {
-        return Build.VERSION.SDK_INT >= 18 ? location.isFromMockProvider() : !Settings.Secure.getString(context.getContentResolver(), "mock_location").equals("0");
+        return location.isFromMockProvider();
     }
 
 

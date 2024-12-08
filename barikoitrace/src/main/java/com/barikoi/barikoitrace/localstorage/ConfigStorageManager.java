@@ -356,12 +356,9 @@ public final class ConfigStorageManager {
         return this.sharedPRefHelper.getInt("distanceFilter");
     }
 
-
-
     public void setOfflineTracking(boolean z) {
         this.sharedPRefHelper.putBoolean("offlineTracking", z);
     }
-
 
 
     public void m272q(boolean z) {
@@ -377,7 +374,13 @@ public final class ConfigStorageManager {
         return this.sharedPRefHelper.getBoolean("onTrip");
     }
 
+    public boolean isbroadcastingEnabled(){
+        return this.sharedPRefHelper.getBoolean("broadcasting");
+    }
 
+    public void setBroadcasting(boolean z){
+        this.sharedPRefHelper.putBoolean("broadcasting", z);
+    }
 
 
 

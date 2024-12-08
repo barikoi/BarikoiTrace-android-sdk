@@ -4,9 +4,8 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 
-import com.barikoi.barikoitrace.Utils.NetworkChangeManager;
+import com.barikoi.barikoitrace.utils.NetworkChangeManager;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
-import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 
 

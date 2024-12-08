@@ -7,7 +7,7 @@ import java.util.List;
 
 @Keep
 public class Coordinates {
-    private List<Double> coordinates = new ArrayList();
+    private List<Double> coordinates = new ArrayList<>();
     private String type;
 
     public List<Double> getCoordinates() {

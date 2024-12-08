@@ -9,10 +9,8 @@ import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 
-import androidx.annotation.RequiresApi;
-
-import com.barikoi.barikoitrace.Utils.DateTimeUtils;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.utils.DateTimeUtils;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
@@ -32,6 +30,7 @@ import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Objects;
 
 
 public final class LogDbHelper extends SQLiteOpenHelper {
@@ -46,11 +45,9 @@ public final class LogDbHelper extends SQLiteOpenHelper {
     private LogBuilder logBuilder;
 
 
-    private Context context;
+    private final Context context;
 
     private String userid="";
-    private ConfigStorageManager configStorageManager;
-    private File file2;
 
     public void writeDeviceLog(){
         writeLog("location permission: " +SystemSettingsManager.checkPermissions(context)+
@@ -106,8 +103,8 @@ public final class LogDbHelper extends SQLiteOpenHelper {
         super(context, "log", (SQLiteDatabase.CursorFactory) null, 3);
         //BarikoiTraceLogView.debugLog("log db created");
         this.context = context.getApplicationContext();
-        this.configStorageManager = ConfigStorageManager.getInstance(context);
-        userid=configStorageManager.getUserID();
+        ConfigStorageManager configStorageManager = ConfigStorageManager.getInstance(context);
+        userid= configStorageManager.getUserID();
     }
 
 
@@ -127,10 +124,16 @@ public final class LogDbHelper extends SQLiteOpenHelper {
         if (SystemSettingsManager.checkKitktatSorageWritePermission(this.context)) {
             File file = new File(Environment.getExternalStorageDirectory(), "BarikoiTrace/files/");
             if (!file.exists()) {
-                file.mkdirs();
+                if(!file.mkdirs()){
+                    Log.d("TraceDB", "Failed to create directory");
+                    throw new IOException("Failed to create directory");
+                }
             }
             File file2 = new File(file, str2);
-            file2.createNewFile();
+            if(!file2.createNewFile()){
+                Log.d("TraceDB", "Failed to create file");
+                throw new IOException("Failed to create file");
+            }
             ByteBuffer wrap = ByteBuffer.wrap(str.getBytes());
             FileChannel channel = new FileOutputStream(file2).getChannel();
             try {
@@ -258,11 +261,8 @@ public final class LogDbHelper extends SQLiteOpenHelper {
 
 
                 exportDailyLogFile(String.valueOf(description));
-            } catch (JSONException e) {
-                e.printStackTrace();
-
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (JSONException | IOException e) {
+                Log.w("traceDB", "Error: " + e.getMessage());
 
             }
 
@@ -287,10 +287,8 @@ public final class LogDbHelper extends SQLiteOpenHelper {
             }
             file2 = new File(file, "Log_"+timeStamp+".txt");
             file2.createNewFile();*/
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            file2 = new File(context.getFilesDir(),"Log_"+timeStamp+".txt");
-        }
-        Log.d("DB", "File created: "+file2.getName()+ " filepath: "+file2.getAbsolutePath());
+        File file2 = new File(context.getFilesDir(), "Log_" + timeStamp + ".txt");
+        Log.d("DB", "File created: "+ file2.getName()+ " filepath: "+ file2.getAbsolutePath());
         //configStorageManager.setLogFilePath(file2.getAbsolutePath());
         return true;
     }
@@ -300,11 +298,13 @@ public final class LogDbHelper extends SQLiteOpenHelper {
         try {
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ENGLISH).format(new Date());
             File root = null;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-                root = new File(context.getFilesDir(), "Logs");
-            }
-            if (root != null && !root.exists()) {
-                root.mkdirs();
+            root = new File(context.getFilesDir(), "Logs");
+            if (!root.exists()) {
+                if(!root.mkdirs()){
+                    Log.d("TraceDB", "Failed to create directory");
+                    throw new IOException("Failed to create directory");
+                }
+
             }
             final File gpxfile = new File(context.getFilesDir(), "Log_"+timeStamp+".txt");
 
@@ -314,40 +314,39 @@ public final class LogDbHelper extends SQLiteOpenHelper {
             writer.close();
             //Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show();
             Log.d("DB", "File exported"+gpxfile.getAbsolutePath());
-            for(final File f : context.getFilesDir().listFiles()) {
+            for(final File f : Objects.requireNonNull(context.getFilesDir().listFiles())) {
                 if(f.isFile() && f.getName().startsWith("Log_"))
-                ApiRequestManager.getInstance(context).insertLogFile(f.getAbsolutePath(), new BarikoiTraceBulkUpdateCallback() {
-                    @Override
-                    public void onBulkUpdate() {
-                        deleteTable();
-                        f.delete();
-                    }
+                    ApiRequestManager.getInstance(context).insertLogFile(f.getAbsolutePath(), new BarikoiTraceBulkUpdateCallback() {
+                        @Override
+                        public void onBulkUpdate() {
+                            deleteTable();
+                            f.delete();
+                        }
 
-                    @Override
-                    public void onFailure(BarikoiTraceError barikoiError) {
+                        @Override
+                        public void onFailure(BarikoiTraceError barikoiError) {
 
-                    }
-                });
+                        }
+                    });
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.w("traceDB", "Error: " + e.getMessage());
         }
     }
 
     public JSONArray getResults(String tableName)
     {
         String myPath = context.getDatabasePath(getDatabaseName()).toString();
-        String logTable = tableName;
         SQLiteDatabase myDataBase = SQLiteDatabase.openDatabase(myPath, null, SQLiteDatabase.OPEN_READONLY);
 
-        String searchQuery = "SELECT  * FROM " + logTable;
+        String searchQuery = "SELECT  * FROM " + tableName;
         Cursor cursor = myDataBase.rawQuery(searchQuery, null );
 
         JSONArray resultSet     = new JSONArray();
 
         cursor.moveToFirst();
-        while (cursor.isAfterLast() == false) {
+        while (!cursor.isAfterLast()) {
 
             int totalColumn = cursor.getColumnCount();
             JSONObject rowObject = new JSONObject();

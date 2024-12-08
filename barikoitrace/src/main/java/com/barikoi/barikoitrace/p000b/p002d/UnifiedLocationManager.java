@@ -11,7 +11,7 @@ import android.os.Looper;
 import androidx.annotation.NonNull;
 
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.google.android.gms.location.FusedLocationProviderClient;

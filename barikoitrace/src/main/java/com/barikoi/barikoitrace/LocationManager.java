@@ -2,13 +2,17 @@ package com.barikoi.barikoitrace;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.location.Location;
 import android.text.TextUtils;
 import android.util.Log;
 
 
-import com.barikoi.barikoitrace.Utils.NetworkChecker;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.barikoi.barikoitrace.service.BarikoiTraceReceiver;
+import com.barikoi.barikoitrace.utils.NetworkChecker;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
@@ -17,7 +21,6 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
-//import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
@@ -408,7 +411,7 @@ public final class LocationManager {
                         try {
                             locationTracker.saveLoctoDb(location);
                         } catch (BarikoiTraceException e) {
-                            e.printStackTrace();
+
                         }
                         callback.onFailure(barikoiError);
                     }
@@ -442,4 +445,20 @@ public final class LocationManager {
     }
 
 
+    public void setBroadcasting(boolean enabled) {
+        confdb.setBroadcasting(enabled);
+    }
+
+    public void registerLocatioUupdate(BarikoiTraceReceiver receiver){
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.barikoi.trace.android.RECEIVED");
+        LocalBroadcastManager.getInstance(context)
+                .registerReceiver(receiver, filter);
+    }
+
+    public void unregisterLocationUpdate(BarikoiTraceReceiver receiver){
+        LocalBroadcastManager.getInstance(context)
+                .unregisterReceiver(receiver);
+    }
 }

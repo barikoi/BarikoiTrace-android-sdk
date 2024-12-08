@@ -1,4 +1,4 @@
-package com.barikoi.barikoitrace.Utils;
+package com.barikoi.barikoitrace.utils;
 
 
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
@@ -30,7 +30,7 @@ public class DateTimeUtils {
     private static Date getDateTime12Hour(String str) throws BarikoiTraceException {
         try {
         Date parse = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss.SSS", Locale.getDefault()).parse(str);
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd-MM-yyyy hh.mm.ss.SSS aa", Locale.getDefault());
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd-MM-yyyy hh.mm.ss.SSS aa", Locale.US);
 
             return simpleDateFormat.parse(simpleDateFormat.format(parse));
         } catch (ParseException e) {
@@ -49,13 +49,14 @@ public class DateTimeUtils {
 
 
     public static String getCurrentDateTimeStringPST() {
-        return new SimpleDateFormat("Z").format(Calendar.getInstance().getTime());
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Calendar.getInstance().getTime());
+//        return new SimpleDateFormat("Z").format(Calendar.getInstance().getTime());
     }
 
 
     public static Date getDateTimeLocalfromUTC(String str) throws BarikoiTraceException {
         try {
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault());
             simpleDateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             Date parse = null;
             parse= simpleDateFormat.parse(str);
@@ -90,6 +91,6 @@ public class DateTimeUtils {
             date = simpleDateFormat.parse(simpleDateFormat.format(Calendar.getInstance().getTime()));
         } catch (ParseException e) {
         }
-        return simpleDateFormat.format(Long.valueOf(date.getTime()));
+        return simpleDateFormat.format(date.getTime());
     }
 }

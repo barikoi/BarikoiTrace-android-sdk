@@ -20,10 +20,11 @@ import android.widget.Toast;
 
 
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.barikoi.barikoitrace.R;
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.DateTimeUtils;
+import com.barikoi.barikoitrace.utils.DateTimeUtils;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
@@ -37,9 +38,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
 import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
-import static androidx.core.app.NotificationCompat.PRIORITY_MIN;
 
 public class BarikoiTraceLocationService extends Service implements LocationUpdateListener {
 
@@ -54,7 +53,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     //private LogDbHelper logDbHelper;
 
 
-    private List<Integer> f252e = new ArrayList();
+    private List<Integer> f252e = new ArrayList<>();
 
 
     private int activeDistFilter = 0;
@@ -125,6 +124,9 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                 Toast.makeText(this, "Mock location detected", Toast.LENGTH_SHORT).show();
 
             if (isValid(location)) {
+                if(configStorageManager.isbroadcastingEnabled()) {
+                    broadcastLocation(location);
+                }
                 BarikoiTraceLogView.debugLog("location : accuracy "+location.getAccuracy() + ", time: "+ DateTimeUtils.getDateTimeLocal(location.getTime()));
                 this.f254g = 0;
                 //this.logDbHelper.m312a("Location " + location.getLatitude() + "--" + location.getLongitude() + "--" + this.activeDistFilter + "--" + a);
@@ -274,5 +276,12 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         return Service.START_STICKY;
     }
 
+    private void broadcastLocation(Location location) {
+        Intent intent = new Intent("com.barikoi.trace.android.RECEIVED");
+        intent.putExtra("location", location);
+        intent.putExtra("event", "LOCATION_RECEIEVED");
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
 
 }

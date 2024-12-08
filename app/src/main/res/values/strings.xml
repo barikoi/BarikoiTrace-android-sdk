@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">BarikoiTrace SDK app</string>
+    <string name="user_icon">User Icon</string>
+    <string name="set_user">Set User</string>
+    <string name="gps_indicator">gps indicator</string>
 
 </resources>

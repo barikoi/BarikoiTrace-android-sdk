@@ -13,7 +13,7 @@ import androidx.annotation.NonNull;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.event.BootEventReceiver;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
@@ -43,7 +43,7 @@ public final class GeofenceManager {
     private Context f39a;
 
     /* renamed from: b */
-    private ConfigStorageManager f40b;
+//    private ConfigStorageManager f40b;
 
     /* renamed from: c */
     private GeofencingClient geoclient;
@@ -57,7 +57,7 @@ public final class GeofenceManager {
     private GeofenceManager(Context context) {
         this.f39a = context;
 //        this.logDbHelper = LogDbHelper.getInstance(context);
-        this.f40b = ConfigStorageManager.getInstance(context);
+//        this.f40b = ConfigStorageManager.getInstance(context);
         this.locationTracker = new LocationTracker(context);
         this.geoclient = LocationServices.getGeofencingClient(context);
     }
@@ -120,7 +120,7 @@ public final class GeofenceManager {
             } );
             RequestQueueSingleton.getInstance().getRequestQueue().add(req);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Log.e("TraceGeofence",e.getMessage());
         }
 
     }

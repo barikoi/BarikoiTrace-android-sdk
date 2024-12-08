@@ -5,7 +5,6 @@ import android.location.Location;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
@@ -13,7 +12,6 @@ import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.NetworkError;
 import com.android.volley.NetworkResponse;
-import com.android.volley.NoConnectionError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -21,7 +19,7 @@ import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.DateTimeUtils;
+import com.barikoi.barikoitrace.utils.DateTimeUtils;
 import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceGetTripCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
@@ -43,7 +41,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -103,7 +100,7 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            public byte[] getBody() throws AuthFailureError {
+            public byte[] getBody() {
                 HashMap<String,String> params=new HashMap<>();
                 params.put("api_key",key);
                 if(!TextUtils.isEmpty(email)) params.put("email",email);
@@ -149,7 +146,7 @@ public class ApiRequestManager {
                                 callback.onFailure(new BarikoiTraceError(status+"",msg));
                             }
                         } catch (JSONException e) {
-                            Log.e("userlogerror", e.getMessage());
+                            Log.e("userlogerror", e.toString());
                             callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                         }
                     }
@@ -158,21 +155,21 @@ public class ApiRequestManager {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        Log.d( "locationupdate", error.getMessage());
+                        Log.d( "locationupdate", error.toString());
 
                         callback.onFailure(handleError(error));
                     }
                 }
         ) {
             @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
+            public Map<String, String> getHeaders()  {
                 HashMap<String,String> header= new HashMap<>();
                 header.put("Content-Type","application/json");
                 return header;
             }
 
             @Override
-            public byte[] getBody() throws AuthFailureError {
+            public byte[] getBody()  {
                 HashMap<String,String> params=new HashMap<>();
                 params.put("api_key",key);
                 if(!TextUtils.isEmpty(name)) params.put("name",name);
@@ -229,14 +226,14 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
+            public Map<String, String> getHeaders()  {
                 HashMap<String,String> header= new HashMap<>();
                 header.put("Content-Type","application/json");
                 return header;
             }
 
             @Override
-            public byte[] getBody()  throws AuthFailureError {
+            public byte[] getBody()   {
                 HashMap<String,Object> params=new HashMap<>();
                 params.put("api_key",key);
                 params.put("user_id",id);
@@ -288,13 +285,13 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
+            public Map<String, String> getHeaders()  {
                 HashMap<String,String> header= new HashMap<>();
                 header.put("Content-Type","application/json");
                 return header;
             }
             @Override
-            public byte[] getBody() throws AuthFailureError {
+            public byte[] getBody()  {
                 HashMap<String,Object> params=new HashMap<>();
                 params.put("api_key",key);
                 params.put("user_id",id);
@@ -344,7 +341,7 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            public byte[] getBody() throws AuthFailureError {
+            public byte[] getBody()  {
                 HashMap<String,Object> params=new HashMap<>();
                 params.put("api_key",key);
                 params.put("user_id",id);
@@ -357,7 +354,7 @@ public class ApiRequestManager {
             }
 
             @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
+            public Map<String, String> getHeaders()  {
                 HashMap<String,String> header= new HashMap<>();
                 header.put("Content-Type","application/json");
                 return header;
@@ -414,7 +411,7 @@ public class ApiRequestManager {
                 }
         ) {
             /*@Override
-            protected Map<String, String> getParams() throws AuthFailureError {
+            protected Map<String, String> getParams()  {
 
                 return params;
             }*/
@@ -454,7 +451,7 @@ public class ApiRequestManager {
                 }
         ) {
             @Override
-            public byte[] getBody() throws AuthFailureError {
+            public byte[] getBody()  {
                 HashMap<String, Object> params= new HashMap<>();
                 params.put("api_key",key);
                 params.put("user_id",id);
@@ -462,7 +459,7 @@ public class ApiRequestManager {
                 return new JSONObject(params).toString().getBytes();
             }
             @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
+            public Map<String, String> getHeaders()  {
                 HashMap<String,String> header= new HashMap<>();
                 header.put("Content-Type","application/json");
                 return header;
@@ -590,7 +587,7 @@ public class ApiRequestManager {
 
             @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
-            protected Map<String, DataPart> getByteData() throws AuthFailureError {
+            protected Map<String, DataPart> getByteData()  {
                 Map<String, DataPart> parameters = new HashMap<>();
                 String filename = path.substring(path.lastIndexOf("/"));
                 parameters.put("log", new DataPart(filename, getFileData(path)));
@@ -603,7 +600,6 @@ public class ApiRequestManager {
         requestQueue.add(request);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     public static byte[] getFileData(String f) {
         File textFile = new File(f);
         int size = (int) textFile.length();
@@ -621,7 +617,7 @@ public class ApiRequestManager {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.w("TraceLog", "Error reading file", e);
         }
         return bytes;
     }
