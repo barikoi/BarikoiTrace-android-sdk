@@ -4,60 +4,81 @@ import androidx.annotation.Keep;
 
 @Keep
 public class BarikoiTraceUser {
+    private String name=null;
     private String email=null;
     private String phone;
     private String userId;
     private double lastLat;
     private double lastLon;
     private String group;
+    private  long updatedAt;
     private BarikoiTraceUser(){
 
     }
-    public BarikoiTraceUser(String userId, String phone,  String email) {
-        this.userId = userId;
-        this.phone = phone;
-        this.email =email;
-    }
+//    public BarikoiTraceUser(String userId, String phone,  String email) {
+//        this.userId = userId;
+//        this.phone = phone;
+//        this.email =email;
+//    }
 
-    public BarikoiTraceUser(String userId, String phone,  String email, double lastLat, double lastLon) {
-        this.userId = userId;
-        this.phone = phone;
-        this.email =email;
-        this.lastLat=lastLat;
-        this.lastLon=lastLon;
-    }
+//    public BarikoiTraceUser(String userId, String phone,  String email, double lastLat, double lastLon) {
+//        this.userId = userId;
+//        this.phone = phone;
+//        this.email =email;
+//        this.lastLat=lastLat;
+//        this.lastLon=lastLon;
+//    }
 
     public BarikoiTraceUser(Builder builder) {
         this.userId = builder.userId;
         this.phone = builder.phone;
+        this.name=builder.name;
         this.email =builder.email;
         this.lastLat=builder.lastLat;
         this.lastLon=builder.lastLon;
         this.group=builder.group;
+        this.updatedAt=builder.updatedAt;
     }
 
-    private static class Builder{
+    public String getPhone() {
+        return phone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public static class Builder{
+        private String name;
         private String email;
         private String phone;
         private String userId;
         private double lastLat;
         private double lastLon;
         private String group;
-
+        private long updatedAt;
         public Builder(){
 
         }
-        public Builder setphone(String phone){
+        public Builder setPhone(String phone){
             this.phone=phone;
             return this;
         }
         public Builder setUserId(String userId){
             this.userId=userId;
             return this;
-        }public Builder setlastLat(double lastLat){
+        }public Builder setLastLat(double lastLat){
             this.lastLat=lastLat;
             return this;
-        }public Builder setlastLon(double lastLon){
+        }public Builder setLastLon(double lastLon){
             this.lastLon=lastLon;
             return this;
         }public Builder setGroup(String group){
@@ -66,9 +87,19 @@ public class BarikoiTraceUser {
         }public Builder setEmail(String email){
             this.email=email;
             return this;
+        }public Builder setUpdatedAt(long updatedAt){
+            this.updatedAt=updatedAt;
+            return this;
         }
+
         public BarikoiTraceUser build(){
             return new BarikoiTraceUser(this);
+        }
+
+
+        public Builder setName(String name) {
+            this.name=name;
+            return this;
         }
     }
 

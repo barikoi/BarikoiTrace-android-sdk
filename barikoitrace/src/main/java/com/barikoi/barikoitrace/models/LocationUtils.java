@@ -1,12 +1,8 @@
 package com.barikoi.barikoitrace.models;
 
-import android.content.Intent;
 import android.location.Location;
-import android.os.Bundle;
 
-import com.barikoi.barikoitrace.BarikoiTrace;
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.UniqueID;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 
 import java.util.List;
@@ -181,48 +177,6 @@ public final class LocationUtils {
         return i / 5;
     }
 
-
-    public static String m406a() {
-        try {
-            return UniqueID.createUniqueID().toString();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-
-    public static String m407a(int i) {
-        switch (i) {
-            case 0:
-                return "passive";
-            case 1:
-                return "reactive";
-            case 2:
-                return "active";
-            case 3:
-                return "custom";
-            default:
-                return "manual";
-        }
-    }
-
-
-    public static String m408a(Intent intent) {
-        try {
-            Bundle bundleExtra = intent.getBundleExtra(BarikoiTrace.EXTRA);
-            if (bundleExtra == null) {
-                return null;
-            }
-            String string = bundleExtra.getString("type");
-            String string2 = bundleExtra.getString("cid");
-            if (string == null || string2 == null || !string.equals("barikoitrace")) {
-                return null;
-            }
-            return string2;
-        } catch (Exception e) {
-            return null;
-        }
-    }
 
 
     public static String m409a(LocationStatus bVar) {

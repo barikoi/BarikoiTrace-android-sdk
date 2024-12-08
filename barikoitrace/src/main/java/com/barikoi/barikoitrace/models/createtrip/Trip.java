@@ -3,16 +3,13 @@ package com.barikoi.barikoitrace.models.createtrip;
 public class Trip {
 
 
-    int id;
+    String trip_id;
     String start_time;
     String end_time;
     String tag;
     int State;
-    int user_id;
+    String user_id;
 
-    public int getId() {
-        return id;
-    }
     public int getSynced() {
         return synced;
     }
@@ -23,8 +20,8 @@ public class Trip {
 
     int synced;
 
-    public Trip(int id, String start_time, String end_time, String tag, int state, int user_id, int synced) {
-        this.id =id;
+    public Trip(String trip_id, String start_time, String end_time, String tag, int state, String user_id, int synced) {
+        this.trip_id=trip_id;
         this.start_time = start_time;
         this.end_time = end_time;
         this.tag = tag;
@@ -64,4 +61,8 @@ public class Trip {
     public void setState(int state) {
         State = state;
     }
+
+    public String getTrip_id() {return trip_id;}
+
+    public void setTrip_id(String trip_id) {this.trip_id = trip_id;}
 }

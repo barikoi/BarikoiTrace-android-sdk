@@ -3,7 +3,7 @@ package com.barikoi.barikoitrace.localstorage;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import java.util.HashSet;
+
 import java.util.Set;
 
 
@@ -92,9 +92,6 @@ public final class SharedPRefHelper {
 
 
 
-    public Set<String> getSet(String str) {
-        return getSharedPref().getStringSet(str.toUpperCase(), new HashSet());
-    }
 
 
 

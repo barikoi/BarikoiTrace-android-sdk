@@ -7,7 +7,7 @@ import java.util.List;
 
 @Keep
 public class BarikoiTraceEvents {
-    private List<BarikoiTraceEvent> events = new ArrayList();
+    private List<BarikoiTraceEvent> events = new ArrayList<>();
 
     public List<BarikoiTraceEvent> getEvents() {
         return this.events;

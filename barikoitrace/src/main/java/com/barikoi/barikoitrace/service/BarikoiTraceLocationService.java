@@ -1,5 +1,7 @@
 package com.barikoi.barikoitrace.service;
 
+import static android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION;
+
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -14,13 +16,15 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
+import android.widget.Toast;
 
 
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.barikoi.barikoitrace.R;
 import com.barikoi.barikoitrace.TraceMode;
-import com.barikoi.barikoitrace.Utils.DateTimeUtils;
+import com.barikoi.barikoitrace.utils.DateTimeUtils;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
@@ -34,9 +38,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
 import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
-import static androidx.core.app.NotificationCompat.PRIORITY_MIN;
 
 public class BarikoiTraceLocationService extends Service implements LocationUpdateListener {
 
@@ -51,7 +53,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     //private LogDbHelper logDbHelper;
 
 
-    private List<Integer> f252e = new ArrayList();
+    private List<Integer> f252e = new ArrayList<>();
 
 
     private int activeDistFilter = 0;
@@ -114,7 +116,17 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     public void onLocationReceived(Location location) {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if(location.isMock()){
+                    Toast.makeText(this, "Mock location detected", Toast.LENGTH_SHORT).show();
+                }
+            }else if (location.isFromMockProvider())
+                Toast.makeText(this, "Mock location detected", Toast.LENGTH_SHORT).show();
+
             if (isValid(location)) {
+                if(configStorageManager.isbroadcastingEnabled()) {
+                    broadcastLocation(location);
+                }
                 BarikoiTraceLogView.debugLog("location : accuracy "+location.getAccuracy() + ", time: "+ DateTimeUtils.getDateTimeLocal(location.getTime()));
                 this.f254g = 0;
                 //this.logDbHelper.m312a("Location " + location.getLatitude() + "--" + location.getLongitude() + "--" + this.activeDistFilter + "--" + a);
@@ -190,7 +202,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         NotificationChannel channel = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             channel = new NotificationChannel(CHANNEL_ID,
-                    CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
+                    CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).createNotificationChannel(channel);
 
             Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -198,10 +210,12 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                     .setContentText(CHANNEL_NAME)
                     .setSmallIcon(R.drawable.ic_trace_logo)
                     .setSound(RingtoneManager.getDefaultUri(RingtoneManager. TYPE_NOTIFICATION ))
-                    .setPriority(PRIORITY_LOW)
+                    .setOngoing(true)
                     .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
                     .build();
-            startForeground(1, notification);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1, notification, FOREGROUND_SERVICE_TYPE_LOCATION);
+            }else startForeground(1, notification);
         }else {
 
             Notification notification2 = new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -209,7 +223,7 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                     .setContentText(CHANNEL_NAME)
                     .setSound(RingtoneManager.getDefaultUri(RingtoneManager. TYPE_NOTIFICATION ))
                     .setSmallIcon(R.drawable.ic_trace_logo)
-                    .setPriority(PRIORITY_MIN)
+                    .setOngoing(true)
                     .build();
             startForeground(1, notification2);
         }
@@ -262,5 +276,12 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         return Service.START_STICKY;
     }
 
+    private void broadcastLocation(Location location) {
+        Intent intent = new Intent("com.barikoi.trace.android.RECEIVED");
+        intent.putExtra("location", location);
+        intent.putExtra("event", "LOCATION_RECEIEVED");
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
 
 }

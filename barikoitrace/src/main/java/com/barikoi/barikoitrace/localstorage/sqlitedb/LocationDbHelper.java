@@ -10,14 +10,9 @@ import android.database.sqlite.SQLiteStatement;
 import android.util.Log;
 
 
-import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
-import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
-import com.barikoi.barikoitrace.models.BarikoiTraceError;
-import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.createtrip.Trip;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -32,7 +27,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
     private SQLiteDatabase db;
 
     private LocationDbHelper(Context context) {
-        super(context, "location", (SQLiteDatabase.CursorFactory) null, 3);
+        super(context, "location", null, 4);
     }
 
 
@@ -55,16 +50,6 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
 
 
 
-    public void deleteLocations(String str) {
-        try {
-            openDb();
-            this.db.delete("location", "location_id = ? ", new String[]{str});
-            closedb();
-        } catch (Exception e) {
-        }
-    }
-
-
     public void insertLocation( JSONObject jSONObject) {
         try {
             openDb();
@@ -73,6 +58,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
             this.db.insert("location", null, contentValues);
             closedb();
         } catch (Exception e) {
+            Log.e("locationdbhelper", e.getMessage()+", "+e.getCause());
         }
     }
 
@@ -86,42 +72,23 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
 
     public long getofflinecount(){
         openDb();
-        long count=DatabaseUtils.queryNumEntries(this.db,"location");
+        return DatabaseUtils.queryNumEntries(this.db,"location");
+    }
 
-        return count;
-    }
-    public String[] getlast100locId(){
-        ArrayList<String> ids=new ArrayList<>();
-        try {
-            openDb();
-            Cursor query = this.db.query("location", new String[]{"id"}, null, null, null, null, "id ASC", "100");
-            if (query == null || query.getCount() == 0 || !query.moveToFirst()) {
-                query.close();
-                closedb();
-                return ids.toArray(new String[0]);
-            }
-            do {
-                ids.add(query.getInt(query.getColumnIndex("id"))+"");
-            } while (query.moveToNext());
-            query.close();
-            closedb();
-            return ids.toArray(new String[0]);
-        } catch (Exception e) {
-            return ids.toArray(new String[0]);
-        }
-    }
-    public JSONArray getLocationJson(int userid) {
+    public JSONArray getLocationJson(String userid) {
         JSONArray arrayList = new JSONArray();
         try {
             openDb();
             Cursor query = this.db.query("location", null, null, null, null, null, "id ASC", "100");
             if (query == null || query.getCount() == 0 || !query.moveToFirst()) {
-                query.close();
+                if (query != null) {
+                    query.close();
+                }
                 closedb();
                 return arrayList;
             }
             do {
-                arrayList.put(new JSONObject(query.getString(query.getColumnIndex("json"))).put("user_id",userid));
+                arrayList.put(new JSONObject(query.getString(query.getColumnIndexOrThrow("json"))).put("user_id",userid));
             } while (query.moveToNext());
             query.close();
             closedb();
@@ -141,25 +108,37 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
             affectedRows = statement.executeUpdateDelete();
             //this.db.rawQuery("delete from location where id in (select id from location order by id ASC limit 100)",null);
             this.db.setTransactionSuccessful();
+        } catch (Exception e) {
+            Log.e("locationdbhelper", e.getMessage()+", " + e.getCause());
         } finally {
             db.endTransaction();
             closedb();
-            return affectedRows;
         }
+        return affectedRows;
 
     }
 
-    public ArrayList<Trip> getActiveTrips(){
+    /*public ArrayList<Trip> getActiveTrips(){
         ArrayList<Trip> trips =new ArrayList<>();
         openDb();
         Cursor query = this.db.rawQuery("select * from trip where state =0",null);
         if (query == null || query.getCount() == 0 || !query.moveToFirst()) {
-            query.close();
+            if (query != null) {
+                query.close();
+            }
             closedb();
         }else{
             if (query.moveToFirst()){
                 while(!query.isAfterLast()){
-                    Trip trip = new Trip( query.getInt(query.getColumnIndex("id")),query.getString(query.getColumnIndex("start_time")),query.getString(query.getColumnIndex("end_time")),query.getString(query.getColumnIndex("tag")),query.getInt(query.getColumnIndex("state")),query.getInt(query.getColumnIndex("user_id")),query.getInt(query.getColumnIndex("synced")));
+                    Trip trip = new Trip(
+                            query.getString(query.getColumnIndexOrThrow("id")),
+                            query.getString(query.getColumnIndexOrThrow("start_time")),
+                            query.getString(query.getColumnIndexOrThrow("end_time")),
+                            query.getString(query.getColumnIndexOrThrow("tag")),
+                            query.getInt(query.getColumnIndexOrThrow("state")),
+                            query.getString(query.getColumnIndexOrThrow("user_id")),
+                            query.getInt(query.getColumnIndexOrThrow("synced"))
+                    );
                     trips.add(trip);
                     query.moveToNext();
                 }
@@ -167,8 +146,8 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
             query.close();
         }
         return trips;
-    }
-    public void addTrip(int user_id, String startTime, String tag, int synced){
+    }*/
+    /*public void addTrip(int user_id, String startTime, String tag, int synced){
         try {
             openDb();
 
@@ -186,9 +165,9 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
         } catch (Exception e) {
             Log.e("locationdbhelper",e.getMessage());
         }
-    }
+    }*/
 
-    public void endTrip(int user_id, String endTime,  int synced){
+   /* public void endTrip(int user_id, String endTime,  int synced){
         ArrayList<Trip> activeTrips= getActiveTrips();
         openDb();
         ContentValues contentValues = new ContentValues();
@@ -196,25 +175,25 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
         contentValues.put("end_time", endTime);
         contentValues.put("synced",synced);
         contentValues.put("state",1);
-        /*Cursor cursor=this.db.rawQuery("select * from trip where user_id="+user_id+" and state=0",null);
-        *//*if(cursor.getCount()==1){
+        *//*Cursor cursor=this.db.rawQuery("select * from trip where user_id="+user_id+" and state=0",null);
+        *//**//*if(cursor.getCount()==1){
             int id=cursor.getInt(cursor.getColumnIndex("id"));
             this.db.update("trip",contentValues,"id=?",new String[]{id+""});
-        }*//*
+        }*//**//*
         if (cursor.moveToFirst()){
             while(!cursor.isAfterLast()){
                 int id=cursor.getInt(cursor.getColumnIndex("id"));
                 this.db.update("trip",contentValues,"id=?",new String[]{id+""});
             }
-        }*/
+        }*//*
         for (Trip trip : activeTrips){
-            this.db.update("trip",contentValues,"id=?",new String[]{trip.getId()+""});
+            this.db.update("trip",contentValues,"id=?",new String[]{trip.getTrip_id()});
         }
-    }
+    }*/
 
-    public void removeTrip(int id){
+    public void removeTrip(String id){
         openDb();
-        this.db.delete("trip","id=?",new String[]{id+""});
+        this.db.delete("trip","id=?",new String[]{id});
     }
 
     public ArrayList<Trip> getofflineTrips(){
@@ -222,12 +201,20 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
         openDb();
         Cursor query = this.db.rawQuery("select * from trip where (synced =0 or synced= 2)  and state = 1",null);
         if (query == null || query.getCount() == 0 || !query.moveToFirst()) {
-            query.close();
+            if (query != null) {
+                query.close();
+            }
             closedb();
         }else{
             if (query.moveToFirst()){
                 while(!query.isAfterLast()){
-                    Trip trip = new Trip( query.getInt(query.getColumnIndex("id")),query.getString(query.getColumnIndex("start_time")),query.getString(query.getColumnIndex("end_time")),query.getString(query.getColumnIndex("tag")),query.getInt(query.getColumnIndex("state")),query.getInt(query.getColumnIndex("user_id")),query.getInt(query.getColumnIndex("synced")));
+                    Trip trip = new Trip( query.getString(query.getColumnIndexOrThrow("id"))
+                            ,query.getString(query.getColumnIndexOrThrow("start_time"))
+                            ,query.getString(query.getColumnIndexOrThrow("end_time"))
+                            ,query.getString(query.getColumnIndexOrThrow("tag")),
+                            query.getInt(query.getColumnIndexOrThrow("state")),
+                            query.getString(query.getColumnIndexOrThrow("user_id")),
+                            query.getInt(query.getColumnIndexOrThrow("synced")));
                     trips.add(trip);
                     query.moveToNext();
                 }
@@ -240,7 +227,7 @@ public final class LocationDbHelper extends SQLiteOpenHelper {
     @Override // android.database.sqlite.SQLiteOpenHelper
     public void onCreate(SQLiteDatabase sQLiteDatabase) {
         sQLiteDatabase.execSQL("CREATE TABLE location ( id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL  ) ");
-        sQLiteDatabase.execSQL("CREATE TABLE trip ( id INTEGER PRIMARY KEY AUTOINCREMENT, start_time TEXT NOT NULL,end_time TEXT ,tag TEXT ,user_id INTEGER NOT NULL,state INTEGER NOT NULL , synced INTEGER NOT NULL) ");
+        sQLiteDatabase.execSQL("CREATE TABLE trip (trip_id TEXT, start_time TEXT NOT NULL,end_time TEXT ,tag TEXT ,user_id INTEGER NOT NULL,state INTEGER NOT NULL , synced INTEGER NOT NULL) ");
 
     }
 

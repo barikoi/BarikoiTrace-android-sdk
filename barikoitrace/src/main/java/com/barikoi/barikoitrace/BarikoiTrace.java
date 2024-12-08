@@ -3,7 +3,8 @@ package com.barikoi.barikoitrace;
 import android.app.Activity;
 import android.content.Context;
 
-import com.barikoi.barikoitrace.Utils.SystemSettingsManager;
+import com.barikoi.barikoitrace.service.BarikoiTraceReceiver;
+import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
@@ -11,12 +12,12 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.exceptions.ContextException;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
+import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 
 /**
  * Barikoi trace base class. entry point for all trace related functions.
  */
 public class BarikoiTrace {
-    private static final String TAG=BarikoiTrace.class.getName();
     /**
      * The constant EXTRA.
      */
@@ -52,14 +53,6 @@ public class BarikoiTrace {
         getInstance().m15a(apikey);
     }
 
-    /**
-     * set Barikoi User by the user ID
-     *
-     * @param id ID of the BarikoiTrace user in STRING
-     */
-    public void setUserId(String id){
-        getInstance().setUserId(id);
-    }
 
     /**
      * Gets user id.
@@ -67,6 +60,11 @@ public class BarikoiTrace {
      * @return the user id
      */
     public static String getUserId() { return getInstance().getUserId();}
+
+
+    public static BarikoiTraceUser getUser(){
+        return getInstance().getUser();
+    }
 
     /**
      * Set email.
@@ -140,7 +138,7 @@ public class BarikoiTrace {
     }
 
     /**
-     * Opents Autostart settings intent for some custom android OS. Autostart settings is needed for loation service management
+     * Opens Autostart settings intent for some custom android OS. Autostart settings is needed for loation service management
      *
      * @param context the context
      */
@@ -190,14 +188,14 @@ public class BarikoiTrace {
     }
 
 
-    /**
-     * set Barikoi User by the user ID
-     *
-     * @param user_id ID of the BarikoiTrace user in STRING
-     */
-    public static void setUser(String user_id){
-        getInstance().setUserId(user_id);
-    }
+//    /**
+//     * set Barikoi User by the user ID
+//     *
+//     * @param user_id ID of the BarikoiTrace user in STRING
+//     */
+//    public static void setUser(String user_id){
+//        getInstance().setUserId(user_id);
+//    }
 
     /**
      * Is battery optimization enabled boolean.
@@ -371,12 +369,14 @@ public class BarikoiTrace {
         getInstance().setLogging(enabled);
     }
 
-/*
-    public static void updateCurrentLocation(TraceMode.DesiredAccuracy desiredAccuracy, int i) {
-        if (i > 10) {
-            getInstance().m9a(desiredAccuracy, i);
-        } else {
-            getInstance().m9a(desiredAccuracy, 10);
-        }
-    }*/
+    public static void setBroadcastingEnabled(boolean enabled){
+        getInstance().setBroadcasting(enabled);
+    }
+    public static void registerlocationupdate(BarikoiTraceReceiver receiver){
+        getInstance().registerLocatioUupdate(receiver);
+    }
+
+    public static void unregisterLocationUpdate(BarikoiTraceReceiver receiver){
+        getInstance().unregisterLocationUpdate(receiver);
+    }
 }

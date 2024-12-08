@@ -36,20 +36,17 @@ import com.google.common.util.concurrent.ListenableFuture;
 public class LocationWork extends ListenableWorker {
 
     private final Context mContext;
-    private final NotificationManager notificationManager;
 
     public LocationWork(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
         mContext = context;
-        notificationManager = (NotificationManager)
-                context.getSystemService(NOTIFICATION_SERVICE);
     }
 
 
     @NonNull
     public ListenableFuture<Result> startWork() {
 
-        Log.d("locationtask", "doWork: Started to work");
+        Log.d("locationworkmanager", "doWork: Started to work");
         setForegroundAsync(createForegroundInfo("Syncing Location"));
         return CallbackToFutureAdapter.getFuture(completer -> {
             UnifiedLocationManager unifiedLocationManager = new UnifiedLocationManager(mContext, new LocationUpdateListener() {
@@ -68,7 +65,7 @@ public class LocationWork extends ListenableWorker {
                             try {
                                 LocationDbHelper.getInstance(mContext).insertLocation(JsonResponseAdapter.getlocationJson(location));
                             } catch (BarikoiTraceException e) {
-                                e.printStackTrace();
+                                Log.e("locationtask", "location update failure", e);
                             }
                             completer.set(Result.failure());
                         }

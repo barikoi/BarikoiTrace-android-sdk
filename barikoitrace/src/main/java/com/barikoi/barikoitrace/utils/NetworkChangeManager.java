@@ -1,4 +1,4 @@
-package com.barikoi.barikoitrace.Utils;
+package com.barikoi.barikoitrace.utils;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -12,8 +12,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
-import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
-import com.barikoi.barikoitrace.p000b.LocationTracker;
+//import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
 
 
 public class NetworkChangeManager {
@@ -21,7 +20,7 @@ public class NetworkChangeManager {
 
     private Context context;
 
-    LogDbHelper logdb;
+//    LogDbHelper logdb;
 
 
     private ConnectivityManager.NetworkCallback networkCallback;
@@ -39,20 +38,20 @@ public class NetworkChangeManager {
         @Override // android.net.SystemSettingsManager.NetworkCallback
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
-            try {
-                //logdb.m312a("Network available");
-                //NetworkChangeManager.this.locationTracker.syncOfflineTrips();
-            } catch (Exception e) {
-            }
+//            try {
+//                //logdb.m312a("Network available");
+//                //NetworkChangeManager.this.locationTracker.syncOfflineTrips();
+//            } catch (Exception e) {
+//            }
         }
 
         @Override // android.net.SystemSettingsManager.NetworkCallback
         public void onLost(@NonNull Network network) {
             super.onLost(network);
-            try {
-                //logdb.m312a("Network unvailable");
-            } catch (Exception e) {
-            }
+//            try {
+//                //logdb.m312a("Network unvailable");
+//            } catch (Exception e) {
+//            }
         }
     }
 
@@ -64,18 +63,18 @@ public class NetworkChangeManager {
 
         @Override // android.content.BroadcastReceiver
         public void onReceive(Context context, Intent intent) {
-            try {
-                if (ConnectivityManager.CONNECTIVITY_ACTION.equals(intent.getAction())) {
-                    //NetworkChangeManager.this.locationTracker.m83c();
-                }
-            } catch (Exception e) {
-            }
+//            try {
+//                if (ConnectivityManager.CONNECTIVITY_ACTION.equals(intent.getAction())) {
+//                    //NetworkChangeManager.this.locationTracker.m83c();
+//                }
+//            } catch (Exception e) {
+//            }
         }
     }
 
     public NetworkChangeManager(Context context) {
         this.context = context;
-        this.logdb= LogDbHelper.getInstance(context);
+//        this.logdb= LogDbHelper.getInstance(context);
     }
 
 
@@ -98,12 +97,9 @@ public class NetworkChangeManager {
 
     public void unregisterReceiver() {
         try {
-            if (Build.VERSION.SDK_INT >= 21) {
-                ((ConnectivityManager) this.context.getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(this.networkCallback);
-            } else {
-                this.context.unregisterReceiver(this.broadcastReceiver);
-            }
+            ((ConnectivityManager) this.context.getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(this.networkCallback);
         } catch (Exception e) {
+            Log.e("trace", e.getMessage());
         }
     }
 }

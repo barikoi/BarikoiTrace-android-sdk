@@ -102,7 +102,7 @@ public final class TraceMode {
         
 
 
-        int option;
+        final int option;
 
         private TrackingModes(int i) {
             this.option = i;

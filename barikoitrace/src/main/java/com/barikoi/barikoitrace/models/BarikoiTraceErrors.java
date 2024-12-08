@@ -1,10 +1,12 @@
 package com.barikoi.barikoitrace.models;
 
 
+import org.json.JSONException;
+
 public final class BarikoiTraceErrors {
 
-    public static BarikoiTraceError jsonResponseError() {
-        return new BarikoiTraceError("BK402", "JSON response error");
+    public static BarikoiTraceError jsonResponseError(JSONException e) {
+        return new BarikoiTraceError("BK402", "JSON response error: "+ e.getMessage());
     }
 
 
@@ -55,10 +57,6 @@ public final class BarikoiTraceErrors {
         return new BarikoiTraceError("BK500", "Network error");
     }
 
-
-    public static BarikoiTraceError PlayServiceError() {
-        return new BarikoiTraceError("BK408", "PlayServices error");
-    }
 
 
     public static BarikoiTraceError serverError() {
