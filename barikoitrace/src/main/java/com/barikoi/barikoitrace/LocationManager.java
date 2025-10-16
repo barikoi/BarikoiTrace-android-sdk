@@ -30,6 +30,8 @@ import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p001c.ApplicationBinder;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 
+import java.util.UUID;
+
 
 public final class LocationManager {
 
@@ -53,9 +55,9 @@ public final class LocationManager {
 
     private LocationManager(Context context) {
         this.context = context.getApplicationContext();
-        this.confdb = ConfigStorageManager.getInstance(context);
-        this.apiRequestManager = ApiRequestManager.getInstance(context);
-        this.locationTracker = new LocationTracker(context);
+        this.confdb = ConfigStorageManager.getInstance(this.context);
+        this.apiRequestManager = ApiRequestManager.getInstance(this.context);
+        this.locationTracker = new LocationTracker(this.context);
     }
 
 
@@ -215,19 +217,17 @@ public final class LocationManager {
     }
     void setOrCreateUser(String name, String email, String phone, final BarikoiTraceUserCallback callback){
         //check if the phone number user is already in localstorage
-        BarikoiTraceUser user = this.confdb.getUser();
+        /*BarikoiTraceUser user = this.confdb.getUser();
         if(user!=null && phone!=null && phone.equals(user.getPhone()) && (System.currentTimeMillis()-user.getUpdatedAt())<24*60*60*1000) {
             callback.onSuccess(user);
             return;
-        }
+        }*/
         if (!NetworkChecker.isNetworkAvailable(this.context)) {
             callback.onFailure(BarikoiTraceErrors.networkError());
         } else if (TextUtils.isEmpty(phone)) {
             callback.onFailure(BarikoiTraceErrors.noDataError());
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
             callback.onFailure(BarikoiTraceErrors.noKeyError());
-        } else if(TextUtils.isEmpty(phone)){
-            callback.onFailure(new BarikoiTraceError("BK402","user login or register requires phone number"));
         }else {
             this.apiRequestManager.setorCreateUser(name, email, phone, new BarikoiTraceUserCallback() {
                 @Override
@@ -261,33 +261,33 @@ public final class LocationManager {
             callback.onFailure(BarikoiTraceErrors.noUserError());
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
             callback.onFailure(BarikoiTraceErrors.noKeyError());
-        }else
-        ApiRequestManager.getInstance(context).getCurrentTrip(new BarikoiTraceGetTripCallback() {
-            @Override
-            public void onSuccess(Trip trip) {
-                if(trip!=null){
-                    if(!isOnTrip()){
-                        confdb.setOnTrip(true);
-                        confdb.turnTrackingOn();
-                        locationTracker.startLocationService();
+        }else {
+            ApiRequestManager.getInstance(context).getCurrentTrip(new BarikoiTraceGetTripCallback() {
+                @Override
+                public void onSuccess(Trip trip) {
+                    if (trip != null) {
+                        if (!isOnTrip()) {
+                            confdb.setOnTrip(true);
+                            confdb.turnTrackingOn();
+                            locationTracker.startLocationService();
+                        }
+                        if (!locationTracker.isTrackingOn()) {
+                            locationTracker.startLocationService();
+                        }
+                    } else if (isOnTrip()) {
+                        confdb.setOnTrip(false);
+                        confdb.stopSdkTracking();
+                        locationTracker.stopLocationService();
                     }
-                    if(!locationTracker.isTrackingOn()){
-                        locationTracker.startLocationService();
-                    }
-                }else if(isOnTrip()){
-                    confdb.setOnTrip(false);
-                    confdb.stopSdkTracking();
-                    locationTracker.stopLocationService();
+                    callback.onSuccess(trip);
                 }
-                callback.onSuccess(trip);
-            }
 
-            @Override
-            public void onFailure(BarikoiTraceError barikoiError) {
-                callback.onFailure(barikoiError);
-            }
-        });
-
+                @Override
+                public void onFailure(BarikoiTraceError barikoiError) {
+                    callback.onFailure(barikoiError);
+                }
+            });
+        }
 
     }
 
@@ -460,5 +460,12 @@ public final class LocationManager {
     public void unregisterLocationUpdate(BarikoiTraceReceiver receiver){
         LocalBroadcastManager.getInstance(context)
                 .unregisterReceiver(receiver);
+    }
+
+    public void setDeviceToken() {
+        if (confdb.getDeviceToken()== null) {
+            String UUID = java.util.UUID.randomUUID().toString();
+            this.confdb.setDeviceToken(UUID);
+        }
     }
 }

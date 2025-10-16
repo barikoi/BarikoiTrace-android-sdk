@@ -16,29 +16,25 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 public class JsonResponseAdapter {
-    static BarikoiTraceUser getUser(String response) throws BarikoiTraceException{
-        try {
-            JSONObject responsejson=new JSONObject(response);
-            int status= responsejson.getInt("status");
-            if(status==200){
-                JSONObject userjson=responsejson.getJSONObject("user");
-                String id= userjson.getString("_id");
-                String name= userjson.getString("name");
-                String email=userjson.getString("email");
-                String phone=userjson.getString("phone");
-                return new BarikoiTraceUser.Builder()
-                        .setUserId(id)
-                        .setName(name)
-                        .setEmail(email)
-                        .setPhone(phone)
-                        .build();
-            }else {
-                return null;
-            }
-        } catch (JSONException e) {
-            throw new BarikoiTraceException(e);
-        }
+    static BarikoiTraceUser getUser(JSONObject userJson, String phone) throws JSONException {
 
+        String id= userJson.getString("_id");
+        String name= userJson.getString("name");
+        String email=userJson.getString("email");
+//        String phone=userJson.getString("phone");
+        JSONArray companyarray = userJson.getJSONArray("companies");
+        if(companyarray.length()==0) throw new JSONException("company not found");
+        String company = companyarray.getJSONObject(0).getString("company_id");
+        String group =companyarray.getJSONObject(0).getString("group_id");
+
+        return new BarikoiTraceUser.Builder()
+                .setUserId(id)
+                .setName(name)
+                .setEmail(email)
+                .setGroup(group)
+                .setPhone(phone)
+                .setCompanyId(company)
+                .build();
     }
 
     public static JSONObject getlocationJson(Location location) throws BarikoiTraceException {

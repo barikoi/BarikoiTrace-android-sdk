@@ -82,6 +82,14 @@ public final class ConfigStorageManager {
         return this.sharedPRefHelper.getString("api_key");
     }
 
+    public String getBaseUrl(){
+        return this.sharedPRefHelper.getString("base_url");
+    }
+
+    public void setBaseUrl(String url){
+        this.sharedPRefHelper.putString("base_url", url);
+    }
+
 
     public int getStopDuration() {
         return this.sharedPRefHelper.getInt("stopDuration");
@@ -321,6 +329,8 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putString("name", user.getName());
         this.sharedPRefHelper.putString("phone", user.getPhone());
         this.sharedPRefHelper.putString("email", user.getEmail());
+        this.sharedPRefHelper.putString("company", user.getCompanyId());
+        this.sharedPRefHelper.putString("group", user.getGroup());
         this.sharedPRefHelper.putLong("user_live_time", System.currentTimeMillis());
     }
     public BarikoiTraceUser getUser(){
@@ -330,6 +340,8 @@ public final class ConfigStorageManager {
                 .setPhone(this.sharedPRefHelper.getString("phone"))
                 .setEmail(this.sharedPRefHelper.getString("email"))
                 .setUpdatedAt(this.sharedPRefHelper.getLong("user_live_time"))
+                .setCompanyId(this.sharedPRefHelper.getString("company"))
+                .setGroup(this.sharedPRefHelper.getString("group"))
                 .build();
     }
 
@@ -348,6 +360,10 @@ public final class ConfigStorageManager {
 
     public String getDeviceToken() {
         return this.sharedPRefHelper.getString("device_token");
+    }
+
+    public void setDeviceToken(String UUID){
+        this.sharedPRefHelper.putString("device_token", UUID);
     }
 
 

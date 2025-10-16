@@ -3,6 +3,7 @@ package com.barikoi.barikoitrace;
 import android.app.Activity;
 import android.content.Context;
 
+import com.barikoi.barikoitrace.network.Api;
 import com.barikoi.barikoitrace.service.BarikoiTraceReceiver;
 import com.barikoi.barikoitrace.utils.SystemSettingsManager;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
@@ -51,6 +52,15 @@ public class BarikoiTrace {
     public static void initialize(Context context, String apikey){
         manager = LocationManager.getInstance(context);
         getInstance().m15a(apikey);
+        getInstance().setDeviceToken();
+    }
+
+    public static void setBaseUrl(String url){
+        Api.getInstance().setBaseURL(url);
+    }
+
+    public static void setMqttUrl(String url){
+        Api.getInstance().setBaseURL(url);
     }
 
 
@@ -66,27 +76,7 @@ public class BarikoiTrace {
         return getInstance().getUser();
     }
 
-    /**
-     * Set email.
-     *
-     * @param email    the email
-     * @param callback the callback
-     */
-    @Deprecated
-    public static void setEmail(String email, BarikoiTraceUserCallback callback){
-        getInstance().setEmail(email,callback);
-    }
 
-    /**
-     * Set phone.
-     *
-     * @param phone    the phone
-     * @param callback the callback
-     */
-    @Deprecated
-    public static void setPhone(String phone, BarikoiTraceUserCallback callback){
-        getInstance().setPhone(phone,callback);
-    }
 
     /**
      * Set or create user.
@@ -363,19 +353,33 @@ public class BarikoiTrace {
     /**
      * Set logging enabled.
      *
-     * @param enabled the enabled
+     * @param enabled boolean value to enable or disable logging
      */
     public static void setLoggingEnabled(boolean enabled){
         getInstance().setLogging(enabled);
     }
 
+    /**
+     *
+     *
+     * @param enabled  boolean value to enable or disable broadcasting
+     */
     public static void setBroadcastingEnabled(boolean enabled){
         getInstance().setBroadcasting(enabled);
     }
+
+    /**
+     * @param receiver {@link BarikoiTraceReceiver}
+     */
     public static void registerlocationupdate(BarikoiTraceReceiver receiver){
         getInstance().registerLocatioUupdate(receiver);
     }
 
+    /**
+     * unregister location update.
+     *
+     * @param receiver {@link BarikoiTraceReceiver}
+     */
     public static void unregisterLocationUpdate(BarikoiTraceReceiver receiver){
         getInstance().unregisterLocationUpdate(receiver);
     }

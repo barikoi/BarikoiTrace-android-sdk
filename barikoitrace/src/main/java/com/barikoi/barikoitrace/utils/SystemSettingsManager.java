@@ -37,6 +37,10 @@ public class SystemSettingsManager {
         }
     }
 
+    public static boolean checkBackgroundLocationPermission(Context context) {
+        return Build.VERSION.SDK_INT < 29 || ContextCompat.checkSelfPermission(context, ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
 
 
     /*public static boolean checkBackgroundLocationPermission(Context context) {

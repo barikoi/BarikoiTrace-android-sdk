@@ -32,10 +32,13 @@ public final class DeviceInfo {
 
     public static void updateBatteryInfo(Context context) {
         try {
-            Intent registerReceiver = context.registerReceiver(null, new IntentFilter("android.intent.action.BATTERY_CHANGED"));
+            Intent registerReceiver = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
             ConfigStorageManager a = ConfigStorageManager.getInstance(context);
-            a.setBatteryState(getBatteryStatus(registerReceiver));
-            a.updateBattery((long) getBattery(registerReceiver));
+            if (registerReceiver != null) {
+                a.setBatteryState(getBatteryStatus(registerReceiver));
+                a.updateBattery(getBattery(registerReceiver));
+            }
+
         } catch (Exception e) {
         }
     }

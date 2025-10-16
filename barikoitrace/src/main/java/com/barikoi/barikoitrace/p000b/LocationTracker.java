@@ -139,43 +139,43 @@ public final class LocationTracker implements LocationUpdateListener {
 
 
     public void m77a(final Location location, LocationUtils.LocationStatus bVar) throws BarikoiTraceException {
-        try {
-            this.storageManager.updateLastLocation(location);
-            sendLocationBroadCast(location, bVar.toString(), (BarikoiTraceError) null);
-            //DeviceInfo.updateBatteryInfo(this.context);
-            boolean a2 = NetworkChecker.isNetworkAvailable(this.context);
-            if (a2) {
-                if(storageManager.isOfflineTracking()) {
-                    if (!storageManager.isDataSyncing() && locdbhelper.getofflinecount() > 0) {
-                        uploadOfflineData();
-                    }
-                }
-
-                ApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
-                    @Override
-                    public void onlocationUpdate(Location location) {
-                        Log.d("trace", "Location Updated");
-                    }
-
-                    @Override
-                    public void onFailure(BarikoiTraceError barikoiError) {
-                        BarikoiTraceLogView.onFailure(barikoiError);
-                        if(barikoiError.equals(BarikoiTraceErrors.networkError()) && storageManager.isOfflineTracking()){
-                            try {
-                                Log.d("trace", "Location sned failed, saved offline");
-                                locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
-                            } catch (BarikoiTraceException e) {
-                                Log.e("trace", e.getMessage());
-                            }
-                        }
-                    }
-                });
-            }else if(storageManager.isOfflineTracking()){
-                    locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
-            }
-        } catch (Exception e) {
-            throw new BarikoiTraceException(e);
-        }
+//        try {
+//            this.storageManager.updateLastLocation(location);
+//            sendLocationBroadCast(location, bVar.toString(), (BarikoiTraceError) null);
+//            //DeviceInfo.updateBatteryInfo(this.context);
+//            boolean a2 = NetworkChecker.isNetworkAvailable(this.context);
+//            if (a2) {
+//                if(storageManager.isOfflineTracking()) {
+//                    if (!storageManager.isDataSyncing() && locdbhelper.getofflinecount() > 0) {
+//                        uploadOfflineData();
+//                    }
+//                }
+//
+//                ApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
+//                    @Override
+//                    public void onlocationUpdate(Location location) {
+//                        Log.d("trace", "Location Updated");
+//                    }
+//
+//                    @Override
+//                    public void onFailure(BarikoiTraceError barikoiError) {
+//                        BarikoiTraceLogView.onFailure(barikoiError);
+//                        if(barikoiError.equals(BarikoiTraceErrors.networkError()) && storageManager.isOfflineTracking()){
+//                            try {
+//                                Log.d("trace", "Location sned failed, saved offline");
+//                                locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
+//                            } catch (BarikoiTraceException e) {
+//                                Log.e("trace", e.getMessage());
+//                            }
+//                        }
+//                    }
+//                });
+//            }else if(storageManager.isOfflineTracking()){
+//                    locdbhelper.insertLocation(JsonResponseAdapter.getlocationJson(location));
+//            }
+//        } catch (Exception e) {
+//            throw new BarikoiTraceException(e);
+//        }
     }
 
 
@@ -293,13 +293,15 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
     private void periodicLocationUpdate() {
-        PeriodicWorkRequest workRequest = new PeriodicWorkRequest.
-                Builder(LocationWork.class,15, TimeUnit.MINUTES)
-                .build();
+        if(SystemSettingsManager.checkBackgroundLocationPermission(context)) {
+            PeriodicWorkRequest workRequest = new PeriodicWorkRequest.
+                    Builder(LocationWork.class, 15, TimeUnit.MINUTES)
+                    .build();
 
-        WorkManager.getInstance(context).
-                enqueueUniquePeriodicWork("UploadLocation",
-                        ExistingPeriodicWorkPolicy.REPLACE,workRequest);
+            WorkManager.getInstance(context).
+                    enqueueUniquePeriodicWork("UploadLocation",
+                            ExistingPeriodicWorkPolicy.REPLACE, workRequest);
+        }
     }
 
     private void stopPeriodicLocationUpdate() {
@@ -307,7 +309,7 @@ public final class LocationTracker implements LocationUpdateListener {
     }
 
     public void startLocationService() {
-          periodicLocationUpdate();
+//          periodicLocationUpdate();
 //        if (!isTrackingOn() ) {
 //            logdb.writeLog("location service starting");
             if (VERSION.SDK_INT >= VERSION_CODES.O) {

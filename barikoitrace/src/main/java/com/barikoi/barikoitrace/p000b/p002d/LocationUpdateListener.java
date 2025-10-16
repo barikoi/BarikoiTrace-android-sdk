@@ -2,6 +2,7 @@ package com.barikoi.barikoitrace.p000b.p002d;
 
 import android.location.Location;
 
+import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 
 

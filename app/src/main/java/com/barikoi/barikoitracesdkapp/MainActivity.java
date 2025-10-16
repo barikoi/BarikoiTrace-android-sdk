@@ -10,7 +10,6 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
-import android.widget.Switch;
 import android.widget.Toast;
 
 
@@ -46,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
-		BarikoiTrace.setBroadcastingEnabled(true);
 		receiver.setEventCallback(new BarikoiTreaceEventCallback() {
 			@Override
 			public void onError(BarikoiTraceError barikoiError) {
@@ -60,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
 			@Override
 			public void onLocationUpdated(Location location) {
-				Toast.makeText(MainActivity.this, "Location updated: "+location.getLatitude()+ " "+ location.getLongitude(), Toast.LENGTH_SHORT).show();
+				Toast.makeText(MainActivity.this, "Location updated: " + location.getLatitude() + " " + location.getLongitude(), Toast.LENGTH_SHORT).show();
 			}
 		});
 		BarikoiTrace.requestNotificationPermission(this);
@@ -71,6 +69,18 @@ public class MainActivity extends AppCompatActivity {
 			BarikoiTrace.requestLocationServices(MainActivity.this);
 		}
 		//set UI components
+		EditText baseurlform = findViewById(R.id.input_base_url);
+
+		EditText mqtturlform = findViewById(R.id.input_mqtt_url);
+
+		Button seturlbtn = findViewById(R.id.button_seturl);
+
+		seturlbtn.setOnClickListener(view -> {
+			if (!baseurlform.getText().toString().isEmpty()) BarikoiTrace.setBaseUrl(baseurlform.getText().toString());
+			if (!mqtturlform.getText().toString().isEmpty()) BarikoiTrace.setMqttUrl(mqtturlform.getText().toString());
+			Toast.makeText(MainActivity.this, "url set", Toast.LENGTH_SHORT).show();
+		});
+
 		EditText tv_username = findViewById(R.id.tvUserName);
 		switchService = findViewById(R.id.switchService);
         FloatingActionButton tagloc = findViewById(R.id.fab);
@@ -86,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
 					@Override
 					public void onFailure(BarikoiTraceError barikoiError) {
 						//if user not fetched from online, alternatively check if user already saved in device storage for trace
-						if(BarikoiTrace.getUser().getPhone().equals("01676529696")){
+						if(BarikoiTrace.getUser().getPhone().equals(tv_username.getText().toString())){
 							Toast.makeText(MainActivity.this, "user not found in online , found in local storage",Toast.LENGTH_SHORT).show();
 							//user found offline, prceed to call same operations as in onSuccess method
 						}else{
@@ -96,21 +106,21 @@ public class MainActivity extends AppCompatActivity {
 
 					@Override
 					public void onSuccess(BarikoiTraceUser traceUser) {
-						Toast.makeText(MainActivity.this, "user set: " +traceUser.getName(), Toast.LENGTH_SHORT).show();
+						Toast.makeText(MainActivity.this, "user set: " +traceUser.getName() +" " +traceUser.getUserId(), Toast.LENGTH_SHORT).show();
 						tv_username.setText(traceUser.getPhone());
-						BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
-
-							@Override
-							public void onSuccess(Trip trip) {
-								switchService.setChecked(BarikoiTrace.isOnTrip());
-
-							}
-
-							@Override
-							public void onFailure(BarikoiTraceError barikoiError) {
-								Log.e("tripstate", barikoiError.getMessage());
-							}
-						});
+//						BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
+//
+//							@Override
+//							public void onSuccess(Trip trip) {
+//								switchService.setChecked(BarikoiTrace.isOnTrip());
+//
+//							}
+//
+//							@Override
+//							public void onFailure(BarikoiTraceError barikoiError) {
+//								Log.e("tripstate", barikoiError.getMessage());
+//							}
+//						});
 					}
 				});
 			}
@@ -124,37 +134,9 @@ public class MainActivity extends AppCompatActivity {
 				BarikoiTrace.setBroadcastingEnabled(false);
 			}
 		});
-		//set user
-		if(BarikoiTrace.getUserId()==null){
-			BarikoiTrace.setOrCreateUser("sakib 5",null,"01111111124", new BarikoiTraceUserCallback() {
-				@Override
-				public void onFailure(BarikoiTraceError barikoiError) {
-					Toast.makeText(MainActivity.this, barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
-				}
-
-				@Override
-				public void onSuccess(BarikoiTraceUser traceUser) {
-					Toast.makeText(MainActivity.this, "user set: " +traceUser.getName(), Toast.LENGTH_SHORT).show();
-					tv_username.setText(traceUser.getPhone());
-					BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
-
-						@Override
-						public void onSuccess(Trip trip) {
-							switchService.setChecked(BarikoiTrace.isOnTrip());
-
-						}
-
-						@Override
-						public void onFailure(BarikoiTraceError barikoiError) {
-							Log.e("tripstate", barikoiError.getMessage());
-						}
-					});
-				}
-			});
-		}
-		else{
+		if(BarikoiTrace.getUser().getPhone()!=null)
 			tv_username.setText(BarikoiTrace.getUser().getPhone());
-		}
+		else Toast.makeText(this, "User not set, please fill in the phone number", Toast.LENGTH_SHORT).show();
 
 
 

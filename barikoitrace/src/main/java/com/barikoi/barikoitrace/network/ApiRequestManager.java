@@ -8,13 +8,10 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
-import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.NetworkError;
-import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
 import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
@@ -45,6 +42,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ApiRequestManager {
+    private static String TAG="trace_api";
     private static ApiRequestManager INSTANCE;
     private final ConfigStorageManager configStorageManager;
     private final RequestQueue requestQueue;
@@ -67,36 +65,29 @@ public class ApiRequestManager {
         id=configStorageManager.getUserID();
         key=configStorageManager.getApiKey();
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.user_url,
+                Api.getInstance().user_url,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
-                        int status= responsejson.getInt("status");
-                        if(status==200 || status==201){
-                            JSONObject userjson=responsejson.getJSONObject("user");
-                            String id= userjson.getString("_id");
-                            String name= userjson.getString("name");
-                            String email1 =userjson.getString("email");
-                            String phone1 =userjson.getString("phone");
-                            BarikoiTraceUser user=new BarikoiTraceUser.Builder().setUserId(id).setPhone(phone1).setEmail(email1).build();
-                            configStorageManager.setUser(user);
-                            callback.onSuccess(user);
-                        }else {
-                            String msg= responsejson.getString("message");
-                            callback.onFailure(new BarikoiTraceError(status+"",msg));
-                        }
+
+                        JSONObject userjson=responsejson.getJSONObject("user");
+                        String id= userjson.getString("_id");
+                        String name= userjson.getString("name");
+                        String email1 =userjson.getString("email");
+                        String phone1 =userjson.getString("phone");
+                        BarikoiTraceUser user=new BarikoiTraceUser.Builder().setUserId(id).setPhone(phone1).setEmail(email1).build();
+                        configStorageManager.setUser(user);
+                        callback.onSuccess(user);
+
                     } catch (JSONException e) {
 
                         callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
-                        callback.onFailure(handleError(error));
+                error -> {
+                    Log.d(TAG,"error:"+error.getMessage());
+                    callback.onFailure(handleError(error));
 
-                    }
                 }
         ) {
             @Override
@@ -118,54 +109,33 @@ public class ApiRequestManager {
     public void setorCreateUser(final String name, final String email, final String phone, final BarikoiTraceUserCallback callback){
         key=configStorageManager.getApiKey();
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.get_create_user_url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            int status= responsejson.getInt("status");
-                            Log.d("userjson",responsejson.toString());
-                            if(status==200 || status==201){
-                                JSONObject userjson=responsejson.getJSONObject("user");
-                                String id= userjson.getString("_id");
-                                String name= userjson.getString("name");
-                                String email=userjson.getString("email");
-                                String phone=userjson.getString("phone");
-                                BarikoiTraceUser user=new BarikoiTraceUser.Builder()
-                                        .setUserId(id)
-                                        .setPhone(phone)
-                                        .setEmail(email)
-                                        .setName(name)
-                                        .build();
-                                configStorageManager.setUser(user);
-                                setId(id);
-                                callback.onSuccess(user);
-                            }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
-                            }
-                        } catch (JSONException e) {
-                            Log.e("userlogerror", e.toString());
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
-                        }
+                Api.getInstance().get_create_user_url,
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        JSONObject userjson=responsejson.getJSONObject("user");
+                        Log.d("userjson",userjson.toString());
+                        BarikoiTraceUser user=JsonResponseAdapter.getUser(userjson, phone);
+                        Log.d("user",user.getGroup());
+                        configStorageManager.setUser(user);
+                        setId(id);
+                        callback.onSuccess(user);
+
+                    } catch (JSONException e) {
+                        Log.e("userlogerror", e.toString());
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
 
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.d( "locationupdate", error.toString());
+                error -> {
+                    Log.d( TAG, error.toString());
 
-                        callback.onFailure(handleError(error));
-                    }
+                    callback.onFailure(handleError(error));
                 }
         ) {
             @Override
             public Map<String, String> getHeaders()  {
-                HashMap<String,String> header= new HashMap<>();
-                header.put("Content-Type","application/json");
-                return header;
+                return getHeader();
             }
 
             @Override
@@ -198,38 +168,29 @@ public class ApiRequestManager {
             callback.onFailure(BarikoiTraceErrors.LocationNotFound());
         }
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.gpx_url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            int status= responsejson.getInt("status");
-                            if(status==200){
-                                callback.onlocationUpdate(location);
-                            }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
-                            }
-                        } catch (JSONException e) {
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                Api.getInstance().gpx_url,
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        int status= responsejson.getInt("status");
+                        if(status==200){
+                            callback.onlocationUpdate(location);
+                        }else {
+                            String msg= responsejson.getString("message");
+                            callback.onFailure(new BarikoiTraceError(status+"",msg));
                         }
+                    } catch (JSONException e) {
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
-
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
-                        callback.onFailure(handleError(error));
-                    }
+                error -> {
+                    Log.d(TAG,"error:"+error.getMessage());
+                    callback.onFailure(handleError(error));
                 }
         ) {
             @Override
             public Map<String, String> getHeaders()  {
-                HashMap<String,String> header= new HashMap<>();
-                header.put("Content-Type","application/json");
-                return header;
+                return getHeader();
             }
 
             @Override
@@ -256,32 +217,25 @@ public class ApiRequestManager {
     public void sendOfflineData(final JSONArray data, final BarikoiTraceBulkUpdateCallback callback ){
 
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.bulk_url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            int status= responsejson.getInt("status");
-                            if(status==200){
-                                callback.onBulkUpdate();
-                            }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
-                            }
-                        } catch (JSONException e) {
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                Api.getInstance().bulk_url,
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        int status= responsejson.getInt("status");
+                        if(status==200){
+                            callback.onBulkUpdate();
+                        }else {
+                            String msg= responsejson.getString("message");
+                            callback.onFailure(new BarikoiTraceError(status+"",msg));
                         }
+                    } catch (JSONException e) {
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
-
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.d("locationupdate","error:"+error.getMessage());
-                        callback.onFailure(handleError(error));
+                error -> {
+                    Log.d(TAG,"error:"+error.getMessage());
+                    callback.onFailure(handleError(error));
 
-                    }
                 }
         ) {
             @Override
@@ -312,33 +266,24 @@ public class ApiRequestManager {
 
 
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.start_trip_url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            Log.d("tripstart", responsejson.toString());
-                            String status= responsejson.getString("status");
-                            if(status.equals("success")){
-                                Trip trip = JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip"));
-                                callback.onSuccess(trip);
-                            }else {
-                                String msg= responsejson.getString("error");
-                                callback.onFailure(new BarikoiTraceError(status,msg));
-                            }
-                        } catch (JSONException e) {
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                Api.getInstance().start_trip_url,
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        Log.d("tripstart", responsejson.toString());
+                        String status= responsejson.getString("status");
+                        if(status.equals("success")){
+                            Trip trip = JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip"));
+                            callback.onSuccess(trip);
+                        }else {
+                            String msg= responsejson.getString("error");
+                            callback.onFailure(new BarikoiTraceError(status,msg));
                         }
+                    } catch (JSONException e) {
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
-
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        callback.onFailure(handleError(error));
-                    }
-                }
+                error -> callback.onFailure(handleError(error))
         ) {
             @Override
             public byte[] getBody()  {
@@ -378,76 +323,56 @@ public class ApiRequestManager {
 
 
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.trip_sync_url+paramString(params),
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            int status= responsejson.getInt("status");
-                            if(status==200 || status ==201){
+                Api.getInstance().trip_sync_url +paramString(params),
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        int status= responsejson.getInt("status");
+                        if(status==200 || status ==201){
 
-                                callback.onSuccess(trip);
+                            callback.onSuccess(trip);
 
-                            }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
-                            }
-                        } catch (JSONException e) {
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                        }else {
+                            String msg= responsejson.getString("message");
+                            callback.onFailure(new BarikoiTraceError(status+"",msg));
                         }
+                    } catch (JSONException e) {
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
-
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        //loading.setVisibility(View.GONE);
-                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
-                        //NetworkcallUtils.handleResponse(error,context);
-                        callback.onFailure( handleError(error));
-                    }
+                error -> {
+                    Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                    //loading.setVisibility(View.GONE);
+                    //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
+                    //NetworkcallUtils.handleResponse(error,context);
+                    callback.onFailure( handleError(error));
                 }
-        ) {
-            /*@Override
-            protected Map<String, String> getParams()  {
-
-                return params;
-            }*/
-        };
+        );
 
         requestQueue.add(request);
     }
 
     public void endTrip(final String endTime, final BarikoiTraceTripApiCallback callback ){
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.end_trip_url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            String status= responsejson.getString("status");
-                            Log.d("tripend", responsejson.toString());
-                            if(status.equals("success")){
-                                callback.onSuccess(JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip")));
-                            }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status,msg));
-                            }
-                        } catch (JSONException e) {
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                Api.getInstance().end_trip_url,
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        String status= responsejson.getString("status");
+                        Log.d("tripend", responsejson.toString());
+                        if(status.equals("success")){
+                            callback.onSuccess(JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip")));
+                        }else {
+                            String msg= responsejson.getString("message");
+                            callback.onFailure(new BarikoiTraceError(status,msg));
                         }
+                    } catch (JSONException e) {
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
-
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        callback.onFailure(handleError(error));
-                    }
+                error -> {
+                    if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                    callback.onFailure(handleError(error));
                 }
         ) {
             @Override
@@ -476,31 +401,24 @@ public class ApiRequestManager {
         params.put("user_id",id);
 
         StringRequest request = new StringRequest(Request.Method.GET,
-                Api.active_trip_url+paramString(params),
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            boolean active= responsejson.getBoolean("active");
-                            if(active){
-                                Trip trip =JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip"));
-                                callback.onSuccess(trip);
-                            }else {
-                                callback.onSuccess(null);
-                            }
-                        } catch (JSONException e) {
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                Api.getInstance().active_trip_url +paramString(params),
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        boolean active= responsejson.getBoolean("active");
+                        if(active){
+                            Trip trip =JsonResponseAdapter.getTrip(responsejson.getJSONObject("trip"));
+                            callback.onSuccess(trip);
+                        }else {
+                            callback.onSuccess(null);
                         }
+                    } catch (JSONException e) {
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
-
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        callback.onFailure(handleError(error));
-                    }
+                error -> {
+                    if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                    callback.onFailure(handleError(error));
                 }
         ) {
 
@@ -518,38 +436,31 @@ public class ApiRequestManager {
         params.put("api_key",key);
 
         StringRequest request = new StringRequest(Request.Method.GET,
-                Api.company_settings+paramString(params),
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject responsejson=new JSONObject(response);
-                            int status= responsejson.getInt("status");
-                            if(status==200 ){
-                                TraceMode mode=JsonResponseAdapter.getCompanySettings(responsejson.getJSONObject("settings"));
-                                configStorageManager.setTraceMode(mode);
-                                callback.onSuccess(mode);
+                Api.getInstance().company_settings +paramString(params),
+                response -> {
+                    try {
+                        JSONObject responsejson=new JSONObject(response);
+                        int status= responsejson.getInt("status");
+                        if(status==200 ){
+                            TraceMode mode=JsonResponseAdapter.getCompanySettings(responsejson.getJSONObject("settings"));
+                            configStorageManager.setTraceMode(mode);
+                            callback.onSuccess(mode);
 
-                            }else {
-                                String msg= responsejson.getString("message");
-                                callback.onFailure(new BarikoiTraceError(status+"",msg));
-                            }
-                        } catch (JSONException e) {
-                            if(configStorageManager.getTraceMode()==null)
-                                callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                        }else {
+                            String msg= responsejson.getString("message");
+                            callback.onFailure(new BarikoiTraceError(status+"",msg));
                         }
+                    } catch (JSONException e) {
+                        if(configStorageManager.getTraceMode()==null)
+                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
                     }
-
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
-                        //loading.setVisibility(View.GONE);
-                        //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
-                        //NetworkcallUtils.handleResponse(error,context);
-                        callback.onFailure( handleError(error));
-                    }
+                error -> {
+                    if (error!=null )Log.d("BarikoiTraceTrip","error:"+error.getMessage());
+                    //loading.setVisibility(View.GONE);
+                    //Toast.makeText(context, "problem", Toast.LENGTH_SHORT).show();
+                    //NetworkcallUtils.handleResponse(error,context);
+                    callback.onFailure( handleError(error));
                 }
         ) {
 
@@ -563,21 +474,13 @@ public class ApiRequestManager {
 
 
     public void insertLogFile(final String path, final BarikoiTraceBulkUpdateCallback callback) {
-        VolleyMultipartRequest request = new VolleyMultipartRequest(Request.Method.POST, Api.app_log_url,
-                new Response.Listener<NetworkResponse>() {
-                    @Override
-                    public void onResponse(NetworkResponse response) {
-                        if (response.statusCode == 200){
-                            callback.onBulkUpdate();
-                        }
+        VolleyMultipartRequest request = new VolleyMultipartRequest(Request.Method.POST, Api.getInstance().app_log_url,
+                response -> {
+                    if (response.statusCode == 200){
+                        callback.onBulkUpdate();
                     }
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        callback.onFailure(handleError(error));
-                    }
-                }){
+                error -> callback.onFailure(handleError(error))){
             @Override
             protected Map<String, String> getParams() {
                 Map<String, String> parameters = new HashMap<>();
@@ -649,6 +552,11 @@ public class ApiRequestManager {
     }
 
 
+    private Map<String, String> getHeader()  {
+        HashMap<String,String> header= new HashMap<>();
+        header.put("Content-Type","application/json");
+        return header;
+    }
 
     private String paramString(HashMap<String,String> params){
         StringBuilder result = new StringBuilder();
@@ -674,6 +582,7 @@ public class ApiRequestManager {
 
         return result.toString();
     }
+
 
 
 

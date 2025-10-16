@@ -12,21 +12,18 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
-//import com.barikoi.barikoitrace.localstorage.sqlitedb.LogDbHelper;
-
 
 public class NetworkChangeManager {
 
 
-    private Context context;
+    private final Context context;
 
-//    LogDbHelper logdb;
+
 
 
     private ConnectivityManager.NetworkCallback networkCallback;
 
 
-    private BroadcastReceiver broadcastReceiver;
 
 
     @RequiresApi(api = 21)
@@ -38,26 +35,18 @@ public class NetworkChangeManager {
         @Override // android.net.SystemSettingsManager.NetworkCallback
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
-//            try {
-//                //logdb.m312a("Network available");
-//                //NetworkChangeManager.this.locationTracker.syncOfflineTrips();
-//            } catch (Exception e) {
-//            }
         }
 
         @Override // android.net.SystemSettingsManager.NetworkCallback
         public void onLost(@NonNull Network network) {
             super.onLost(network);
-//            try {
-//                //logdb.m312a("Network unvailable");
-//            } catch (Exception e) {
-//            }
+
         }
     }
 
 
 
-    public class NetworkChangeReceiver extends BroadcastReceiver {
+    public static class NetworkChangeReceiver extends BroadcastReceiver {
         private NetworkChangeReceiver() {
         }
 
@@ -88,7 +77,6 @@ public class NetworkChangeManager {
             }
             IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
             NetworkChangeReceiver cVar = new NetworkChangeReceiver();
-            this.broadcastReceiver = cVar;
             this.context.registerReceiver(cVar, intentFilter);
         } catch (Exception e) {
         }

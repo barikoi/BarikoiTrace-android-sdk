@@ -21,6 +21,11 @@ public final class BarikoiTraceErrors {
         return new BarikoiTraceError("BK402", "Invalid accuracy");
     }
 
+    public static BarikoiTraceError noOrgError(){
+        return new BarikoiTraceError("BK402", "Organization not found for this user");
+
+    }
+
 
 
     public static BarikoiTraceError noDataError() {
