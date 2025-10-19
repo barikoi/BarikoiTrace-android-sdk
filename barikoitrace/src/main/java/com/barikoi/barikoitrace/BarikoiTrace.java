@@ -60,7 +60,7 @@ public class BarikoiTrace {
     }
 
     public static void setMqttUrl(String url){
-        Api.getInstance().setBaseURL(url);
+        Api.getInstance().setMqtt_url(url);
     }
 
 

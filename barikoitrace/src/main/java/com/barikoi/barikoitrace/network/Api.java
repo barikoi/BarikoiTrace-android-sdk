@@ -2,7 +2,7 @@ package com.barikoi.barikoitrace.network;
 
 
 public class Api {
-    public String base_url="http://138.201.131.53:3000/api/v1";
+    public String base_url="http://api.mqtt.bmapsbd.com/api/v1";
     public String mqtt_url="tcp://mqtt.bmapsbd.com:1883";
     public String start_trip_url=base_url+"/trip/create";
     public String end_trip_url=base_url+"/trip/end";
