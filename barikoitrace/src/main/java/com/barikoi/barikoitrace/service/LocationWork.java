@@ -1,6 +1,6 @@
 package com.barikoi.barikoitrace.service;
 
-import static android.content.Context.NOTIFICATION_SERVICE;
+
 import static android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION;
 
 import android.app.Notification;
@@ -47,7 +47,7 @@ public class LocationWork extends ListenableWorker {
     public ListenableFuture<Result> startWork() {
 
         Log.d("locationworkmanager", "doWork: Started to work");
-        setForegroundAsync(createForegroundInfo("Syncing Location"));
+        setForegroundAsync(createForegroundInfo());
         return CallbackToFutureAdapter.getFuture(completer -> {
             UnifiedLocationManager unifiedLocationManager = new UnifiedLocationManager(mContext, new LocationUpdateListener() {
                 @Override
@@ -89,20 +89,20 @@ public class LocationWork extends ListenableWorker {
 
 
     @NonNull
-    private ForegroundInfo createForegroundInfo(@NonNull String progress) {
+    private ForegroundInfo createForegroundInfo() {
         // Build a notification using bytesRead and contentLength
 
         Context context = getApplicationContext();
         String id = "barikoi_channel_sync_location";
-        String title = "Location Syncing...";
+
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             createChannel();
         }
 
         Notification notification = new NotificationCompat.Builder(context, id)
-                .setContentTitle(title)
-                .setTicker(title)
+                .setContentTitle("Syncing Location")
+                .setTicker("Syncing Location")
                 .setSmallIcon(R.drawable.barikoi_logo)
                 .setOngoing(true)
                 .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)

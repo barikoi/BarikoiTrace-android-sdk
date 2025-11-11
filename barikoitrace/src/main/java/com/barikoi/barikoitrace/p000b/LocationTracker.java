@@ -317,7 +317,7 @@ public final class LocationTracker implements LocationUpdateListener {
             }else{
                 this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
             }
-            periodicLocationUpdate();
+//            periodicLocationUpdate();
 //        }else logdb.writeLog("location service already running ");
     }
 
@@ -336,7 +336,7 @@ public final class LocationTracker implements LocationUpdateListener {
 //            logdb.writeLog("location service stopping");
 //            logdb.generateDBFile();
             this.context.stopService(new Intent(this.context, BarikoiTraceLocationService.class));
-            stopPeriodicLocationUpdate();
+//            stopPeriodicLocationUpdate();
             this.storageManager.m235c();
 
     }
