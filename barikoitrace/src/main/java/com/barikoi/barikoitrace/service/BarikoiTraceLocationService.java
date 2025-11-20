@@ -76,12 +76,12 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
         if (mode.getUpdateInterval() > 0) {
             UnifiedLocationManager cVar = this.unifiedLocationManager;
             cVar.removeLocationUpdate();
-            cVar.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter,mode.getPingSyncInterval());
+            cVar.startLocationUpdate(configStorageManager, mode.getUpdateInterval(),0,mode.getPingSyncInterval());
             return;
 
         }else if(mode.getDistanceFilter()>0){
             this.unifiedLocationManager.removeLocationUpdate();
-            this.unifiedLocationManager.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), this.activeDistFilter, mode.getPingSyncInterval());
+            this.unifiedLocationManager.startLocationUpdate(configStorageManager, mode.getUpdateInterval(), mode.getDistanceFilter(), mode.getPingSyncInterval());
             return;
         }
         int a = LocationUtils.getDistFilterFromSpeed(this.configStorageManager, 0);
@@ -151,8 +151,8 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                 mqttManager.publishLocation(location);
                 return;
             }
-            int speed = (int) LocationUtils.getSpeedInKmph(location.getSpeed());
-            BarikoiTraceLogView.debugLog(activeDistFilter+"");
+//            int speed = (int) LocationUtils.getSpeedInKmph(location.getSpeed());
+//            BarikoiTraceLogView.debugLog(activeDistFilter+"");
 //                m523a(location, speed);
             return;
         }

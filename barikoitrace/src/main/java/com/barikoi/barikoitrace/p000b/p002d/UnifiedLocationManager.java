@@ -117,7 +117,7 @@ public class UnifiedLocationManager {
                 if(maxWaitTime>0)locationRequest.setMaxUpdateDelayMillis(maxWaitTime);
                 locationRequest.setWaitForAccurateLocation(true);
             } else {
-                locationRequest.setIntervalMillis(0);
+//                locationRequest.setIntervalMillis(0);
                 locationRequest.setMinUpdateDistanceMeters(smallestDisplacement);
                 locationRequest.setWaitForAccurateLocation(true);
             }

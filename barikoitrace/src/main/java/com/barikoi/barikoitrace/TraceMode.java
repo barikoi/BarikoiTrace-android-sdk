@@ -43,11 +43,17 @@ public final class TraceMode {
         }
 
         public Builder setDistancefilter(int distanceFilter){
-            this.distanceFilter=distanceFilter;
+            if (distanceFilter< 10)
+                this.distanceFilter =10;
+            else
+                this.distanceFilter=distanceFilter;
             return this;
         }
         public Builder setUpdateInterval(int updateInterval){
-            this.updateInterval=updateInterval;
+            if( updateInterval < 5 )
+                this.updateInterval=5;
+            else
+                this.updateInterval=updateInterval;
             return this;
         }
         public Builder setOfflineSync(boolean offline){
@@ -67,8 +73,8 @@ public final class TraceMode {
         }
 
         public Builder setAccuracyFilter(int i) {
-            if (i < 10 || i > 150) {
-                this.accuracyFilter = 100;
+            if (i < 20 ) {
+                this.accuracyFilter = 20;
             } else {
                 this.accuracyFilter = i;
             }

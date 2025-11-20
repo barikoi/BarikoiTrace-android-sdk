@@ -154,7 +154,7 @@ public class MQTTClientManager {
                     statusCallback.onConnectionStatusChanged(true, "Connected");
 
                     // Subscribe to topics if needed
-                    subscribeToTopics();
+                    // subscribeToTopics();
                 }
 
                 @Override
