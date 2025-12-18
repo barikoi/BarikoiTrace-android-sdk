@@ -336,7 +336,7 @@ public class MQTTClientManager {
     public void disconnect() {
         if (mqttClient != null && mqttClient.isConnected()) {
             // Publish offline status before disconnecting
-            publishMessage("device/" + deviceId + "/status", "offline", 1, true);
+//            publishMessage("device/" + deviceId + "/status", "offline", 1, true);
 
             mqttClient.removeCallback(mqttCallback);
             // Disconnect

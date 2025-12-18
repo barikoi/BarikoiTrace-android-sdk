@@ -13,6 +13,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 
 public class JsonResponseAdapter {
@@ -89,7 +90,9 @@ public class JsonResponseAdapter {
         return new TraceMode.Builder().setUpdateInterval(obj.getInt("update_time_interval"))
                 .setDistancefilter(obj.getInt("distance_interval"))
                 .setAccuracyFilter(obj.getInt("accuracy_filter"))
-                .setOfflineSync(obj.getInt("offline_sync") == 1)
+                .setOfflineSync(obj.getBoolean("offline_sync") )
+                .setStartTime(LocalTime.parse(obj.getString("tracking_start_time")))
+                .setEndTime(LocalTime.parse(obj.getString("tracking_end_time")))
                 .build();
 
     }

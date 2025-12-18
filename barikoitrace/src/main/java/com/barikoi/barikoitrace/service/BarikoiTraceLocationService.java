@@ -40,6 +40,7 @@ import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.p000b.p002d.UnifiedLocationManager;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -126,6 +127,14 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     @Override // com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener
 
     public void onLocationReceived(Location location) {
+        if( configStorageManager.getTraceMode().getEndTime()!= LocalTime.MAX ){
+            if(LocalTime.now().isAfter(configStorageManager.getTraceMode().getEndTime()) || LocalTime.now().isBefore(configStorageManager.getTraceMode().getStartTime())){
+                configStorageManager.stopSdkTracking();
+//                mqttManager.destroy();
+                stopSelf();
+                return;
+            }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if(location.isMock()){
                 Toast.makeText(this, "Mock location detected", Toast.LENGTH_SHORT).show();
@@ -332,9 +341,9 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                     @Override
                     public void onConnectionStatusChanged(boolean connected, String message) {
                         // Update notification with connection status
-                        updateNotification(connected ?
-                                "Location service connected" :
-                                "Location service: " + message);
+//                        updateNotification(connected ?
+//                                "Location service connected" :
+//                                "Location service: " + message);
                     }
 
                     @Override

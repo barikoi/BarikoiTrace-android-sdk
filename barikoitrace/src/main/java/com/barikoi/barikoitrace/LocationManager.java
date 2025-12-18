@@ -431,7 +431,8 @@ public final class LocationManager {
     }
 
     public void getCompanySettings(BarikoiTraceSettingsCallback callback){
-        apiRequestManager.syncSettings(callback);
+        BarikoiTraceUser user = this.confdb.getUser();
+        apiRequestManager.syncSettings(user , callback);
     }
     public void syncTripstate(BarikoiTraceTripStateCallback callback){
         syncActiveTrip(callback);

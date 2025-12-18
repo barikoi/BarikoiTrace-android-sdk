@@ -2,11 +2,13 @@ package com.barikoi.barikoitrace;
 
 import androidx.annotation.Keep;
 
+import java.time.LocalTime;
+
 @Keep
 public final class TraceMode {
-    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 5, 0, 0, 50, TrackingModes.ACTIVE, true, false, 0);
-    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.MEDIUM, 0, 100, 0, 300, TrackingModes.PASSIVE,true,false, 120);
-    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 100, 0, 100, TrackingModes.REACTIVE,true,false, 30);
+    public static final TraceMode ACTIVE = new TraceMode(DesiredAccuracy.HIGH, 5, 0, 0, 50, TrackingModes.ACTIVE, true, false, 0, LocalTime.MIN, LocalTime.MAX);
+    public static final TraceMode PASSIVE = new TraceMode(DesiredAccuracy.MEDIUM, 0, 100, 0, 300, TrackingModes.PASSIVE,true,false, 120, LocalTime.MIN, LocalTime.MAX);
+    public static final TraceMode REACTIVE = new TraceMode(DesiredAccuracy.HIGH, 0, 100, 0, 100, TrackingModes.REACTIVE,true,false, 30, LocalTime.MIN, LocalTime.MAX);
     private int accuracyFilter;
     private DesiredAccuracy desiredAccuracy;
     private int distanceFilter;
@@ -15,6 +17,8 @@ public final class TraceMode {
     private int updateInterval;
     private boolean offline;
     private boolean debug=false;
+    private LocalTime startTime;
+    private LocalTime endTime;
     private int pingSyncInterval= 0;
 
     @Keep
@@ -38,6 +42,9 @@ public final class TraceMode {
         private boolean offline=true;
         private boolean debug= false;
         private int pingSyncInterval= 0;
+        private LocalTime startTime= LocalTime.MIN;
+        private LocalTime endTime= LocalTime.MAX;
+
         public Builder() {
 
         }
@@ -68,8 +75,19 @@ public final class TraceMode {
             this.pingSyncInterval=pingSyncInterval;
             return this;
         }
+
+        public Builder setStartTime(LocalTime startTime){
+            this.startTime=startTime;
+            return this;
+
+        }
+        public Builder setEndTime(LocalTime endTime) {
+            this.endTime = endTime;
+            return this;
+        }
+
         public TraceMode build() {
-            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM,this.offline,this.debug, this.pingSyncInterval);
+            return new TraceMode(this.desiredAccuracy, this.updateInterval, this.distanceFilter, this.stopDuration, this.accuracyFilter, TrackingModes.CUSTOM,this.offline,this.debug, this.pingSyncInterval, this.startTime,this.endTime);
         }
 
         public Builder setAccuracyFilter(int i) {
@@ -132,13 +150,15 @@ public final class TraceMode {
         this.trackingModes = trackingModes;
     }
 
-    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes, boolean offline,boolean debug, int pingSyncInterval) {
+    private TraceMode(DesiredAccuracy desiredAccuracy2, int updateinterval, int distancefilter, int stopduration, int accuracyfilter, TrackingModes trackingModes, boolean offline,boolean debug, int pingSyncInterval, LocalTime startTime, LocalTime endTime) {
         this.desiredAccuracy = desiredAccuracy2;
         this.updateInterval = updateinterval;
         this.distanceFilter = distancefilter;
         this.stopDuration = stopduration;
         this.accuracyFilter = accuracyfilter;
         this.trackingModes = trackingModes;
+        this.startTime = startTime;
+        this.endTime =  endTime;
         this.offline=offline;
         this.debug=debug;
         this.pingSyncInterval=pingSyncInterval;
@@ -171,6 +191,10 @@ public final class TraceMode {
     public boolean isInDebugMode(){ return  this.debug;}
 
     public int getPingSyncInterval(){ return this.pingSyncInterval;}
+
+    public LocalTime getStartTime(){ return this.startTime;}
+
+    public LocalTime getEndTime(){ return this.endTime;}
 
     public String toString(){ return "TraceMode "+getTrackingModes()+", updateInterval: "
             +getUpdateInterval()+", distancefilter: "

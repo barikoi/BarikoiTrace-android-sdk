@@ -8,7 +8,8 @@ import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 
-import java.util.UUID;
+import java.time.LocalTime;
+
 
 
 public final class ConfigStorageManager {
@@ -48,23 +49,36 @@ public final class ConfigStorageManager {
         //BarikoiTraceLogView.debugLog("desiredAccuracy: " +this.getDesiredAccuracy()+", updateInterval: "+this.getUpdateInterval()+",distanceFilter:"+this.getDistanceFilter()+",accuracyFilter:"+getAccuracyFilter());
     }
 
+    private void updateTrackingModewithTimetoDB(TraceMode traceTrackingMode) {
+        updateTrackingModetoDB(traceTrackingMode);
+        this.sharedPRefHelper.putString("startTime", traceTrackingMode.getStartTime().toString());
+        this.sharedPRefHelper.putString("endTime", traceTrackingMode.getEndTime().toString());
+        //BarikoiTraceLogView.debugLog("desiredAccuracy: " +this.getDesiredAccuracy()+", updateInterval: "+this.getUpdateInterval()+",distanceFilter:"+this.getDistanceFilter()+",accuracyFilter:"+getAccuracyFilter());
+    }
+
     public TraceMode getTraceMode(){
+        TraceMode.Builder mode;
         if(this.sharedPRefHelper.getInt("updateInterval")!=0 ||  this.sharedPRefHelper.getInt("distanceFilter")!=0){
-            return new TraceMode.Builder()
+            mode= new TraceMode.Builder()
                     .setAccuracyFilter(this.sharedPRefHelper.getInt("accuracyFilter"))
                     .setDistancefilter(this.sharedPRefHelper.getInt("distanceFilter"))
                     .setUpdateInterval(this.sharedPRefHelper.getInt("updateInterval"))
                     .setOfflineSync(this.sharedPRefHelper.getBoolean("offlineTracking"))
                     .setPingSyncInterval(this.sharedPRefHelper.getInt("pingSyncInterval"))
-                    .setDesiredAccuracy(TraceMode.DesiredAccuracy.toEnum(this.sharedPRefHelper.getString("desiredAccuracy")))
-                    .build();
-        }else return new TraceMode.Builder()
+                    .setDesiredAccuracy(TraceMode.DesiredAccuracy.toEnum(this.sharedPRefHelper.getString("desiredAccuracy")));
+
+        }else  mode= new TraceMode.Builder()
                 .setAccuracyFilter(200)
                 .setDistancefilter(0)
                 .setUpdateInterval(5)
                 .setOfflineSync(true)
-                .setDesiredAccuracy(TraceMode.DesiredAccuracy.HIGH)
-                .build();
+                .setDesiredAccuracy(TraceMode.DesiredAccuracy.HIGH);
+        if(this.sharedPRefHelper.getString("endTime")!= null){
+            mode.setEndTime(LocalTime.parse(this.sharedPRefHelper.getString("endTime")));
+            mode.setStartTime(LocalTime.parse(this.sharedPRefHelper.getString("startTime")));
+        }
+
+        return  mode.build();
     }
 
     private void clearTrackingModefromDB() {
@@ -155,6 +169,10 @@ public final class ConfigStorageManager {
     public void setTraceMode(TraceMode traceMode) {
         //this.sharedPRefHelper.putBoolean("sdk_tracking", true);
         updateTrackingModetoDB(traceMode);
+    }
+    public  void setTraceModeWithTiming(TraceMode traceMode){
+        updateTrackingModetoDB(traceMode);
+        updateTrackingModewithTimetoDB(traceMode);
     }
 
     public void turnTrackingOn() {

@@ -263,8 +263,6 @@ public class ApiRequestManager {
     }
 
     public void startTrip(final String startTime,  final TraceMode tracemode, final String tag, final BarikoiTraceTripApiCallback callback ){
-
-
         StringRequest request = new StringRequest(Request.Method.POST,
                 Api.getInstance().start_trip_url,
                 response -> {
@@ -399,7 +397,6 @@ public class ApiRequestManager {
         HashMap<String,String> params=new HashMap<>();
         params.put("api_key",key);
         params.put("user_id",id);
-
         StringRequest request = new StringRequest(Request.Method.GET,
                 Api.getInstance().active_trip_url +paramString(params),
                 response -> {
@@ -431,28 +428,30 @@ public class ApiRequestManager {
 
 
 
-    public void syncSettings(final BarikoiTraceSettingsCallback callback){
-        HashMap<String,String> params=new HashMap<>();
-        params.put("api_key",key);
+    public void syncSettings( BarikoiTraceUser user , final BarikoiTraceSettingsCallback callback){
 
-        StringRequest request = new StringRequest(Request.Method.GET,
-                Api.getInstance().company_settings +paramString(params),
+        if (user== null){
+            callback.onFailure(BarikoiTraceErrors.noUserError());
+            return;
+        }
+        if(TextUtils.isEmpty(user.getPhone())){
+            callback.onFailure(BarikoiTraceErrors.noUserError());
+            return;
+        }
+
+
+        StringRequest request = new StringRequest(Request.Method.POST,
+                Api.getInstance().company_settings ,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
-                        int status= responsejson.getInt("status");
-                        if(status==200 ){
-                            TraceMode mode=JsonResponseAdapter.getCompanySettings(responsejson.getJSONObject("settings"));
-                            configStorageManager.setTraceMode(mode);
-                            callback.onSuccess(mode);
+                        TraceMode mode=JsonResponseAdapter.getCompanySettings(responsejson.getJSONObject("settings"));
+                        configStorageManager.setTraceModeWithTiming(mode);
+                        callback.onSuccess(mode);
 
-                        }else {
-                            String msg= responsejson.getString("message");
-                            callback.onFailure(new BarikoiTraceError(status+"",msg));
-                        }
                     } catch (JSONException e) {
-                        if(configStorageManager.getTraceMode()==null)
-                            callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
+
                     }
                 },
                 error -> {
@@ -463,6 +462,19 @@ public class ApiRequestManager {
                     callback.onFailure( handleError(error));
                 }
         ) {
+            @Override
+            public byte[] getBody()  {
+                HashMap<String,String> params=new HashMap<>();
+                params.put("api_key",key);
+                params.put("phone", user.getPhone());
+                return new JSONObject(params).toString().getBytes();
+            }
+            @Override
+            public Map<String, String> getHeaders()  {
+                HashMap<String,String> header= new HashMap<>();
+                header.put("Content-Type","application/json");
+                return header;
+            }
 
         };
         request.setRetryPolicy(new DefaultRetryPolicy(240 * 1000, 0,
@@ -582,10 +594,6 @@ public class ApiRequestManager {
 
         return result.toString();
     }
-
-
-
-
 
 
 }

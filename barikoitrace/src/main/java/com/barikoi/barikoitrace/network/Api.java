@@ -12,7 +12,7 @@ public class Api {
     public String user_url=base_url+"/sdk/user";
     public String get_create_user_url=base_url+"/sdk/authenticate";
     public String active_trip_url=base_url+"/trip/check-active-trip";
-    public String company_settings=base_url+"/sdk/get-company-settings";
+    public String company_settings=base_url+"/sdk/company/settings";
     public String app_log_url=base_url+"/app/log";
 
     public static Api INSTANCE;
