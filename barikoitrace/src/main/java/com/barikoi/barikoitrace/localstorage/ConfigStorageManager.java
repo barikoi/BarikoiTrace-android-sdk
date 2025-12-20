@@ -2,6 +2,7 @@ package com.barikoi.barikoitrace.localstorage;
 
 import android.content.Context;
 import android.location.Location;
+import android.os.Build;
 import android.text.TextUtils;
 
 import com.barikoi.barikoitrace.TraceMode;
@@ -74,8 +75,11 @@ public final class ConfigStorageManager {
                 .setOfflineSync(true)
                 .setDesiredAccuracy(TraceMode.DesiredAccuracy.HIGH);
         if(this.sharedPRefHelper.getString("endTime")!= null){
-            mode.setEndTime(LocalTime.parse(this.sharedPRefHelper.getString("endTime")));
-            mode.setStartTime(LocalTime.parse(this.sharedPRefHelper.getString("startTime")));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                mode.setEndTime(LocalTime.parse(this.sharedPRefHelper.getString("endTime")));
+                mode.setStartTime(LocalTime.parse(this.sharedPRefHelper.getString("startTime")));
+            }
+
         }
 
         return  mode.build();
@@ -171,7 +175,7 @@ public final class ConfigStorageManager {
         updateTrackingModetoDB(traceMode);
     }
     public  void setTraceModeWithTiming(TraceMode traceMode){
-        updateTrackingModetoDB(traceMode);
+//        updateTrackingModetoDB(traceMode);
         updateTrackingModewithTimetoDB(traceMode);
     }
 

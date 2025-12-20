@@ -217,11 +217,11 @@ public final class LocationManager {
     }
     void setOrCreateUser(String name, String email, String phone, final BarikoiTraceUserCallback callback){
         //check if the phone number user is already in localstorage
-        /*BarikoiTraceUser user = this.confdb.getUser();
+        BarikoiTraceUser user = this.confdb.getUser();
         if(user!=null && phone!=null && phone.equals(user.getPhone()) && (System.currentTimeMillis()-user.getUpdatedAt())<24*60*60*1000) {
             callback.onSuccess(user);
             return;
-        }*/
+        }
         if (!NetworkChecker.isNetworkAvailable(this.context)) {
             callback.onFailure(BarikoiTraceErrors.networkError());
         } else if (TextUtils.isEmpty(phone)) {
