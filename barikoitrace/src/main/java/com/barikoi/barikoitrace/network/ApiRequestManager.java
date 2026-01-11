@@ -2,11 +2,8 @@ package com.barikoi.barikoitrace.network;
 
 import android.content.Context;
 import android.location.Location;
-import android.os.Build;
 import android.text.TextUtils;
 import android.util.Log;
-
-import androidx.annotation.RequiresApi;
 
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.NetworkError;
@@ -46,10 +43,11 @@ public class ApiRequestManager {
     private static ApiRequestManager INSTANCE;
     private final ConfigStorageManager configStorageManager;
     private final RequestQueue requestQueue;
-    private String id, key;
-    public static ApiRequestManager getInstance(Context context) {
+    private String id, key, base_url;
+    public static synchronized ApiRequestManager getInstance(Context context) {
         if (INSTANCE == null){
             INSTANCE=new ApiRequestManager(context);
+
         }
         return INSTANCE;
     }
@@ -59,57 +57,18 @@ public class ApiRequestManager {
         configStorageManager=ConfigStorageManager.getInstance(context.getApplicationContext());
         id=configStorageManager.getUserID();
         key=configStorageManager.getApiKey();
+        base_url = configStorageManager.getBaseUrl() ==null ?  base_url : configStorageManager.getBaseUrl();
     }
 
-    public void setUser(final String email, final String phone, final BarikoiTraceUserCallback callback){
-        id=configStorageManager.getUserID();
-        key=configStorageManager.getApiKey();
-        StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().user_url,
-                response -> {
-                    try {
-                        JSONObject responsejson=new JSONObject(response);
-
-                        JSONObject userjson=responsejson.getJSONObject("user");
-                        String id= userjson.getString("_id");
-                        String name= userjson.getString("name");
-                        String email1 =userjson.getString("email");
-                        String phone1 =userjson.getString("phone");
-                        BarikoiTraceUser user=new BarikoiTraceUser.Builder().setUserId(id).setPhone(phone1).setEmail(email1).build();
-                        configStorageManager.setUser(user);
-                        callback.onSuccess(user);
-
-                    } catch (JSONException e) {
-
-                        callback.onFailure(BarikoiTraceErrors.jsonResponseError(e));
-                    }
-                },
-                error -> {
-                    Log.d(TAG,"error:"+error.getMessage());
-                    callback.onFailure(handleError(error));
-
-                }
-        ) {
-            @Override
-            public byte[] getBody() {
-                HashMap<String,String> params=new HashMap<>();
-                params.put("api_key",key);
-                if(!TextUtils.isEmpty(email)) params.put("email",email);
-                if(!TextUtils.isEmpty(phone)) params.put("phone",phone);
-                return new JSONObject(params).toString().getBytes();
-            }
-
-        };
-        request.setRetryPolicy(new DefaultRetryPolicy(40 * 1000, 0,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-        request.setShouldCache(false);
-        requestQueue.add(request);
+    public void setBaseURL(String url){
+        base_url=url;
     }
 
+   
     public void setorCreateUser(final String name, final String email, final String phone, final BarikoiTraceUserCallback callback){
         key=configStorageManager.getApiKey();
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().get_create_user_url,
+                base_url+Api.get_create_user_url,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -168,7 +127,7 @@ public class ApiRequestManager {
             callback.onFailure(BarikoiTraceErrors.LocationNotFound());
         }
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().gpx_url,
+                base_url+Api.gpx_url,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -217,7 +176,7 @@ public class ApiRequestManager {
     public void sendOfflineData(final JSONArray data, final BarikoiTraceBulkUpdateCallback callback ){
 
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().bulk_url,
+                base_url+Api.bulk_url,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -264,7 +223,7 @@ public class ApiRequestManager {
 
     public void startTrip(final String startTime,  final TraceMode tracemode, final String tag, final BarikoiTraceTripApiCallback callback ){
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().start_trip_url,
+                base_url+Api.start_trip_url,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -321,7 +280,7 @@ public class ApiRequestManager {
 
 
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().trip_sync_url +paramString(params),
+                base_url+Api.trip_sync_url +paramString(params),
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -352,7 +311,7 @@ public class ApiRequestManager {
 
     public void endTrip(final String endTime, final BarikoiTraceTripApiCallback callback ){
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().end_trip_url,
+                base_url+Api.end_trip_url,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -398,7 +357,7 @@ public class ApiRequestManager {
         params.put("api_key",key);
         params.put("user_id",id);
         StringRequest request = new StringRequest(Request.Method.GET,
-                Api.getInstance().active_trip_url +paramString(params),
+                base_url+Api.active_trip_url +paramString(params),
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -439,9 +398,8 @@ public class ApiRequestManager {
             return;
         }
 
-
         StringRequest request = new StringRequest(Request.Method.POST,
-                Api.getInstance().company_settings ,
+                base_url+Api.company_settings ,
                 response -> {
                     try {
                         JSONObject responsejson=new JSONObject(response);
@@ -486,7 +444,7 @@ public class ApiRequestManager {
 
 
     public void insertLogFile(final String path, final BarikoiTraceBulkUpdateCallback callback) {
-        VolleyMultipartRequest request = new VolleyMultipartRequest(Request.Method.POST, Api.getInstance().app_log_url,
+        VolleyMultipartRequest request = new VolleyMultipartRequest(Request.Method.POST, base_url+Api.app_log_url,
                 response -> {
                     if (response.statusCode == 200){
                         callback.onBulkUpdate();
@@ -500,7 +458,6 @@ public class ApiRequestManager {
                 return parameters;
             }
 
-            @RequiresApi(api = Build.VERSION_CODES.KITKAT)
             @Override
             protected Map<String, DataPart> getByteData()  {
                 Map<String, DataPart> parameters = new HashMap<>();

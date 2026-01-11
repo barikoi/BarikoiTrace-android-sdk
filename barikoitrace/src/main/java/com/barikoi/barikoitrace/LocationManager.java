@@ -10,6 +10,7 @@ import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.barikoi.barikoitrace.network.Api;
 import com.barikoi.barikoitrace.service.BarikoiTraceReceiver;
 import com.barikoi.barikoitrace.utils.NetworkChecker;
 import com.barikoi.barikoitrace.utils.SystemSettingsManager;
@@ -166,7 +167,7 @@ public final class LocationManager {
 
 
 
-    public void setApiKey(String str) {
+    private void setApiKey(String str) {
         Context context = this.context;
         ((Application) context).registerActivityLifecycleCallbacks(new ApplicationBinder(context, this.confdb));
         this.confdb.setApiKey(str);
@@ -181,40 +182,6 @@ public final class LocationManager {
 
 
 
-    public void getUserInfo(String str, BarikoiTraceUserCallback barikoiUserCallback) {
-        if (!NetworkChecker.isNetworkAvailable(this.context)) {
-            barikoiUserCallback.onFailure(BarikoiTraceErrors.networkError());
-        } else if (TextUtils.isEmpty(str)) {
-            barikoiUserCallback.onFailure(BarikoiTraceErrors.noDataError());
-        } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
-            barikoiUserCallback.onFailure(BarikoiTraceErrors.noKeyError());
-        }else{
-
-        }
-    }
-    void setEmail(String email, BarikoiTraceUserCallback callback){
-        if (!NetworkChecker.isNetworkAvailable(this.context)) {
-            callback.onFailure(BarikoiTraceErrors.networkError());
-        } else if (TextUtils.isEmpty(email)) {
-            callback.onFailure(BarikoiTraceErrors.noDataError());
-        } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
-            callback.onFailure(BarikoiTraceErrors.noKeyError());
-        }else{
-            this.apiRequestManager.setUser(email,null,callback);
-        }
-
-    }
-    void setPhone(String phone, BarikoiTraceUserCallback callback){
-        if (!NetworkChecker.isNetworkAvailable(this.context)) {
-            callback.onFailure(BarikoiTraceErrors.networkError());
-        } else if (TextUtils.isEmpty(phone)) {
-            callback.onFailure(BarikoiTraceErrors.noDataError());
-        } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
-            callback.onFailure(BarikoiTraceErrors.noKeyError());
-        }else {
-            this.apiRequestManager.setUser(null, phone, callback);
-        }
-    }
     void setOrCreateUser(String name, String email, String phone, final BarikoiTraceUserCallback callback){
         //check if the phone number user is already in localstorage
         BarikoiTraceUser user = this.confdb.getUser();
@@ -247,9 +214,7 @@ public final class LocationManager {
     public BarikoiTraceUser getUser() {
         return this.confdb.getUser();
     }
-    void setUserId(String user_id){
-        this.confdb.setUserID(user_id);
-    }
+
 
     String getUserId(){return this.confdb.getUserID();}
 
@@ -468,5 +433,28 @@ public final class LocationManager {
             String UUID = java.util.UUID.randomUUID().toString();
             this.confdb.setDeviceToken(UUID);
         }
+    }
+
+    public void setBaseUrl(String url) {
+        if (!confdb.getBaseUrl().equals(url)) {
+            confdb.setBaseUrl(url);
+            confdb.clearUser();
+            confdb.cleartrackingModeWithTiming();
+            apiRequestManager.setBaseURL(url);
+            stopTracking();
+        }
+    }
+    public void setMqttUrl(String url) {
+        if (!confdb.getMqttUrl().equals(url)) {
+            confdb.setMqttUrl(url);
+        }
+    }
+
+    public void resetUrls() {
+        confdb.resetUrls();
+        apiRequestManager.setBaseURL(Api.base_url);
+        confdb.clearUser();
+        confdb.cleartrackingModeWithTiming();
+        stopTracking();
     }
 }

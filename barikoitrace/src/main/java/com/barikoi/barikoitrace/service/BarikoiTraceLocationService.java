@@ -298,8 +298,10 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
             this.locationTracker = new LocationTracker(this);
             BarikoiTraceUser user = configStorageManager.getUser() ;
             String uuid = configStorageManager.getDeviceToken();
+
+            String mqtt_url = configStorageManager.getMqttUrl()==null? Api.mqtt_url:configStorageManager.getMqttUrl();
             // Initialize MQTT client manager
-            initializeMqttManager(Api.getInstance().mqtt_url,user.getUserId(), uuid, user.getCompanyId(), user.getGroup());
+            initializeMqttManager(mqtt_url,user.getUserId(), uuid, user.getCompanyId(), user.getGroup());
 
             this.unifiedLocationManager = new UnifiedLocationManager(this, this);
 //            socketManager= SocketManager.getInstance(configStorageManager.getApiKey(),configStorageManager.getUserID());

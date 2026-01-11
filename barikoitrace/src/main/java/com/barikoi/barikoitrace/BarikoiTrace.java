@@ -56,11 +56,15 @@ public class BarikoiTrace {
     }
 
     public static void setBaseUrl(String url){
-        Api.getInstance().setBaseURL(url);
+        getInstance().setBaseUrl(url);
     }
 
     public static void setMqttUrl(String url){
-        Api.getInstance().setMqtt_url(url);
+        getInstance().setMqttUrl(url);
+    }
+
+    public static void resetUrls(){
+        getInstance().resetUrls();
     }
 
 
@@ -169,7 +173,7 @@ public class BarikoiTrace {
 */
 
 
-    private static LocationManager getInstance() {
+    private static synchronized LocationManager getInstance() {
         LocationManager aVar = manager;
         if (aVar != null) {
             return aVar;

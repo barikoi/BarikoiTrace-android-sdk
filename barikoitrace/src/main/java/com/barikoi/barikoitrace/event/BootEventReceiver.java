@@ -6,8 +6,6 @@ import android.content.Intent;
 import android.location.LocationManager;
 import android.util.Log;
 import android.widget.Toast;
-
-import com.barikoi.barikoitrace.p000b.GeofenceManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 
 
@@ -39,8 +37,6 @@ public class BootEventReceiver extends BroadcastReceiver {
 
             } else if (c == 1) {
                 bVar.m85e();
-            } else if (c == 2) {
-                GeofenceManager.getInstance(context).onGeofenceEventReceived(intent);
             }
         } catch (Exception e) {
             Log.d("BarikoiTraceException", e.getMessage());

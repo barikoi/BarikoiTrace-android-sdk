@@ -95,6 +95,12 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.remove("type");
     }
 
+    public void cleartrackingModeWithTiming(){
+        clearTrackingModefromDB();
+        this.sharedPRefHelper.remove("startTime");
+        this.sharedPRefHelper.remove("endTime");
+    }
+
 
     public String getApiKey() {
         return this.sharedPRefHelper.getString("api_key");
@@ -106,11 +112,6 @@ public final class ConfigStorageManager {
 
     public void setBaseUrl(String url){
         this.sharedPRefHelper.putString("base_url", url);
-    }
-
-
-    public int getStopDuration() {
-        return this.sharedPRefHelper.getInt("stopDuration");
     }
 
 
@@ -273,13 +274,7 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putString("appState", str);
     }
 
-    public void removeUser() {
-        this.sharedPRefHelper.remove("name");
-        this.sharedPRefHelper.remove("user_id");
-        this.sharedPRefHelper.remove("email");
-        this.sharedPRefHelper.remove("phone");
 
-    }
 
 
     public void setBatteryState(String str) {
@@ -340,13 +335,9 @@ public final class ConfigStorageManager {
     }
 
 
-    public void setUserID(String str) {
-        removeUser();
-        this.sharedPRefHelper.putString("user_id", str);
-    }
 
     public void setUser(BarikoiTraceUser user){
-        removeUser();
+        clearUser();
         this.sharedPRefHelper.putString("user_id", user.getUserId());
         this.sharedPRefHelper.putString("name", user.getName());
         this.sharedPRefHelper.putString("phone", user.getPhone());
@@ -365,6 +356,16 @@ public final class ConfigStorageManager {
                 .setCompanyId(this.sharedPRefHelper.getString("company"))
                 .setGroup(this.sharedPRefHelper.getString("group"))
                 .build();
+    }
+
+    public void clearUser(){
+        this.sharedPRefHelper.remove("user_id");
+        this.sharedPRefHelper.remove("name");
+        this.sharedPRefHelper.remove("phone");
+        this.sharedPRefHelper.remove("email");
+        this.sharedPRefHelper.remove("company");
+        this.sharedPRefHelper.remove("group");
+        this.sharedPRefHelper.remove("user_live_time");
     }
 
     public String getBatteryState() {
@@ -421,9 +422,15 @@ public final class ConfigStorageManager {
     }
 
 
+    public void setMqttUrl(String url) {
+        this.sharedPRefHelper.putString("mqtt_url", url);
+    }
+    public String getMqttUrl() {
+        return this.sharedPRefHelper.getString("mqtt_url");
+    }
 
-
-
-
-
+    public void resetUrls() {
+        this.sharedPRefHelper.remove("base_url");
+        this.sharedPRefHelper.remove("mqtt_url");
+    }
 }
