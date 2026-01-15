@@ -436,7 +436,14 @@ public final class LocationManager {
     }
 
     public void setBaseUrl(String url) {
-        if (!confdb.getBaseUrl().equals(url)) {
+        if(confdb.getBaseUrl() ==null) {
+            confdb.setBaseUrl(url);
+            confdb.clearUser();
+            confdb.cleartrackingModeWithTiming();
+            apiRequestManager.setBaseURL(url);
+            stopTracking();
+        }
+        else if (url.equals(confdb.getBaseUrl())) {
             confdb.setBaseUrl(url);
             confdb.clearUser();
             confdb.cleartrackingModeWithTiming();
