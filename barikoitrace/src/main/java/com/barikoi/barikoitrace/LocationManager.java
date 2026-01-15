@@ -452,7 +452,10 @@ public final class LocationManager {
         }
     }
     public void setMqttUrl(String url) {
-        if (!confdb.getMqttUrl().equals(url)) {
+        if( confdb.getMqttUrl() != null){
+            confdb.setMqttUrl(url);
+        }
+        else if (!url.equals(confdb.getMqttUrl())) {
             confdb.setMqttUrl(url);
         }
     }
