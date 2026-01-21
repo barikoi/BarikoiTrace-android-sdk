@@ -312,11 +312,20 @@ public final class LocationTracker implements LocationUpdateListener {
 //          periodicLocationUpdate();
 //        if (!isTrackingOn() ) {
 //            logdb.writeLog("location service starting");
+        try {
             if (VERSION.SDK_INT >= VERSION_CODES.O) {
                 this.context.startForegroundService(new Intent(this.context, BarikoiTraceLocationService.class));
-            }else{
+            } else {
                 this.context.startService(new Intent(this.context, BarikoiTraceLocationService.class));
             }
+        } catch (IllegalStateException e) {
+            // Handle the case when app is in background and can't start foreground service
+            Log.e("BarikoiTrace", "Cannot start foreground service from background", e);
+            BarikoiTraceLogView.debugLog("Failed to start location service: " + e.getMessage());
+        } catch (Exception e) {
+            Log.e("BarikoiTrace", "Error starting location service", e);
+            BarikoiTraceLogView.debugLog("Error starting location service: " + e.getMessage());
+        }
 //            periodicLocationUpdate();
 //        }else logdb.writeLog("location service already running ");
     }
