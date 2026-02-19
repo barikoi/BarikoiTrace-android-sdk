@@ -27,6 +27,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.barikoi.barikoitrace.BarikoiTrace;
 import com.barikoi.barikoitrace.R;
 import com.barikoi.barikoitrace.TraceMode;
+import com.barikoi.barikoitrace.callback.FinalTripLocationCallback;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.barikoi.barikoitrace.network.Api;
 import com.barikoi.barikoitrace.network.MQTTClientManager;
@@ -48,7 +49,7 @@ import java.util.List;
 import static androidx.core.app.NotificationCompat.PRIORITY_MAX;
 
 
-public class BarikoiTraceLocationService extends Service implements LocationUpdateListener {
+public class BarikoiTraceLocationService extends Service implements LocationUpdateListener, FinalTripLocationCallback {
 
 
     private ConfigStorageManager configStorageManager;
@@ -157,7 +158,9 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 //                    throw new RuntimeException(e);
 //                }
 //                socketManager.sendLocation(location);
-                mqttManager.publishLocation(location);
+                String tripId = configStorageManager.getTripId();
+                String tripStatus = configStorageManager.isOnTrip() ? "active" : null;
+                mqttManager.publishLocation(location, tripId, tripStatus);
                 return;
             }
 //            int speed = (int) LocationUtils.getSpeedInKmph(location.getSpeed());
@@ -257,6 +260,10 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     @Override // android.app.Service
     public void onDestroy() {
+        // MEMORY_LEAK [LOW]: WakeLock potentially released twice. First release at line 260,
+        // then conditionally released again at lines 268-270. After first release, isHeld()
+        // returns false so second block shouldn't execute, but this is confusing logic.
+        // TODO: Remove redundant first release or consolidate into single release block
         if(wakeLock!=null) wakeLock.release();
 //        socketManager.disconnect();
         if (mqttManager != null) {
@@ -307,6 +314,9 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 //            socketManager= SocketManager.getInstance(configStorageManager.getApiKey(),configStorageManager.getUserID());
 //            socketManager.connect();
             startLocationUpdate();
+
+            // Set callback for final trip location
+            locationTracker.setFinalTripLocationCallback(this);
         } catch (Exception e) {
         }
         BarikoiTraceLogView.onSuccess("service started");
@@ -429,6 +439,9 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
      * Register broadcast receiver for power save mode changes
      */
     private void registerPowerSaveReceiver() {
+        // MEMORY_LEAK [MEDIUM]: Anonymous BroadcastReceiver holds implicit reference to Service.
+        // If onDestroy() is not called (e.g., process kill), receiver won't be unregistered.
+        // Properly handled in onDestroy() - but consider using static class with WeakReference
         powerSaveModeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -449,6 +462,16 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                 new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED));
     }
 
-
+    /**
+     * Callback implementation for sending final trip location.
+     * Called by LocationTracker when a trip ends.
+     */
+    @Override
+    public void onSendFinalLocation(String tripId, String tripStatus) {
+        Location lastLocation = configStorageManager.getLastLocation();
+        if (mqttManager != null && lastLocation != null) {
+            mqttManager.publishLocation(lastLocation, tripId, tripStatus);
+        }
+    }
 
 }

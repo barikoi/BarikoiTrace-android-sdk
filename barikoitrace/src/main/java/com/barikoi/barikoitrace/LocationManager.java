@@ -26,7 +26,7 @@ import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.barikoi.barikoitrace.models.createtrip.Trip;
-import com.barikoi.barikoitrace.network.ApiRequestManager;
+import com.barikoi.barikoitrace.network.RetrofitApiRequestManager;
 import com.barikoi.barikoitrace.p000b.LocationTracker;
 import com.barikoi.barikoitrace.p000b.p001c.ApplicationBinder;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
@@ -37,13 +37,18 @@ import java.util.UUID;
 public final class LocationManager {
 
 
+    // MEMORY_LEAK [LOW]: Static singleton holds Context reference forever.
+    // Uses ApplicationContext which is correct, but all referenced objects will also live forever.
+    // TODO: Consider adding a cleanup/shutdown method for test scenarios
     private static LocationManager INSTANCE;
 
+    // FIX: Store ApplicationBinder reference to prevent memory leak
+    private ApplicationBinder applicationBinder;
 
     private Context context;
 
 
-    private ApiRequestManager apiRequestManager;
+    private RetrofitApiRequestManager apiRequestManager;
 
 
     private LocationTracker locationTracker;
@@ -57,7 +62,7 @@ public final class LocationManager {
     private LocationManager(Context context) {
         this.context = context.getApplicationContext();
         this.confdb = ConfigStorageManager.getInstance(this.context);
-        this.apiRequestManager = ApiRequestManager.getInstance(this.context);
+        this.apiRequestManager = RetrofitApiRequestManager.getInstance(this.context);
         this.locationTracker = new LocationTracker(this.context);
     }
 
@@ -167,9 +172,16 @@ public final class LocationManager {
 
 
 
+    // FIX: Unregister previous ApplicationBinder before registering new one to prevent memory leak
     private void setApiKey(String str) {
         Context context = this.context;
-        ((Application) context).registerActivityLifecycleCallbacks(new ApplicationBinder(context, this.confdb));
+        // Unregister previous callback if exists to prevent memory leak
+        if (applicationBinder != null) {
+            ((Application) context).unregisterActivityLifecycleCallbacks(applicationBinder);
+        }
+        // Create and register new callback
+        applicationBinder = new ApplicationBinder(context, this.confdb);
+        ((Application) context).registerActivityLifecycleCallbacks(applicationBinder);
         this.confdb.setApiKey(str);
         apiRequestManager.setKey(str);
         setLogging(true);
@@ -227,7 +239,7 @@ public final class LocationManager {
         } else if (TextUtils.isEmpty(this.confdb.getApiKey())) {
             callback.onFailure(BarikoiTraceErrors.noKeyError());
         }else {
-            ApiRequestManager.getInstance(context).getCurrentTrip(new BarikoiTraceGetTripCallback() {
+            RetrofitApiRequestManager.getInstance(context).getCurrentTrip(new BarikoiTraceGetTripCallback() {
                 @Override
                 public void onSuccess(Trip trip) {
                     if (trip != null) {

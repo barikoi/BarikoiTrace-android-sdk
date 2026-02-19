@@ -39,10 +39,17 @@ public class UnifiedLocationManager {
 
     private FusedLocationProviderClient fusedLocationProviderClient;
 
+    // MEMORY_LEAK [MEDIUM]: Non-static inner class holds implicit reference to outer class.
+    // If registered with FusedLocationProviderClient and not removed, prevents garbage collection.
+    // TODO: Ensure removeLocationUpdates() is called in cleanup
     private final LocationCallback googleLocationCallback = new GoogleLocationCallback();
 
+    // MEMORY_LEAK [MEDIUM]: Non-static inner class holds implicit reference to outer class.
+    // If registered with system LocationManager and not removed, prevents garbage collection.
+    // TODO: Ensure removeUpdates() is called in cleanup
     private final LocationListener nativeLocationListenerimp = new NativeLocationListener();
 
+    // MEMORY_LEAK [MEDIUM]: Non-static inner class - holds implicit reference to UnifiedLocationManager
     class GoogleLocationCallback extends LocationCallback {
         GoogleLocationCallback() {
         }
@@ -66,6 +73,7 @@ public class UnifiedLocationManager {
     }
 
 
+    // MEMORY_LEAK [MEDIUM]: Non-static inner class - holds implicit reference to UnifiedLocationManager
     class NativeLocationListener implements LocationListener {
         NativeLocationListener() {
         }

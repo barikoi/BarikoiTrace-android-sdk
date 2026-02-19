@@ -27,7 +27,7 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.localstorage.sqlitedb.LocationDbHelper;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
-import com.barikoi.barikoitrace.network.ApiRequestManager;
+import com.barikoi.barikoitrace.network.RetrofitApiRequestManager;
 import com.barikoi.barikoitrace.network.JsonResponseAdapter;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
 import com.barikoi.barikoitrace.p000b.p002d.UnifiedLocationManager;
@@ -52,7 +52,7 @@ public class LocationWork extends ListenableWorker {
             UnifiedLocationManager unifiedLocationManager = new UnifiedLocationManager(mContext, new LocationUpdateListener() {
                 @Override
                 public void onLocationReceived(Location location) {
-                    ApiRequestManager.getInstance(getApplicationContext()).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
+                    RetrofitApiRequestManager.getInstance(getApplicationContext()).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
                         @Override
                         public void onlocationUpdate(Location location) {
                             Log.d("locationtask", "location update success");

@@ -67,6 +67,10 @@ public class NetworkChangeManager {
     }
 
 
+    // MEMORY_LEAK [MEDIUM]: For API < 24, NetworkChangeReceiver is registered but reference is not stored.
+    // The unregisterReceiver() method only handles NetworkCallback (API 24+), so BroadcastReceiver
+    // is never unregistered for older APIs.
+    // TODO: Store NetworkChangeReceiver reference and unregister it in unregisterReceiver()
     public void registerReceiver() {
         try {
             if (Build.VERSION.SDK_INT >= 24) {
@@ -83,6 +87,8 @@ public class NetworkChangeManager {
     }
 
 
+    // MEMORY_LEAK [MEDIUM]: Only unregisters NetworkCallback (API 24+), does not handle
+    // BroadcastReceiver registered for API < 24
     public void unregisterReceiver() {
         try {
             ((ConnectivityManager) this.context.getSystemService(Context.CONNECTIVITY_SERVICE)).unregisterNetworkCallback(this.networkCallback);

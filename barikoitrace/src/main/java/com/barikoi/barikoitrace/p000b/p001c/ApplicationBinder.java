@@ -18,6 +18,8 @@ public class ApplicationBinder implements Application.ActivityLifecycleCallbacks
     private int f51a = 0;
 
 
+    // MEMORY_LEAK [HIGH]: Context reference held by ActivityLifecycleCallbacks that is never unregistered.
+    // TODO: Use WeakReference for context or ensure unregisterActivityLifecycleCallbacks is called
     private Context context;
 
 

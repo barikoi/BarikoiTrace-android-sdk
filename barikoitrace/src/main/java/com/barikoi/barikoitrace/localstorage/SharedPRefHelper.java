@@ -11,6 +11,9 @@ import java.util.Set;
 public final class SharedPRefHelper {
 
 
+    // MEMORY_LEAK [LOW]: Context stored without converting to ApplicationContext.
+    // Currently mitigated by ConfigStorageManager which creates this with ApplicationContext.
+    // TODO: Use context.getApplicationContext() in constructor for safety
     private Context context;
 
     SharedPRefHelper(Context context) {

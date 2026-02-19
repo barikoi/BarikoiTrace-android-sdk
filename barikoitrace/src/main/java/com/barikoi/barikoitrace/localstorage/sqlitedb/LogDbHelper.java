@@ -15,7 +15,7 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceBulkUpdateCallback;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
 import com.barikoi.barikoitrace.localstorage.ConfigStorageManager;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
-import com.barikoi.barikoitrace.network.ApiRequestManager;
+import com.barikoi.barikoitrace.network.RetrofitApiRequestManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -316,7 +316,7 @@ public final class LogDbHelper extends SQLiteOpenHelper {
             Log.d("DB", "File exported"+gpxfile.getAbsolutePath());
             for(final File f : Objects.requireNonNull(context.getFilesDir().listFiles())) {
                 if(f.isFile() && f.getName().startsWith("Log_"))
-                    ApiRequestManager.getInstance(context).insertLogFile(f.getAbsolutePath(), new BarikoiTraceBulkUpdateCallback() {
+                    RetrofitApiRequestManager.getInstance(context).insertLogFile(f.getAbsolutePath(), new BarikoiTraceBulkUpdateCallback() {
                         @Override
                         public void onBulkUpdate() {
                             deleteTable();

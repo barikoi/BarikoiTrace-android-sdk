@@ -39,16 +39,25 @@ public class JsonResponseAdapter {
     }
 
     public static JSONObject getlocationJson(Location location) throws BarikoiTraceException {
-        JSONObject params=params = new JSONObject();
+        return getlocationJson(location, null, null);
+    }
+
+    public static JSONObject getlocationJson(Location location, String tripId, String tripStatus) throws BarikoiTraceException {
+        JSONObject params = new JSONObject();
         try {
-            params.put("latitude",location.getLatitude());
+            params.put("latitude", location.getLatitude());
             params.put("longitude", location.getLongitude());
-            params.put("bearing",location.getBearing());
+            params.put("bearing", location.getBearing());
             params.put("altitude", location.getAltitude());
             params.put("gpx_time", DateTimeUtils.getDateTimeLocal(location.getTime()));
-            params.put("speed",location.getSpeed());
-            params.put("accuracy",location.getAccuracy());
-        }catch(JSONException e){
+            params.put("speed", location.getSpeed());
+            params.put("accuracy", location.getAccuracy());
+
+            if (tripId != null && !tripId.isEmpty()) {
+                params.put("trip_id", tripId);
+                params.put("trip_status", tripStatus != null ? tripStatus : "active");
+            }
+        } catch (JSONException e) {
             throw new BarikoiTraceException(e);
         }
         return params;

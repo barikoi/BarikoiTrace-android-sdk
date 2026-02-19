@@ -24,6 +24,7 @@ import com.barikoi.barikoitrace.callback.BarikoiTraceLocationCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripApiCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
+import com.barikoi.barikoitrace.callback.FinalTripLocationCallback;
 import com.barikoi.barikoitrace.event.BootEventReceiver;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceException;
 import com.barikoi.barikoitrace.exceptions.BarikoiTraceLogView;
@@ -34,7 +35,7 @@ import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceErrors;
 import com.barikoi.barikoitrace.models.LocationUtils;
 import com.barikoi.barikoitrace.models.createtrip.Trip;
-import com.barikoi.barikoitrace.network.ApiRequestManager;
+import com.barikoi.barikoitrace.network.RetrofitApiRequestManager;
 import com.barikoi.barikoitrace.network.JsonResponseAdapter;
 import com.barikoi.barikoitrace.p000b.p001c.DeviceInfo;
 import com.barikoi.barikoitrace.p000b.p002d.LocationUpdateListener;
@@ -52,7 +53,10 @@ import java.util.concurrent.TimeUnit;
 public final class LocationTracker implements LocationUpdateListener {
 
 
-    private static BootEventReceiver bootEventReceiver;
+    // FIX: Made non-static to prevent memory leaks across instances
+    // Each LocationTracker instance manages its own receiver
+    private BootEventReceiver bootEventReceiver;
+    private boolean isReceiverRegistered = false;
 
 
     private Context context;
@@ -69,6 +73,8 @@ public final class LocationTracker implements LocationUpdateListener {
 
     private BarikoiTraceLocationCallback locationCallback;
 
+    private FinalTripLocationCallback finalTripLocationCallback;
+
 
 
 
@@ -77,6 +83,10 @@ public final class LocationTracker implements LocationUpdateListener {
 //        this.logdb = LogDbHelper.getInstance(context);
         this.locdbhelper = LocationDbHelper.getInstance(context);
         this.storageManager = ConfigStorageManager.getInstance(context);
+    }
+
+    public void setFinalTripLocationCallback(FinalTripLocationCallback callback) {
+        this.finalTripLocationCallback = callback;
     }
 
 
@@ -151,7 +161,7 @@ public final class LocationTracker implements LocationUpdateListener {
 //                    }
 //                }
 //
-//                ApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
+//                RetrofitApiRequestManager.getInstance(this.context).sendLocation(location, new BarikoiTraceLocationUpdateCallback() {
 //                    @Override
 //                    public void onlocationUpdate(Location location) {
 //                        Log.d("trace", "Location Updated");
@@ -184,7 +194,7 @@ public final class LocationTracker implements LocationUpdateListener {
 //        logdb.writeLog("location syncing started. offline count: "+locdbhelper.getofflinecount() );
             final JSONArray data=locdbhelper.getLocationJson(storageManager.getUserID());
 
-            ApiRequestManager.getInstance(context).sendOfflineData(data, new BarikoiTraceBulkUpdateCallback() {
+            RetrofitApiRequestManager.getInstance(context).sendOfflineData(data, new BarikoiTraceBulkUpdateCallback() {
                 @Override
                 public void onBulkUpdate() {
                     if(locdbhelper.clearlast100()>0)
@@ -267,11 +277,13 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void registerReceiver() throws BarikoiTraceException {
         try {
-            if (bootEventReceiver == null) {
+            // FIX: Only register if not already registered
+            if (!isReceiverRegistered && bootEventReceiver == null) {
                 bootEventReceiver = new BootEventReceiver();
                 IntentFilter intentFilter = new IntentFilter();
                 intentFilter.addAction(LocationManager.PROVIDERS_CHANGED_ACTION);
                 this.context.registerReceiver(bootEventReceiver, intentFilter);
+                isReceiverRegistered = true;
             }
         } catch (Exception e) {
             throw new BarikoiTraceException(e);
@@ -353,70 +365,61 @@ public final class LocationTracker implements LocationUpdateListener {
 
 
     public void startTrip(final String tag, final TraceMode traceMode, final BarikoiTraceTripStateCallback callback){
-        final String startTime= DateTimeUtils.getCurrentTimeLocal();
-//        logdb.writeLog("requested start trip");
-//        logdb.writeDeviceLog();
+        final String startTime = DateTimeUtils.getCurrentTimeLocal();
+        final String tripId = java.util.UUID.randomUUID().toString();
+
+        storageManager.setTripId(tripId);
+        storageManager.setOnTrip(true);
         storageManager.setTraceMode(traceMode);
-        ApiRequestManager.getInstance(context).startTrip(startTime, traceMode, tag, new BarikoiTraceTripApiCallback() {
-            @Override
-            public void onFailure(BarikoiTraceError barikoiError) {
-//                logdb.writeLog("start trip failed: "+barikoiError.getMessage());
-                //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 0);
-                callback.onFailure(barikoiError);
-            }
+        storageManager.turnTrackingOn();
 
-            @Override
-            public void onSuccess(Trip trip) {
-//                logdb.writeLog("trip started succesfully ");
+        Trip trip = new Trip();
+        trip.setTrip_id(tripId);
+        trip.setStart_time(startTime);
+        trip.setTag(tag);
+        trip.setState(1); // active
 
-                storageManager.setOnTrip(true);
-                storageManager.turnTrackingOn();
-                //storageManager.turnTrackingOn(traceMode);
-                startLocationService();
-                callback.onSuccess(trip);
-                //locdbhelper.addTrip(Integer.parseInt(storageManager.getUserID()),startTime,tag, 1);
-            }
-        });
-
+        startLocationService();
+        callback.onSuccess(trip);
     }
 
     public void stopTrip(final BarikoiTraceTripStateCallback callback){
 
-        final String endTime= DateTimeUtils.getCurrentTimeLocal();
+        final String endTime = DateTimeUtils.getCurrentTimeLocal();
 
-        if(isOnTrip()) {
-            if(locdbhelper.getofflinecount()>0 && !storageManager.isDataSyncing()){
+        if (isOnTrip()) {
+            final String tripId = storageManager.getTripId();
+
+            // Upload any offline data first
+            if (locdbhelper.getofflinecount() > 0 && !storageManager.isDataSyncing()) {
                 uploadOfflineData();
             }
-            ApiRequestManager.getInstance(context).endTrip(endTime, new BarikoiTraceTripApiCallback() {
-                @Override
-                public void onFailure(BarikoiTraceError barikoiError) {
-                    callback.onFailure(barikoiError);
-//                    logdb.writeLog("trip end failed: "+barikoiError.getMessage());
-                    //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 2);
-                }
 
-                @Override
-                public void onSuccess(Trip trip) {
-                    storageManager.setOnTrip(false);
-//                    logdb.writeLog("Trip ended successfully ");
-//                    logdb.generateDBFile();
-                    storageManager.stopSdkTracking();
-                    stopLocationService();
-                    callback.onSuccess(trip);
-                    //locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 1);
-                }
-            });
-            //if (locdbhelper.getActiveTrips().get(0).getSynced() == 1)
-            /*else {
-                locdbhelper.endTrip(Integer.parseInt(storageManager.getUserID()), endTime, 0);
-                syncOfflineTrips();
-            }*/
-        }else {
-//            logdb.writeLog("Trip end failed, "+BarikoiTraceErrors.tripStateError().getMessage());
+            // Send final location with completed status
+            sendFinalTripLocation(tripId);
+
+            Trip trip = new Trip();
+            trip.setTrip_id(tripId);
+            trip.setEnd_time(endTime);
+            trip.setState(0); // completed
+
+            storageManager.clearTripData();
+            storageManager.stopSdkTracking();
+            stopLocationService();
+
+            callback.onSuccess(trip);
+        } else {
             storageManager.stopSdkTracking();
             stopLocationService();
             callback.onFailure(BarikoiTraceErrors.tripStateError());
+        }
+    }
+
+    private void sendFinalTripLocation(final String tripId) {
+        Location lastLocation = storageManager.getLastLocation();
+        if (lastLocation != null && finalTripLocationCallback != null) {
+            // Use callback to notify service to send final MQTT message
+            finalTripLocationCallback.onSendFinalLocation(tripId, "completed");
         }
     }
 
@@ -430,7 +433,7 @@ public final class LocationTracker implements LocationUpdateListener {
         ArrayList<Trip> trips=locdbhelper.getofflineTrips();
         for(final Trip trip: trips){
             if (trip.getSynced()==0)
-            ApiRequestManager.getInstance(context).syncOfflineTrip(trip, new BarikoiTraceTripApiCallback() {
+            RetrofitApiRequestManager.getInstance(context).syncOfflineTrip(trip, new BarikoiTraceTripApiCallback() {
                 @Override
                 public void onFailure(BarikoiTraceError barikoiError) {
 
@@ -442,7 +445,7 @@ public final class LocationTracker implements LocationUpdateListener {
                 }
             });
             else if(trip.getSynced()==2){
-                ApiRequestManager.getInstance(context).endTrip(trip.getEnd_time(), new BarikoiTraceTripApiCallback() {
+                RetrofitApiRequestManager.getInstance(context).endTrip(trip.getEnd_time(), new BarikoiTraceTripApiCallback() {
                     @Override
                     public void onFailure(BarikoiTraceError barikoiError) {
 
@@ -468,9 +471,11 @@ public final class LocationTracker implements LocationUpdateListener {
 
     public void unregisterReceiver() throws BarikoiTraceException {
         try {
-            if (bootEventReceiver != null) {
+            // FIX: Only unregister if registered, and reset flag
+            if (isReceiverRegistered && bootEventReceiver != null) {
                 this.context.unregisterReceiver(bootEventReceiver);
                 bootEventReceiver = null;
+                isReceiverRegistered = false;
             }
         } catch (Exception e) {
             throw new BarikoiTraceException(e);

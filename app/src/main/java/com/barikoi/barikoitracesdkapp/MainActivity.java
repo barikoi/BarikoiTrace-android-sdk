@@ -20,12 +20,14 @@ import androidx.appcompat.widget.SwitchCompat;
 import com.barikoi.barikoitrace.BarikoiTrace;
 import com.barikoi.barikoitrace.TraceMode;
 import com.barikoi.barikoitrace.callback.BarikoiTraceLocationUpdateCallback;
+import com.barikoi.barikoitrace.callback.BarikoiTraceSettingsCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceTripStateCallback;
 import com.barikoi.barikoitrace.callback.BarikoiTraceUserCallback;
 import com.barikoi.barikoitrace.models.BarikoiTraceError;
 import com.barikoi.barikoitrace.models.BarikoiTraceLocationInfo;
 import com.barikoi.barikoitrace.models.BarikoiTraceUser;
 import com.barikoi.barikoitrace.models.createtrip.Trip;
+import com.barikoi.barikoitrace.network.Api;
 import com.barikoi.barikoitrace.service.BarikoiTreaceEventCallback;
 import com.barikoi.barikoitrace.service.BarikoiTraceReceiver;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -44,8 +46,12 @@ public class MainActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		BarikoiTrace.initialize(this, "BARIKOI_API_KEY");
-		receiver.setEventCallback(new BarikoiTreaceEventCallback() {
+		BarikoiTrace.initialize(this, "MjA1NDo4MjBSTUxLTEs5");
+        BarikoiTrace.setBaseUrl("https://api.mqtt.bmapsbd.com/api/v1/");
+        BarikoiTrace.setMqttUrl("tcp://mqtt.bmapsbd.com:1883");
+//        BarikoiTrace.resetUrls();
+
+        receiver.setEventCallback(new BarikoiTreaceEventCallback() {
 			@Override
 			public void onError(BarikoiTraceError barikoiError) {
 				Toast.makeText(MainActivity.this, barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
@@ -88,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
 		setuser.setOnClickListener(new View.OnClickListener(){
 			@Override
 			public void onClick(View view) {
-				if(BarikoiTrace.isOnTrip()){
+               if(BarikoiTrace.isOnTrip()){
 					Toast.makeText(MainActivity.this, "cannot change user mid journey!", Toast.LENGTH_SHORT).show();
 					return;
 				}
@@ -108,23 +114,27 @@ public class MainActivity extends AppCompatActivity {
 					public void onSuccess(BarikoiTraceUser traceUser) {
 						Toast.makeText(MainActivity.this, "user set: " +traceUser.getName() +" " +traceUser.getUserId(), Toast.LENGTH_SHORT).show();
 						tv_username.setText(traceUser.getPhone());
-//						BarikoiTrace.syncTripstate(new BarikoiTraceTripStateCallback() {
-//
-//							@Override
-//							public void onSuccess(Trip trip) {
-//								switchService.setChecked(BarikoiTrace.isOnTrip());
-//
-//							}
-//
-//							@Override
-//							public void onFailure(BarikoiTraceError barikoiError) {
-//								Log.e("tripstate", barikoiError.getMessage());
-//							}
-//						});
+                        BarikoiTrace.getSettingsfromRemote(new BarikoiTraceSettingsCallback(){
+
+                            @Override
+                            public void onFailure(BarikoiTraceError barikoiError) {
+                                Toast.makeText(MainActivity.this,barikoiError.getMessage(),Toast.LENGTH_LONG).show();
+                            }
+
+                            @Override
+                            public void onSuccess(TraceMode tracemode) {
+//                                if(BarikoiTrace.isLocationTracking()){
+//                                    BarikoiTrace.stopTracking();
+//                                }
+//                                starttracking();
+//                                Toast.makeText(MainActivity.this,tracemode.getEndTime().toString(),Toast.LENGTH_LONG).show();
+                            }
+                        });
 					}
 				});
 			}
 		});
+
 		SwitchCompat switchupdate = findViewById(R.id.switchBroadcast);
 		switchupdate.setOnCheckedChangeListener((compoundButton, b) -> {
 			if (b) {
@@ -168,6 +178,7 @@ public class MainActivity extends AppCompatActivity {
 			Log.d("locationupdate","already running no need to start again");
 			switchService.setChecked(true);
 		}
+
 		BarikoiTrace.checkAppServicePermission(this);
 //		BarikoiTrace.startTracking(new TraceMode.Builder().setUpdateInterval(7).setPingSyncInterval(21).build());
 		//BarikoiTrace.openAutostartsettings(this);
@@ -177,68 +188,77 @@ public class MainActivity extends AppCompatActivity {
 			if(b) BarikoiTrace.startTracking(mode);
 			else BarikoiTrace.stopTracking();*/
 			if (b) {
-
-				TraceMode mode = null;
-				EditText uitext =  findViewById(R.id.input_updateinterval);
-				EditText dftext =  findViewById(R.id.input_distancefilter);
-				EditText aftext =  findViewById(R.id.input_accuracy);
-				int ui = Integer.parseInt(uitext.getText().toString());
-				int df = Integer.parseInt(dftext.getText().toString());
-				int af = Integer.parseInt(aftext.getText().toString());
-				TraceMode.Builder tb = new TraceMode.Builder();
-				if (ui > 0) {
-					tb.setUpdateInterval(ui);
-					tb.setPingSyncInterval(ui * 3);
-				}
-
-				if (df > 0) tb.setDistancefilter(df);
-				if (af > 0) tb.setAccuracyFilter(af);
-
-				if (!spinnertype.getSelectedItem().equals("NONE")) {
-					if (spinnertype.getSelectedItem().equals("ACTIVE")) mode = TraceMode.ACTIVE;
-					if (spinnertype.getSelectedItem().equals("REACTIVE"))
-						mode = TraceMode.REACTIVE;
-					if (spinnertype.getSelectedItem().equals("PASSIVE"))
-						mode = TraceMode.PASSIVE;
-					if (mode == null) mode = tb.build();
-					BarikoiTrace.startTracking(mode);
-				}
-
-				if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
-					Log.d("locationupdate", "already running no need to start again"+ BarikoiTrace.isOnTrip() + " "+BarikoiTrace.isLocationTracking());
-			 		Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
-
-				}  else {
-					tb.setDebugModeOn();
-					if (mode == null) mode = tb.build();
-					TraceMode finalMode = mode;
-					if(BarikoiTrace.isLocationPermissionsGranted()){
-						BarikoiTrace.startTracking(finalMode);
-					}else{
-						switchService.setChecked(false);
-						Toast.makeText(this, "location permission denied", Toast.LENGTH_SHORT).show();
-					}
-					
-					/*BarikoiTrace.startTrip("test", mode, new BarikoiTraceTripStateCallback() {
-						@Override
-						public void onSuccess(Trip trip) {
-							Toast.makeText(getApplicationContext(), "trip started!! id: "+ trip.getTrip_id(), Toast.LENGTH_SHORT).show();
-
-						}
-
-						@Override
-						public void onFailure(BarikoiTraceError barikoiError) {
-							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
-
-							switchService.setChecked(false);
-						}
-					});*/
-
-				}
+				if(!BarikoiTrace.isOnTrip())
+					starttracking();
 			}
-			else {
-				BarikoiTrace.stopTracking();
-					/*BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
+			else
+				stopTracking();
+		});
+
+	}
+
+    void starttracking(){
+        TraceMode mode = null;
+        EditText uitext =  findViewById(R.id.input_updateinterval);
+        EditText dftext =  findViewById(R.id.input_distancefilter);
+        EditText aftext =  findViewById(R.id.input_accuracy);
+        int ui = Integer.parseInt(uitext.getText().toString());
+        int df = Integer.parseInt(dftext.getText().toString());
+        int af = Integer.parseInt(aftext.getText().toString());
+        TraceMode.Builder tb = new TraceMode.Builder();
+        if (ui > 0) {
+            tb.setUpdateInterval(ui);
+            tb.setPingSyncInterval(ui * 3);
+        }
+
+        if (df > 0) tb.setDistancefilter(df);
+        if (af > 0) tb.setAccuracyFilter(af);
+
+        if (!spinnertype.getSelectedItem().equals("NONE")) {
+            if (spinnertype.getSelectedItem().equals("ACTIVE")) mode = TraceMode.ACTIVE;
+            if (spinnertype.getSelectedItem().equals("REACTIVE"))
+                mode = TraceMode.REACTIVE;
+            if (spinnertype.getSelectedItem().equals("PASSIVE"))
+                mode = TraceMode.PASSIVE;
+            if (mode == null) mode = tb.build();
+            BarikoiTrace.startTracking(mode);
+
+        }
+
+        if (BarikoiTrace.isOnTrip() ) {
+            Log.d("locationupdate", "already running no need to start again"+ BarikoiTrace.isOnTrip() + " "+BarikoiTrace.isLocationTracking());
+            Toast.makeText(getApplicationContext(), "trip already running!! no need to start again", Toast.LENGTH_SHORT).show();
+//            BarikoiTrace.stopTracking();
+//            if (mode == null) mode = tb.build();
+//            BarikoiTrace.startTracking(mode);
+        }  else {
+            tb.setDebugModeOn();
+            if (mode == null) mode = tb.build();
+            TraceMode finalMode = mode;
+            if(BarikoiTrace.isLocationPermissionsGranted()){
+				BarikoiTrace.startTrip("test", finalMode, new BarikoiTraceTripStateCallback() {
+					@Override
+					public void onSuccess(Trip trip) {
+						Toast.makeText(getApplicationContext(), "trip started!! id: "+ trip.getTrip_id(), Toast.LENGTH_SHORT).show();
+
+					}
+
+					@Override
+					public void onFailure(BarikoiTraceError barikoiError) {
+						Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
+
+						switchService.setChecked(false);
+					}
+				});
+            }else{
+                switchService.setChecked(false);
+                Toast.makeText(this, "location permission denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+	private void stopTracking(){
+		BarikoiTrace.endTrip(new BarikoiTraceTripStateCallback() {
 						@Override
 						public void onSuccess(Trip trip) {
 							Toast.makeText(getApplicationContext(), "trip stopped!!: id" +trip.getTrip_id(), Toast.LENGTH_SHORT).show();
@@ -251,16 +271,8 @@ public class MainActivity extends AppCompatActivity {
 							Toast.makeText(getApplicationContext(), barikoiError.getMessage(), Toast.LENGTH_SHORT).show();
 
 						}
-					});*/
-					//if (!BarikoiTrace.isOnTrip()) {
-						//Toast.makeText(getApplicationContext(), "trip stopped!!", Toast.LENGTH_SHORT).show();
-					//}
-				}
-		});
-
+					});
 	}
-
-
 
 	@Override
 	protected void onResume() {

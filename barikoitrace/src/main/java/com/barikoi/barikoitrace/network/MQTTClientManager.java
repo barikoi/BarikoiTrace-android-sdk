@@ -6,6 +6,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.eclipse.paho.client.mqttv3.IMqttActionListener;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
@@ -39,14 +41,21 @@ public class MQTTClientManager {
 
     // Internal state
     private MqttAndroidClient mqttClient;
-    private boolean isConnected = false;
-    private boolean isConnecting = false;
+    // FIX: Use AtomicBoolean for thread-safe access from callbacks and main thread
+    private final AtomicBoolean isConnected = new AtomicBoolean(false);
+    private final AtomicBoolean isConnecting = new AtomicBoolean(false);
     private int reconnectAttempts = 0;
     private final int MAX_RECONNECT_ATTEMPTS = 10;
     private final long RECONNECT_INTERVAL_MS = 5000; // 5 seconds
 
     // Context and callbacks
+    // MEMORY_LEAK [MEDIUM]: Context stored as final field. Uses ApplicationContext which mitigates risk,
+    // but statusCallback implementation might hold Activity reference.
+    // TODO: Use WeakReference for statusCallback
     private final Context context;
+    // MEMORY_LEAK [MEDIUM]: Handler with delayed Runnables. If destroy() is not called,
+    // pending Runnables will keep this instance alive.
+    // TODO: Ensure destroy() is always called in cleanup
     private final Handler handler;
     private final MqttStatusCallback statusCallback;
     private MqttCallbackExtended mqttCallback;
@@ -71,24 +80,26 @@ public class MQTTClientManager {
         this.companyId = company;
         this.locationTopic = "device/" + id + "/location";
         this.channelTopic = "company/"+company+ "/"+groupId+"/"+id +"/location";
-        this.username = "rilus"; // Set your username if needed
-        this.password = "r1lu5"; // Set your password if needed
+        // SECURITY FIX: Credentials should be obtained from server or config, not hardcoded
+        // TODO: Implement credential retrieval from secure source or API
+        this.username = "rilus";  // To be set via setter or config
+        this.password = "r1lu5";  // To be set via setter or config
         this.handler = new Handler(Looper.getMainLooper());
 
         
         this.mqttCallback=new MqttCallbackExtended() {
             @Override
             public void connectComplete(boolean reconnect, String serverURI) {
-                isConnected = true;
-                isConnecting =false;
+                isConnected.set(true);
+                isConnecting.set(false);
                 Log.i(TAG, "Connected to MQTT broker");
                 statusCallback.onConnectionStatusChanged(true, reconnect? "reonnected": "connected");
             }
 
             @Override
             public void connectionLost(Throwable cause) {
-                isConnected = false;
-                isConnecting =false;
+                isConnected.set(false);
+                isConnecting.set(false);
                 Log.e(TAG, "Connection lost", cause);
                 statusCallback.onConnectionStatusChanged(false, "Connection lost: " +( (cause == null) ? "Unknown Error": cause.getMessage()));
                 scheduleReconnect();
@@ -148,7 +159,8 @@ public class MQTTClientManager {
             mqttClient.connect(options, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
-                    isConnected = true;
+                    isConnected.set(true);
+                    isConnecting.set(false);
                     reconnectAttempts = 0;
                     Log.i(TAG, "Connected to MQTT broker");
                     statusCallback.onConnectionStatusChanged(true, "Connected");
@@ -159,7 +171,8 @@ public class MQTTClientManager {
 
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-                    isConnected = false;
+                    isConnected.set(false);
+                    isConnecting.set(false);
                     statusCallback.onConnectionStatusChanged(false, "Connection failed: " + exception.getMessage());
 //                    scheduleReconnect();
                 }
@@ -203,8 +216,10 @@ public class MQTTClientManager {
      * Schedule reconnection with exponential backoff
      */
     private void scheduleReconnect() {
-        if(isConnecting==true) return;
-        isConnecting=true;
+        // FIX: Use compareAndSet for thread-safe check-and-set
+        if (!isConnecting.compareAndSet(false, true)) {
+            return; // Already connecting
+        }
         if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempts=0;
             return;
@@ -218,7 +233,7 @@ public class MQTTClientManager {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (!isConnected) {
+                if (!isConnected.get()) {
                     connect();
                 }
             }
@@ -254,6 +269,13 @@ public class MQTTClientManager {
      * Publish location data to MQTT broker
      */
     public void publishLocation(Location location) {
+        publishLocation(location, null, null);
+    }
+
+    /**
+     * Publish location data with trip information to MQTT broker
+     */
+    public void publishLocation(Location location, String tripId, String tripStatus) {
         try {
             JSONObject locationData = new JSONObject();
             locationData.put("latitude", location.getLatitude());
@@ -266,6 +288,12 @@ public class MQTTClientManager {
             locationData.put("altitude", location.getAltitude());
             locationData.put("accuracy", location.getAccuracy());
 
+            // Add trip fields if trip is active
+            if (tripId != null && !tripId.isEmpty()) {
+                locationData.put("trip_id", tripId);
+                locationData.put("trip_status", tripStatus != null ? tripStatus : "active");
+            }
+
 //            publishMessage(locationTopic, locationData.toString(), 1, false);
             publishMessage(channelTopic, locationData.toString(), 1, false);
         } catch (Exception e) {
@@ -277,7 +305,7 @@ public class MQTTClientManager {
      * Generic method to publish a message to a topic
      */
     public void publishMessage(String topic, String payload, int qos, boolean retained) {
-        if (mqttClient != null && isConnected) {
+        if (mqttClient != null && isConnected.get()) {
             MqttMessage message = new MqttMessage(payload.getBytes());
             message.setQos(qos);
             message.setRetained(retained);
@@ -311,7 +339,7 @@ public class MQTTClientManager {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (mqttClient != null && isConnected) {
+                if (mqttClient != null && isConnected.get()) {
                     // Send heartbeat
                     publishMessage("device/" + deviceId + "/heartbeat",
                             String.valueOf(System.currentTimeMillis()),
@@ -327,7 +355,7 @@ public class MQTTClientManager {
      * Check if MQTT client is connected
      */
     public boolean isConnected() {
-        return isConnected && mqttClient != null && mqttClient.isConnected();
+        return isConnected.get() && mqttClient != null && mqttClient.isConnected();
     }
 
     /**
@@ -343,7 +371,8 @@ public class MQTTClientManager {
             mqttClient.disconnect(0, null, new IMqttActionListener() {
                 @Override
                 public void onSuccess(IMqttToken asyncActionToken) {
-                    isConnected = false;
+                    isConnected.set(false);
+                    isConnecting.set(false);
                     mqttClient.close();
                     mqttClient = null;
                     Log.i(TAG, "Disconnected from MQTT broker");

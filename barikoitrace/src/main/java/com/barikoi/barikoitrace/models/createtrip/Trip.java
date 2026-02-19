@@ -20,6 +20,10 @@ public class Trip {
 
     int synced;
 
+    public Trip() {
+        // Default constructor for local trip creation
+    }
+
     public Trip(String trip_id, String start_time, String end_time, String tag, int state, String user_id, int synced) {
         this.trip_id=trip_id;
         this.start_time = start_time;

@@ -214,6 +214,9 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.putString("longitude", String.valueOf(location.getLongitude()));
         this.sharedPRefHelper.putString("time", String.valueOf(location.getTime()));
         this.sharedPRefHelper.putString("speed", String.valueOf(location.getSpeed()));
+        this.sharedPRefHelper.putString("bearing", String.valueOf(location.getBearing()));
+        this.sharedPRefHelper.putString("altitude", String.valueOf(location.getAltitude()));
+        this.sharedPRefHelper.putString("accuracy", String.valueOf(location.getAccuracy()));
     }
 
     public Location getLastLocation() {
@@ -227,6 +230,20 @@ public final class ConfigStorageManager {
             location.setLongitude(Double.parseDouble(d2));
             location.setTime(Long.parseLong(d3));
             location.setSpeed((float) Math.round(Double.parseDouble(d4)));
+
+            // Retrieve optional bearing, altitude, accuracy
+            String bearing = this.sharedPRefHelper.getString("bearing");
+            String altitude = this.sharedPRefHelper.getString("altitude");
+            String accuracy = this.sharedPRefHelper.getString("accuracy");
+            if (bearing != null) {
+                location.setBearing(Float.parseFloat(bearing));
+            }
+            if (altitude != null) {
+                location.setAltitude(Double.parseDouble(altitude));
+            }
+            if (accuracy != null) {
+                location.setAccuracy(Float.parseFloat(accuracy));
+            }
         }
         return location;
     }
@@ -267,6 +284,9 @@ public final class ConfigStorageManager {
         this.sharedPRefHelper.remove("longitude");
         this.sharedPRefHelper.remove("time");
         this.sharedPRefHelper.remove("speed");
+        this.sharedPRefHelper.remove("bearing");
+        this.sharedPRefHelper.remove("altitude");
+        this.sharedPRefHelper.remove("accuracy");
     }
 
 
@@ -411,6 +431,23 @@ public final class ConfigStorageManager {
 
     public boolean isOnTrip(){
         return this.sharedPRefHelper.getBoolean("onTrip");
+    }
+
+    public void setTripId(String tripId) {
+        this.sharedPRefHelper.putString("trip_id", tripId);
+    }
+
+    public String getTripId() {
+        return this.sharedPRefHelper.getString("trip_id");
+    }
+
+    public void clearTripId() {
+        this.sharedPRefHelper.remove("trip_id");
+    }
+
+    public void clearTripData() {
+        clearTripId();
+        setOnTrip(false);
     }
 
     public boolean isbroadcastingEnabled(){
