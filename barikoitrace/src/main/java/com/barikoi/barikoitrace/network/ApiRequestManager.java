@@ -57,7 +57,7 @@ public class ApiRequestManager {
         configStorageManager=ConfigStorageManager.getInstance(context.getApplicationContext());
         id=configStorageManager.getUserID();
         key=configStorageManager.getApiKey();
-        base_url = configStorageManager.getBaseUrl() ==null ?  base_url : configStorageManager.getBaseUrl();
+        base_url = configStorageManager.getBaseUrl() ==null ?  Api.base_url : configStorageManager.getBaseUrl();
     }
 
     public void setBaseURL(String url){
