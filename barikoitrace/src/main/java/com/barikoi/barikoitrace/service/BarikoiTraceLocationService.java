@@ -219,6 +219,30 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
     @Override // android.app.Service
     public void onCreate() {
         super.onCreate();
+        startForegroundNotification();
+
+        // Register power save mode receiver
+//        registerPowerSaveReceiver();
+    }
+
+    /**
+     * Ensure the service is running in foreground mode
+     * Call this at the start of onStartCommand to prevent ForegroundServiceDidNotStartInTimeException
+     */
+    private void ensureForegroundStarted() {
+        // This ensures foreground is started even if onCreate hasn't been called yet
+        // or if the service is being restarted
+        try {
+            startForegroundNotification();
+        } catch (Exception e) {
+            Log.e("BarikoiTrace", "Error ensuring foreground started", e);
+        }
+    }
+
+    /**
+     * Start the foreground notification
+     */
+    private void startForegroundNotification() {
         String CHANNEL_ID = "BarikoiTrace";
         String CHANNEL_NAME = "Trace is running as Background service";
 
@@ -250,9 +274,6 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
                     .build();
             startForeground(1, notification2);
         }
-
-        // Register power save mode receiver
-//        registerPowerSaveReceiver();
     }
 
     @Override // android.app.Service
@@ -291,6 +312,10 @@ public class BarikoiTraceLocationService extends Service implements LocationUpda
 
     @Override // android.app.Service
     public int onStartCommand(Intent intent, int i, int i2) {
+
+        // Ensure foreground notification is active before any initialization
+        // This prevents ForegroundServiceDidNotStartInTimeException
+        ensureForegroundStarted();
 
         try {
 
