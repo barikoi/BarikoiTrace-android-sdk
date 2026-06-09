@@ -22,4 +22,4 @@ src/main/res/values/barikoi_config.xml
 /.idea/gradle.xml
 /.idea/misc.xml
 /.idea/vcs.xml
-/barikoiloctrace/build.gradle.kts
+/barikoiloctrace/build
