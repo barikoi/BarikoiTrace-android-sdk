@@ -5,10 +5,16 @@ import android.location.Location
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import info.mqtt.android.service.Ack
 import info.mqtt.android.service.MqttAndroidClient
-import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.IMqttActionListener
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.IMqttToken
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
 
 class MqttManager(
@@ -35,7 +41,6 @@ class MqttManager(
 
     private val clientId = "AndroidClient-$userId-$uuid"
     private val deviceId = userId
-    private val locationTopic = "device/$userId/location"
     private val channelTopic = "company/$companyId/$groupId/$userId/location"
 
     private var mqttClient: MqttAndroidClient? = null
@@ -160,7 +165,7 @@ class MqttManager(
         }, delay)
     }
 
-    fun publishLocation(location: Location) {
+    fun publishLocation(location: Location, tripId: String? = null, tripStatus: String = "active") {
         try {
             val locationData = JsonObject().apply {
                 addProperty("latitude", location.latitude)
@@ -172,11 +177,26 @@ class MqttManager(
                 addProperty("bearing", location.bearing)
                 addProperty("altitude", location.altitude)
                 addProperty("accuracy", location.accuracy)
+                tripId?.let {
+                    addProperty("trip_id", it)
+                    addProperty("trip_status", tripStatus)
+                }
             }
+            Log.d(tag, "Publishing location: $locationData")
             publishMessage(channelTopic, locationData.toString(), 1, false)
         } catch (e: Exception) {
             Log.e(tag, "Error creating location JSON", e)
         }
+    }
+
+    fun publishLocationJson(json: JsonObject) {
+        Log.d(tag, "Publishing offline location: $json")
+        publishMessage(channelTopic, json.toString(), 1, false)
+    }
+
+    fun publishOfflineBatch(jsonArray: JsonArray) {
+        Log.d(tag, "Publishing offline batch: $jsonArray")
+        publishMessage(channelTopic, jsonArray.toString(), 1, false)
     }
 
     private fun publishMessage(topic: String, payload: String, qos: Int, retained: Boolean) {
