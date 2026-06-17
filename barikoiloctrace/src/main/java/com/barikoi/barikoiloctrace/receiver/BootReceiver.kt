@@ -17,7 +17,8 @@ class BootReceiver : BroadcastReceiver() {
                 if (dataStore.isSdkTracking()) {
                     val traceMode = dataStore.getTraceMode()
                     if (traceMode != null) {
-                        manager.startTracking(traceMode)
+                        val hasActiveTrip = dataStore.getLocalTripId() != null
+                        manager.startTracking(traceMode, hasActiveTrip)
                     }
                 }
             } catch (e: Exception) {
