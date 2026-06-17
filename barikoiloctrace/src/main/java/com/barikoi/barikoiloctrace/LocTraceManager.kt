@@ -10,7 +10,6 @@ import com.barikoi.barikoiloctrace.api.TraceApiClient
 import com.barikoi.barikoiloctrace.location.LocationEngine
 import com.barikoi.barikoiloctrace.model.TraceError
 import com.barikoi.barikoiloctrace.model.TraceUser
-import com.barikoi.barikoiloctrace.model.Trip
 import com.barikoi.barikoiloctrace.service.LocTraceForegroundService
 import com.barikoi.barikoiloctrace.storage.OfflineLocationDb
 import com.barikoi.barikoiloctrace.storage.OfflineLocationEntity
@@ -18,7 +17,6 @@ import com.barikoi.barikoiloctrace.storage.TraceDataStore
 import com.barikoi.barikoiloctrace.util.DateTimeUtils
 import com.barikoi.barikoiloctrace.util.NetworkChecker
 import com.barikoi.barikoiloctrace.util.SystemSettingsManager
-import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -70,7 +68,8 @@ class LocTraceManager private constructor(private val context: Context) {
             if (dataStore.isSdkTracking()) {
                 val traceMode = dataStore.getTraceMode()
                 if (traceMode != null && !isServiceRunning()) {
-                    startTracking(traceMode)
+                    val hasActiveTrip = dataStore.getLocalTripId() != null
+                    startTracking(traceMode, hasActiveTrip)
                 }
             }
         }
@@ -135,7 +134,7 @@ class LocTraceManager private constructor(private val context: Context) {
 
     // --- Tracking ---
 
-    fun startTracking(traceMode: TraceMode) {
+    fun startTracking(traceMode: TraceMode, withTrip: Boolean = false) {
         val userId = dataStore.getUserId()
         if (userId.isNullOrBlank()) {
             Log.w("LocTrace", TraceError.noUserError().message)
@@ -151,6 +150,13 @@ class LocTraceManager private constructor(private val context: Context) {
         scope.launch {
             dataStore.setSdkTracking(true)
             dataStore.setTraceMode(traceMode)
+            if (withTrip) {
+                if (dataStore.getLocalTripId() == null) {
+                    dataStore.setLocalTripId(UUID.randomUUID().toString())
+                }
+            } else {
+                dataStore.clearLocalTrip()
+            }
         }
 
         startLocationService()
@@ -183,136 +189,37 @@ class LocTraceManager private constructor(private val context: Context) {
 
     // --- Trips ---
 
-    suspend fun startTrip(tag: String, traceMode: TraceMode): Trip {
-        val startTime = DateTimeUtils.getCurrentTimeLocal()
-        dataStore.setTraceMode(traceMode)
+    fun isOnTrip(): Boolean = dataStore.getLocalTripId() != null
 
-        val trip = apiClient.startTrip(startTime, tag, traceMode)
-        scope.launch {
-            dataStore.setOnTrip(true)
-            dataStore.setSdkTracking(true)
-        }
-        startLocationService()
-        return trip
-    }
-
-    suspend fun endTrip(): Trip {
-        if (!dataStore.isOnTrip()) throw Exception(TraceError.tripStateError().message)
-
-        val endTime = DateTimeUtils.getCurrentTimeLocal()
-
-        // Sync offline data first (await completion)
-        if (offlineDb.locationDao().getCount() > 0 && !dataStore.isDataSyncing()) {
-            try {
-                uploadOfflineDataSync()
-            } catch (_: Exception) {}
-        }
-
-        val trip = apiClient.endTrip(endTime)
-        scope.launch {
-            dataStore.setOnTrip(false)
-            dataStore.stopSdkTracking()
-        }
-        stopLocationService()
-        return trip
-    }
-
-    fun isOnTrip(): Boolean = dataStore.isOnTrip()
-
-    suspend fun syncTripState(): Trip? {
-        val userId = dataStore.getUserId()
-        if (userId.isNullOrBlank()) throw Exception(TraceError.noUserError().message)
-        if (!NetworkChecker.isNetworkAvailable(context)) throw Exception(TraceError.networkError().message)
-
-        val trip = apiClient.getActiveTrip()
-        if (trip != null) {
-            if (!dataStore.isOnTrip()) {
-                scope.launch {
-                    dataStore.setOnTrip(true)
-                    dataStore.setSdkTracking(true)
-                }
-                startLocationService()
-            }
-            if (!isServiceRunning()) {
-                startLocationService()
-            }
-        } else if (dataStore.isOnTrip()) {
-            scope.launch {
-                dataStore.setOnTrip(false)
-                dataStore.stopSdkTracking()
-            }
-            stopLocationService()
-        }
-        return trip
-    }
+    fun getTripId(): String? = dataStore.getLocalTripId()
 
     // --- Location ---
 
     suspend fun updateCurrentLocation(): Location {
         val location = locationEngine.getCurrentLocation()
-        try {
-            apiClient.sendLocation(
-                latitude = location.latitude,
-                longitude = location.longitude,
-                altitude = location.altitude,
-                bearing = location.bearing,
-                speed = location.speed,
-                accuracy = location.accuracy,
-                gpxTime = DateTimeUtils.getDateTimeLocal(location.time)
-            )
-        } catch (e: Exception) {
-            // Save offline
-            val json = JsonObject().apply {
-                addProperty("latitude", location.latitude)
-                addProperty("longitude", location.longitude)
-                addProperty("bearing", location.bearing)
-                addProperty("altitude", location.altitude)
-                addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
-                addProperty("speed", location.speed)
-                addProperty("accuracy", location.accuracy)
+        val tripId = dataStore.getLocalTripId()
+        val json = JsonObject().apply {
+            addProperty("latitude", location.latitude)
+            addProperty("longitude", location.longitude)
+            addProperty("bearing", location.bearing)
+            addProperty("altitude", location.altitude)
+            addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
+            addProperty("speed", location.speed)
+            addProperty("accuracy", location.accuracy)
+            tripId?.let {
+                addProperty("trip_id", it)
+                addProperty("trip_status", "active")
             }
-            offlineDb.locationDao().insert(OfflineLocationEntity(json = json.toString()))
-            throw e
         }
+        offlineDb.locationDao().insert(OfflineLocationEntity(json = json.toString()))
         return location
     }
 
     fun uploadOfflineData() {
-        scope.launch { uploadOfflineDataSync() }
-    }
-
-    suspend fun uploadOfflineDataSync() {
-        dataStore.setDataSyncing(true)
-        try {
-            val dao = offlineDb.locationDao()
-            val batch = dao.getBatch()
-            if (batch.isEmpty()) {
-                dataStore.setDataSyncing(false)
-                return
-            }
-
-            val data = JsonArray()
-            for (entity in batch) {
-                try {
-                    val locJson = com.google.gson.JsonParser.parseString(entity.json).asJsonObject
-                    locJson.addProperty("user_id", dataStore.getUserId())
-                    data.add(locJson)
-                } catch (_: Exception) {}
-            }
-
-            apiClient.sendBulkLocations(data)
-
-            val deleted = dao.deleteBatch()
-            if (deleted > 0) {
-                // Recursively upload more
-                uploadOfflineDataSync()
-            } else {
-                dataStore.setDataSyncing(false)
-            }
-        } catch (e: Exception) {
-            Log.e("LocTrace", "Offline sync failed", e)
-            dataStore.setDataSyncing(false)
-        }
+        // Offline sync is handled automatically by the foreground service via MQTT.
+        // Restarting the service triggers MQTT reconnect and flush.
+        Log.i("LocTrace", "Offline sync is automatic via MQTT. Restarting service if tracking is active.")
+        refreshTracking()
     }
 
     suspend fun getSettingsFromRemote(): TraceMode {
