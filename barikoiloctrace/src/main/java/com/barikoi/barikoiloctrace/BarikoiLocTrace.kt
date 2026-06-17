@@ -5,14 +5,13 @@ import android.content.Context
 import android.location.Location
 import com.barikoi.barikoiloctrace.model.TraceError
 import com.barikoi.barikoiloctrace.model.TraceUser
-import com.barikoi.barikoiloctrace.model.Trip
 import com.barikoi.barikoiloctrace.receiver.LocationReceiver
 import com.barikoi.barikoiloctrace.util.SystemSettingsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 
 object BarikoiLocTrace {
 
@@ -114,6 +113,10 @@ object BarikoiLocTrace {
     fun startTracking(traceMode: TraceMode) = getInstance().startTracking(traceMode)
 
     @JvmStatic
+    fun startTracking(traceMode: TraceMode, withTrip: Boolean) =
+        getInstance().startTracking(traceMode, withTrip)
+
+    @JvmStatic
     fun stopTracking() = getInstance().stopTracking()
 
     @JvmStatic
@@ -131,17 +134,10 @@ object BarikoiLocTrace {
     // --- Trips ---
 
     @JvmStatic
-    suspend fun startTrip(tag: String, traceMode: TraceMode): Trip =
-        getInstance().startTrip(tag, traceMode)
-
-    @JvmStatic
-    suspend fun endTrip(): Trip = getInstance().endTrip()
-
-    @JvmStatic
     fun isOnTrip(): Boolean = getInstance().isOnTrip()
 
     @JvmStatic
-    suspend fun syncTripState(): Trip? = getInstance().syncTripState()
+    fun getTripId(): String? = getInstance().getTripId()
 
     // --- Location ---
 
@@ -194,46 +190,6 @@ object BarikoiLocTrace {
     }
 
     @JvmStatic
-    fun startTrip(
-        tag: String, traceMode: TraceMode,
-        callback: TraceTripStateCallback
-    ) {
-        scope.launch {
-            try {
-                val trip = startTrip(tag, traceMode)
-                callback.onSuccess(trip)
-            } catch (e: Exception) {
-                callback.onFailure(TraceError("TRIP_ERROR", e.message ?: "Unknown error"))
-            }
-        }
-    }
-
-    @JvmStatic
-    fun endTrip(callback: TraceTripStateCallback) {
-        scope.launch {
-            try {
-                val trip = endTrip()
-                callback.onSuccess(trip)
-            } catch (e: Exception) {
-                callback.onFailure(TraceError("TRIP_ERROR", e.message ?: "Unknown error"))
-            }
-        }
-    }
-
-    @JvmStatic
-    fun syncTripState(callback: TraceTripStateCallback) {
-        scope.launch {
-            try {
-                val trip = syncTripState()
-                if (trip != null) callback.onSuccess(trip)
-                else callback.onFailure(TraceError("NO_TRIP", "No active trip"))
-            } catch (e: Exception) {
-                callback.onFailure(TraceError("TRIP_ERROR", e.message ?: "Unknown error"))
-            }
-        }
-    }
-
-    @JvmStatic
     fun updateCurrentLocation(callback: TraceLocationUpdateCallback) {
         scope.launch {
             try {
@@ -261,11 +217,6 @@ object BarikoiLocTrace {
 
     interface TraceUserCallback {
         fun onSuccess(user: TraceUser)
-        fun onFailure(error: TraceError)
-    }
-
-    interface TraceTripStateCallback {
-        fun onSuccess(trip: Trip)
         fun onFailure(error: TraceError)
     }
 
