@@ -38,6 +38,7 @@ class TraceDataStore private constructor(context: Context) {
         val USER_UPDATED_AT = longPreferencesKey("user_updated_at")
         val SDK_TRACKING = booleanPreferencesKey("sdk_tracking")
         val ON_TRIP = booleanPreferencesKey("on_trip")
+        val LOCAL_TRIP_ID = stringPreferencesKey("local_trip_id")
         val OFFLINE_TRACKING = booleanPreferencesKey("offlineTracking")
         val DATA_SYNCING = booleanPreferencesKey("offline_syncing")
         val LOGGING = booleanPreferencesKey("logger")
@@ -71,6 +72,7 @@ class TraceDataStore private constructor(context: Context) {
                 cache[Keys.USER_UPDATED_AT.name] = prefs[Keys.USER_UPDATED_AT] ?: 0L
                 cache[Keys.SDK_TRACKING.name] = prefs[Keys.SDK_TRACKING] ?: false
                 cache[Keys.ON_TRIP.name] = prefs[Keys.ON_TRIP] ?: false
+                prefs[Keys.LOCAL_TRIP_ID]?.let { cache[Keys.LOCAL_TRIP_ID.name] = it }
                 cache[Keys.OFFLINE_TRACKING.name] = prefs[Keys.OFFLINE_TRACKING] ?: false
                 cache[Keys.DATA_SYNCING.name] = prefs[Keys.DATA_SYNCING] ?: false
                 cache[Keys.LOGGING.name] = prefs[Keys.LOGGING] ?: false
@@ -175,6 +177,13 @@ class TraceDataStore private constructor(context: Context) {
 
     suspend fun setOnTrip(on: Boolean) = putAndCache(Keys.ON_TRIP, on)
     fun isOnTrip(): Boolean = getBoolean(Keys.ON_TRIP)
+
+    suspend fun setLocalTripId(tripId: String?) {
+        if (tripId != null) putAndCache(Keys.LOCAL_TRIP_ID, tripId)
+        else removeAndCache(Keys.LOCAL_TRIP_ID)
+    }
+    fun getLocalTripId(): String? = getString(Keys.LOCAL_TRIP_ID)
+    suspend fun clearLocalTrip() = removeAndCache(Keys.LOCAL_TRIP_ID)
 
     suspend fun setOfflineTracking(enabled: Boolean) = putAndCache(Keys.OFFLINE_TRACKING, enabled)
     fun isOfflineTracking(): Boolean = getBoolean(Keys.OFFLINE_TRACKING)
