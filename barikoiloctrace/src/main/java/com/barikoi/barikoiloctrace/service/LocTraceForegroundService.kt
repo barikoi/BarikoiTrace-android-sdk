@@ -13,18 +13,17 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import com.barikoi.barikoiloctrace.R
 import com.barikoi.barikoiloctrace.BarikoiLocTrace
+import com.barikoi.barikoiloctrace.R
 import com.barikoi.barikoiloctrace.api.ApiRoutes
 import com.barikoi.barikoiloctrace.api.MqttManager
-import com.barikoi.barikoiloctrace.api.TraceApiClient
 import com.barikoi.barikoiloctrace.location.LocationEngine
 import com.barikoi.barikoiloctrace.location.LocationUpdateListener
 import com.barikoi.barikoiloctrace.model.TraceError
+import com.barikoi.barikoiloctrace.storage.OfflineLocationEntity
 import com.barikoi.barikoiloctrace.storage.TraceDataStore
 import com.barikoi.barikoiloctrace.util.DateTimeUtils
 import com.barikoi.barikoiloctrace.util.SystemSettingsManager
-import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +44,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
     private lateinit var locationEngine: LocationEngine
     private lateinit var offlineDb: com.barikoi.barikoiloctrace.storage.OfflineLocationDb
     private var mqttManager: MqttManager? = null
+    private var lastLocation: Location? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -81,6 +81,15 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
     }
 
     override fun onDestroy() {
+        // Send final location with trip_status "completed" before tearing down MQTT
+        val tripId = dataStore.getLocalTripId()
+        if (tripId != null) {
+            val location = lastLocation
+            if (location != null && mqttManager?.isConnected() == true) {
+                mqttManager?.publishLocation(location, tripId, "completed")
+            }
+            serviceScope.launch { dataStore.clearLocalTrip() }
+        }
         mqttManager?.destroy()
         mqttManager = null
         locationEngine.stopLocationUpdates()
@@ -125,6 +134,8 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
         Log.d(TAG, "Location: accuracy=${location.accuracy}, time=${DateTimeUtils.getDateTimeLocal(location.time)}")
 
+        lastLocation = location
+
         // Broadcast location to in-app subscribers
         if (dataStore.isBroadcasting()) {
             com.barikoi.barikoiloctrace.LocTraceManager.getInstance(this).broadcastLocation(location)
@@ -132,10 +143,12 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
         // Publish via MQTT, or save offline if not connected
         if (mqttManager != null && mqttManager!!.isConnected()) {
-            mqttManager?.publishLocation(location)
+            val tripId = dataStore.getLocalTripId()
+            mqttManager?.publishLocation(location, tripId)
             flushOfflineData()
         } else {
             serviceScope.launch {
+                val tripId = dataStore.getLocalTripId()
                 val json = com.google.gson.JsonObject().apply {
                     addProperty("latitude", location.latitude)
                     addProperty("longitude", location.longitude)
@@ -144,9 +157,13 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
                     addProperty("speed", location.speed)
                     addProperty("accuracy", location.accuracy)
+                    tripId?.let {
+                        addProperty("trip_id", it)
+                        addProperty("trip_status", "active")
+                    }
                 }
                 offlineDb.locationDao().insert(
-                    com.barikoi.barikoiloctrace.storage.OfflineLocationEntity(json = json.toString())
+                    OfflineLocationEntity(json = json.toString())
                 )
             }
         }
@@ -201,6 +218,8 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
             if (dataStore.isDataSyncing()) return@launch
             val dao = offlineDb.locationDao()
             if (dao.getCount() == 0) return@launch
+            val mqtt = mqttManager
+            if (mqtt == null || !mqtt.isConnected()) return@launch
             dataStore.setDataSyncing(true)
             try {
                 val batch = dao.getBatch()
@@ -215,17 +234,14 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     return@launch
                 }
 
-                val data = JsonArray()
                 for (entity in batch) {
                     try {
                         val locJson = JsonParser.parseString(entity.json).asJsonObject
                         locJson.addProperty("user_id", userId)
-                        data.add(locJson)
+                        mqtt.publishLocationJson(locJson)
                     } catch (_: Exception) {}
                 }
 
-                val apiClient = TraceApiClient.getInstance(this@LocTraceForegroundService)
-                apiClient.sendBulkLocations(data)
                 dao.deleteBatch()
                 dataStore.setDataSyncing(false)
 
