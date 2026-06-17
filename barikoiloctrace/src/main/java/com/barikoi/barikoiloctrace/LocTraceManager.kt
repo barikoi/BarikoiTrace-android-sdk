@@ -101,13 +101,14 @@ class LocTraceManager private constructor(private val context: Context) {
     // --- URLs ---
 
     fun setBaseUrl(url: String) {
+        val normalizedUrl = url.trimEnd('/') + "/"
         scope.launch {
             val current = dataStore.getBaseUrl()
-            if (current == null || url != current) {
-                dataStore.setBaseUrl(url)
+            if (current == null || normalizedUrl != current) {
+                dataStore.setBaseUrl(normalizedUrl)
                 dataStore.clearUser()
                 dataStore.clearTraceModeWithTiming()
-                apiClient.setBaseUrl(url)
+                apiClient.setBaseUrl(normalizedUrl)
                 stopTracking()
             }
         }
