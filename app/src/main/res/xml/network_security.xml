@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">api.trace.bmapsbd.com</domain>
+        <domain includeSubdomains="true">95.217.186.212</domain>
+        <domain includeSubdomains="true">broker.mqtt.bmapsbd.com</domain>
+        <domain includeSubdomains="true">slv.abulkhairgroup.com</domain>
+    </domain-config>
+</network-security-config>
