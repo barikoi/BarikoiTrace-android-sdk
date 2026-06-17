@@ -13,10 +13,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.barikoi.barikoiloctrace.R
-import com.barikoi.barikoiloctrace.api.TraceApiClient
 import com.barikoi.barikoiloctrace.location.LocationEngine
 import com.barikoi.barikoiloctrace.storage.OfflineLocationDb
 import com.barikoi.barikoiloctrace.storage.OfflineLocationEntity
+import com.barikoi.barikoiloctrace.storage.TraceDataStore
 import com.barikoi.barikoiloctrace.util.DateTimeUtils
 import com.google.gson.JsonObject
 
@@ -37,35 +37,25 @@ class LocTraceDataService(
 
         return try {
             val location = LocationEngine(applicationContext).getCurrentLocation()
-            try {
-                val apiClient = TraceApiClient.getInstance(applicationContext)
-                apiClient.sendLocation(
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    altitude = location.altitude,
-                    bearing = location.bearing,
-                    speed = location.speed,
-                    accuracy = location.accuracy,
-                    gpxTime = DateTimeUtils.getDateTimeLocal(location.time)
-                )
-                Log.d(TAG, "Location update success")
-                Result.success()
-            } catch (e: Exception) {
-                // Save offline
-                val db = OfflineLocationDb.getInstance(applicationContext)
-                val json = JsonObject().apply {
-                    addProperty("latitude", location.latitude)
-                    addProperty("longitude", location.longitude)
-                    addProperty("bearing", location.bearing)
-                    addProperty("altitude", location.altitude)
-                    addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
-                    addProperty("speed", location.speed)
-                    addProperty("accuracy", location.accuracy)
+            val db = OfflineLocationDb.getInstance(applicationContext)
+            val dataStore = TraceDataStore(applicationContext)
+            val tripId = dataStore.getLocalTripId()
+            val json = JsonObject().apply {
+                addProperty("latitude", location.latitude)
+                addProperty("longitude", location.longitude)
+                addProperty("bearing", location.bearing)
+                addProperty("altitude", location.altitude)
+                addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
+                addProperty("speed", location.speed)
+                addProperty("accuracy", location.accuracy)
+                tripId?.let {
+                    addProperty("trip_id", it)
+                    addProperty("trip_status", "active")
                 }
-                db.locationDao().insert(OfflineLocationEntity(json = json.toString()))
-                Log.e(TAG, "Location update failed, saved offline", e)
-                Result.failure()
             }
+            db.locationDao().insert(OfflineLocationEntity(json = json.toString()))
+            Log.d(TAG, "Location saved offline for MQTT sync")
+            Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Could not get location", e)
             Result.failure()
