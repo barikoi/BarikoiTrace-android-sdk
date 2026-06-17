@@ -91,6 +91,9 @@ class DemoActivity : AppCompatActivity() {
         val inputBaseUrl = findViewById<TextInputEditText>(R.id.inputBaseUrl)
         val inputMqttUrl = findViewById<TextInputEditText>(R.id.inputMqttUrl)
 
+        inputBaseUrl.setText("https://api.mqtt.bmapsbd.com/api/v1/")
+        inputMqttUrl.setText("tcp://mqtt.bmapsbd.com:1883")
+
 
         findViewById<MaterialButton>(R.id.btnSetUrl).setOnClickListener {
             val base = inputBaseUrl.text.toString()
