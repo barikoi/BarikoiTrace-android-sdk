@@ -47,7 +47,7 @@ class DemoActivity : AppCompatActivity() {
         spinnerMode = findViewById(R.id.spinnerMode)
 
         // --- Initialize SDK ---
-        var apiKey = "bkoi_93a10397ab1c13934fc6d719b3e09d6bdcb23894ea4ab1f4e7ec8d2a96dcfb41"
+        var apiKey = "MjA1NDo4MjBSTUxLTEs5"
         BarikoiLocTrace.initialize(this, apiKey)
         log("SDK initialized")
 
