@@ -177,7 +177,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         if (!available) {
             showLocationDisabledNotification()
         } else {
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             nm.cancel(2)
         }
     }
