@@ -139,6 +139,9 @@ object BarikoiLocTrace {
     @JvmStatic
     fun getTripId(): String? = getInstance().getTripId()
 
+    @JvmStatic
+    fun getCurrentTrip(): String? = getInstance().getCurrentTrip()
+
     // --- Location ---
 
     @JvmStatic
