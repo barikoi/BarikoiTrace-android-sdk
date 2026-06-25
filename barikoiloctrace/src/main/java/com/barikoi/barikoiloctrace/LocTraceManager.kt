@@ -194,6 +194,8 @@ class LocTraceManager private constructor(private val context: Context) {
 
     fun getTripId(): String? = dataStore.getLocalTripId()
 
+    fun getCurrentTrip(): String? = dataStore.getLocalTripId()
+
     // --- Location ---
 
     suspend fun updateCurrentLocation(): Location {
