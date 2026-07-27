@@ -30,7 +30,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Barikoi LocTrace SDK"
+                    android:text="@string/sdk_title"
                     android:textColor="#1B1B1B"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -160,7 +160,7 @@
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputPhone"
                         android:layout_width="match_parent"
-                        android:text=""
+                        android:text="01333234567"
                         android:layout_height="wrap_content"
                         android:inputType="phone" />
                 </com.google.android.material.textfield.TextInputLayout>
