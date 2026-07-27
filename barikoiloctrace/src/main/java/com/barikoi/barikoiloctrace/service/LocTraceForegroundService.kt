@@ -67,7 +67,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
             if (user != null && uuid != null) {
                 val mqttUrl = dataStore.getMqttUrl() ?: ApiRoutes.MQTT_URL
-                initializeMqtt(mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "")
+                initializeMqtt(mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "", user.name)
             }
 
             if (traceMode != null) {
@@ -186,11 +186,11 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     private fun initializeMqtt(
         serverUri: String, userId: String, uuid: String,
-        companyId: String, groupId: String
+        companyId: String, groupId: String, userName: String?
     ) {
         mqttManager = MqttManager(
             this, serverUri, userId, companyId, groupId, uuid,
-            object : MqttManager.MqttStatusCallback {
+            callback = object : MqttManager.MqttStatusCallback {
                 override fun onConnectionStatusChanged(connected: Boolean, message: String) {
                     BarikoiLocTrace.notifyLog("INFO", TAG, "MQTT $message")
                     if (connected) {
@@ -205,7 +205,8 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                         Log.d(TAG, "Received command: $message")
                     }
                 }
-            }
+            },
+            userName = userName
         )
         mqttManager?.connect()
     }
