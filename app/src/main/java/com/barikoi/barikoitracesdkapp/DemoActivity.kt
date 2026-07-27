@@ -47,15 +47,16 @@ class DemoActivity : AppCompatActivity() {
         spinnerMode = findViewById(R.id.spinnerMode)
 
         // --- Initialize SDK ---
-        var apiKey = "MjA1NDo4MjBSTUxLTEs5"
-        BarikoiLocTrace.initialize(this, apiKey)
-        log("SDK initialized")
+        val defaultApiKey = BuildConfig.API_KEY
+        var currentApiKey = defaultApiKey
+        BarikoiLocTrace.initialize(this, currentApiKey)
+        log("SDK initialized with API key from flavor")
 
         // --- API Key ---
         findViewById<ImageButton>(R.id.ivApiKey).setOnClickListener {
             val input = EditText(this).apply {
                 hint = "Enter API Key"
-                setText(apiKey)
+                setText(currentApiKey)
                 setSelection(text.length)
             }
             AlertDialog.Builder(this)
@@ -64,7 +65,7 @@ class DemoActivity : AppCompatActivity() {
                 .setPositiveButton("Apply") { _, _ ->
                     val newKey = input.text.toString().trim()
                     if (newKey.isNotEmpty()) {
-                        apiKey = newKey
+                        currentApiKey = newKey
                         BarikoiLocTrace.initialize(this@DemoActivity, newKey)
                         log("API key updated and SDK re-initialized")
                         toast("API key updated")
@@ -78,7 +79,6 @@ class DemoActivity : AppCompatActivity() {
 
         // --- Permissions ---
         requestPermissionsIfNeeded()
-        BarikoiLocTrace.requestNotificationPermission(this)
 
         // --- SDK Log Listener ---
         BarikoiLocTrace.setLogListener(object : BarikoiLocTrace.TraceLogListener {
@@ -91,8 +91,25 @@ class DemoActivity : AppCompatActivity() {
         val inputBaseUrl = findViewById<TextInputEditText>(R.id.inputBaseUrl)
         val inputMqttUrl = findViewById<TextInputEditText>(R.id.inputMqttUrl)
 
-        inputBaseUrl.setText("https://api.mqtt.bmapsbd.com/api/v1/")
-        inputMqttUrl.setText("tcp://mqtt.bmapsbd.com:1883")
+        // Set default URLs based on flavor
+        val defaultBaseUrl: String
+        val defaultMqttUrl: String
+
+        when (BuildConfig.FLAVOR) {
+            "akg" -> {
+                defaultBaseUrl = "http://slv.abulkhairgroup.com:3881/api/v1"
+                defaultMqttUrl = "tcp://slv.abulkhairgroup.com:4883"
+                log("Using AKG flavor URLs")
+            }
+            else -> {
+                defaultBaseUrl = "https://api.trace.bmapsbd.com/api/v1/"
+                defaultMqttUrl = "tcp://broker.trace.bmapsbd.com:1883"
+                log("Using default Barikoi URLs")
+            }
+        }
+
+        inputBaseUrl.setText(defaultBaseUrl)
+        inputMqttUrl.setText(defaultMqttUrl)
 
 
         findViewById<MaterialButton>(R.id.btnSetUrl).setOnClickListener {
@@ -259,9 +276,18 @@ class DemoActivity : AppCompatActivity() {
         if (requestCode == 10221) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 log("Location permission granted")
+                // Request notification permission after location permission is granted
+                BarikoiLocTrace.requestNotificationPermission(this)
             } else {
                 log("Location permission denied")
                 toast("Location permission denied")
+            }
+        } else if (requestCode == 10226) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                log("Notification permission granted")
+            } else {
+                log("Notification permission denied")
+                toast("Notification permission denied")
             }
         }
     }
