@@ -1,2 +1,2 @@
-include ':app' , ':barikoitrace'
+include ':app' , ':barikoitrace', ':barikoiloctrace'
 rootProject.name='BarikoiTrace'
