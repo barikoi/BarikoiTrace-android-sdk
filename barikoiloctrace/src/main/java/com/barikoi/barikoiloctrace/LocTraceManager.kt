@@ -84,14 +84,26 @@ class LocTraceManager private constructor(private val context: Context) {
 
         // Check cached user
         val cached = dataStore.getUser()
-        if (cached != null && phone == cached.phone &&
+        val user = if (cached != null && phone == cached.phone &&
             (System.currentTimeMillis() - cached.updatedAt) < 24 * 60 * 60 * 1000
         ) {
-            return cached
+            cached
+        } else {
+            val freshUser = apiClient.authenticate(name, email, phone)
+            apiClient.setUserId(freshUser.userId)
+            freshUser
         }
 
-        val user = apiClient.authenticate(name, email, phone)
-        apiClient.setUserId(user.userId)
+        // Best-effort remote settings refresh
+        try {
+            if (!user.phone.isNullOrBlank()) {
+                val mode = apiClient.getCompanySettings(user.phone)
+                dataStore.setTraceModeWithTiming(mode)
+            }
+        } catch (e: Exception) {
+            Log.w("LocTrace", "Failed to fetch remote settings: ${e.message}")
+        }
+
         return user
     }
 
