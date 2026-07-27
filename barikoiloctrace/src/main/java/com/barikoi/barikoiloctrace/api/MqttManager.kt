@@ -24,7 +24,8 @@ class MqttManager(
     private val companyId: String,
     private val groupId: String,
     private val uuid: String,
-    private val callback: MqttStatusCallback? = null
+    private val callback: MqttStatusCallback? = null,
+    private val userName: String? = null
 ) {
     private companion object {
         const val MQTT_USERNAME = "rilus"
@@ -177,6 +178,9 @@ class MqttManager(
                 addProperty("bearing", location.bearing)
                 addProperty("altitude", location.altitude)
                 addProperty("accuracy", location.accuracy)
+                userName?.takeIf { it.isNotBlank() }?.let {
+                    addProperty("user_name", it)
+                }
                 tripId?.let {
                     addProperty("trip_id", it)
                     addProperty("trip_status", tripStatus)
