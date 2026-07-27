@@ -14,6 +14,7 @@ import com.barikoi.barikoiloctrace.model.TraceUser
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.time.LocalTime
+import java.util.concurrent.ConcurrentHashMap
 
 val Context.traceDataStore: DataStore<Preferences> by preferencesDataStore(name = "barikoi_trace_config")
 
@@ -229,7 +230,7 @@ class TraceDataStore private constructor(context: Context) {
         }
     }
 
-    fun getTraceMode(): TraceMode? {
+    fun getTraceMode(): TraceMode {
         val updateInterval = getInt(Keys.UPDATE_INTERVAL)
         val distanceFilter = getInt(Keys.DISTANCE_FILTER)
 
@@ -282,7 +283,7 @@ class TraceDataStore private constructor(context: Context) {
     }
 
     companion object {
-        private val sharedCache = java.util.concurrent.ConcurrentHashMap<String, Any?>()
+        private val sharedCache = ConcurrentHashMap<String, Any?>()
 
         @Volatile
         private var INSTANCE: TraceDataStore? = null
