@@ -6,7 +6,6 @@ import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
-import android.view.MenuInflater
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -15,10 +14,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.app.ActivityCompat
-import com.barikoi.barikoiloctrace.BarikoiLocTrace
-import com.barikoi.barikoiloctrace.TraceMode
-import com.barikoi.barikoiloctrace.model.TraceError
-import com.barikoi.barikoiloctrace.model.TraceUser
+import com.barikoi.barikoitrace.BarikoiTrace
+import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.model.TraceUser
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class MainActivity : AppCompatActivity() {
@@ -30,14 +29,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        BarikoiLocTrace.initialize(this, "bkoi_0ec844c9848b08912985e584268178b323239a6a32a0da9fa139cc9515aecd22")
+        BarikoiTrace.initialize(this, "API_KEY")
 
-        BarikoiLocTrace.requestNotificationPermission(this)
-        if (!BarikoiLocTrace.isLocationPermissionsGranted()) {
-            BarikoiLocTrace.requestLocationPermissions(this)
+        BarikoiTrace.requestNotificationPermission(this)
+        if (!BarikoiTrace.isLocationPermissionsGranted()) {
+            BarikoiTrace.requestLocationPermissions(this)
         }
-        if (!BarikoiLocTrace.isLocationSettingsOn()) {
-            BarikoiLocTrace.requestLocationServices(this)
+        if (!BarikoiTrace.isLocationSettingsOn()) {
+            BarikoiTrace.requestLocationServices(this)
         }
 
         // URL configuration
@@ -48,9 +47,9 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.button_seturl).setOnClickListener {
             if (baseurlform.text.toString().isNotEmpty())
-                BarikoiLocTrace.setBaseUrl(baseurlform.text.toString())
+                BarikoiTrace.setBaseUrl(baseurlform.text.toString())
             if (mqtturlform.text.toString().isNotEmpty())
-                BarikoiLocTrace.setMqttUrl(mqtturlform.text.toString())
+                BarikoiTrace.setMqttUrl(mqtturlform.text.toString())
             Toast.makeText(this, "url set", Toast.LENGTH_SHORT).show()
         }
 
@@ -63,14 +62,14 @@ class MainActivity : AppCompatActivity() {
         val setUserBtn = findViewById<Button>(R.id.button_set_user)
 
         setUserBtn.setOnClickListener {
-            if (BarikoiLocTrace.isOnTrip()) {
+            if (BarikoiTrace.isOnTrip()) {
                 Toast.makeText(this, "cannot change user mid journey!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            BarikoiLocTrace.setOrCreateUser(
+            BarikoiTrace.setOrCreateUser(
                 "Miraz", null, tvUsername.text.toString(),
-                object : BarikoiLocTrace.TraceUserCallback {
+                object : BarikoiTrace.TraceUserCallback {
                     override fun onSuccess(traceUser: TraceUser) {
                         Toast.makeText(
                             this@MainActivity,
@@ -78,13 +77,13 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                         tvUsername.setText(traceUser.phone)
-                        BarikoiLocTrace.startTracking(
+                        BarikoiTrace.startTracking(
                             TraceMode.Builder().setUpdateInterval(10).build()
                         )
                     }
 
                     override fun onFailure(error: TraceError) {
-                        val user = BarikoiLocTrace.getUser()
+                        val user = BarikoiTrace.getUser()
                         if (user?.phone == tvUsername.text.toString()) {
                             Toast.makeText(
                                 this@MainActivity,
@@ -102,24 +101,24 @@ class MainActivity : AppCompatActivity() {
         // Broadcast switch
         val switchBroadcast = findViewById<SwitchCompat>(R.id.switchBroadcast)
         switchBroadcast.setOnCheckedChangeListener { _, isChecked ->
-            BarikoiLocTrace.setBroadcastingEnabled(isChecked)
+            BarikoiTrace.setBroadcastingEnabled(isChecked)
         }
 
-        val user = BarikoiLocTrace.getUser()
+        val user = BarikoiTrace.getUser()
         if (user?.phone != null) {
             tvUsername.setText(user.phone)
         } else {
             Toast.makeText(this, "User not set, please fill in the phone number", Toast.LENGTH_SHORT).show()
         }
 
-        BarikoiLocTrace.setOfflineTracking(true)
+        BarikoiTrace.setOfflineTracking(true)
 
         tagloc.setOnClickListener {
-            BarikoiLocTrace.updateCurrentLocation(object : BarikoiLocTrace.TraceLocationUpdateCallback {
+            BarikoiTrace.updateCurrentLocation(object : BarikoiTrace.TraceLocationUpdateCallback {
                 override fun onLocationUpdate(location: Location) {
                     Toast.makeText(
                         this@MainActivity,
-                        "Location Tagged, service running: ${BarikoiLocTrace.isLocationTracking()}",
+                        "Location Tagged, service running: ${BarikoiTrace.isLocationTracking()}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -135,12 +134,12 @@ class MainActivity : AppCompatActivity() {
         aa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnertype.adapter = aa
 
-        if (BarikoiLocTrace.isOnTrip()) {
+        if (BarikoiTrace.isOnTrip()) {
             Log.d("locationupdate", "already running no need to start again")
             switchService.isChecked = true
         }
 
-        BarikoiLocTrace.checkAppServicePermission(this)
+        BarikoiTrace.checkAppServicePermission(this)
 
         switchService.setOnCheckedChangeListener { compoundButton, isChecked ->
             if (!compoundButton.isPressed) return@setOnCheckedChangeListener
@@ -169,10 +168,10 @@ class MainActivity : AppCompatActivity() {
                         "PASSIVE" -> TraceMode.PASSIVE
                         else -> tb.build()
                     }
-                    BarikoiLocTrace.startTracking(mode)
+                    BarikoiTrace.startTracking(mode)
                 }
 
-                if (BarikoiLocTrace.isOnTrip() || BarikoiLocTrace.isLocationTracking()) {
+                if (BarikoiTrace.isOnTrip() || BarikoiTrace.isLocationTracking()) {
                     Log.d("locationupdate", "already running")
                     Toast.makeText(
                         applicationContext,
@@ -182,15 +181,15 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     tb.setDebugModeOn()
                     if (mode == null) mode = tb.build()
-                    if (BarikoiLocTrace.isLocationPermissionsGranted()) {
-                        BarikoiLocTrace.startTracking(mode)
+                    if (BarikoiTrace.isLocationPermissionsGranted()) {
+                        BarikoiTrace.startTracking(mode)
                     } else {
                         switchService.isChecked = false
                         Toast.makeText(this, "location permission denied", Toast.LENGTH_SHORT).show()
                     }
                 }
             } else {
-                BarikoiLocTrace.stopTracking()
+                BarikoiTrace.stopTracking()
             }
         }
     }
@@ -220,8 +219,8 @@ class MainActivity : AppCompatActivity() {
                     grantResults.all { it == PackageManager.PERMISSION_GRANTED }
                 ) {
                     Toast.makeText(this, "Location permission granted", Toast.LENGTH_SHORT).show()
-                    if (!BarikoiLocTrace.isLocationSettingsOn()) {
-                        BarikoiLocTrace.requestLocationServices(this)
+                    if (!BarikoiTrace.isLocationSettingsOn()) {
+                        BarikoiTrace.requestLocationServices(this)
                     }
                 } else {
                     Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show()
