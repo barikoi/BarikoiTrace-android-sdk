@@ -1,10 +1,10 @@
-package com.barikoi.barikoiloctrace.api
+package com.barikoi.barikoitrace.api
 
 import android.content.Context
 import android.util.Log
-import com.barikoi.barikoiloctrace.TraceMode
-import com.barikoi.barikoiloctrace.model.TraceUser
-import com.barikoi.barikoiloctrace.storage.TraceDataStore
+import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.model.TraceUser
+import com.barikoi.barikoitrace.storage.TraceDataStore
 import com.google.gson.JsonObject
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
