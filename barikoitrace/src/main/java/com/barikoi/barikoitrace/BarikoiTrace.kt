@@ -1,19 +1,19 @@
-package com.barikoi.barikoiloctrace
+package com.barikoi.barikoitrace
 
 import android.app.Activity
 import android.content.Context
 import android.location.Location
-import com.barikoi.barikoiloctrace.model.TraceError
-import com.barikoi.barikoiloctrace.model.TraceUser
-import com.barikoi.barikoiloctrace.receiver.LocationReceiver
-import com.barikoi.barikoiloctrace.util.SystemSettingsManager
+import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.model.TraceUser
+import com.barikoi.barikoitrace.receiver.LocationReceiver
+import com.barikoi.barikoitrace.util.SystemSettingsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 
-object BarikoiLocTrace {
+object BarikoiTrace {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var manager: LocTraceManager? = null
@@ -32,7 +32,7 @@ object BarikoiLocTrace {
 
     private fun getInstance(): LocTraceManager {
         return manager ?: throw IllegalStateException(
-            "BarikoiLocTrace not initialized. Call initialize() first."
+            "BarikoiTrace not initialized. Call initialize() first."
         )
     }
 
