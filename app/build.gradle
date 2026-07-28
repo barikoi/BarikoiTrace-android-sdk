@@ -1,6 +1,13 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
+// API keys are read from the gitignored local.properties file so they are never committed.
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localProps.load(new FileInputStream(localPropsFile))
+}
+
 android {
     compileSdk 35
 
@@ -16,8 +23,8 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Default API key (can be overridden by flavors)
-        buildConfigField "String", "API_KEY", "\"MjA1NDo4MjBSTUxLTEs5\""
+        // API key is read from BARIKOI_API_KEY in local.properties (gitignored)
+        buildConfigField "String", "API_KEY", "\"${localProps.getProperty('BARIKOI_API_KEY', '')}\""
     }
 
     flavorDimensions += "brand"
@@ -25,20 +32,20 @@ android {
         jti {
             applicationIdSuffix ".jti"
             versionNameSuffix "-jti"
-            buildConfigField "String", "API_KEY", "\"bkoi_0ec844c9848b08912985e584268178b323239a6a32a0da9fa139cc9515aecd22\""
+            buildConfigField "String", "API_KEY", "\"${localProps.getProperty('JTI_API_KEY', '')}\""
             dimension "brand"
         }
 
         akg {
             applicationIdSuffix ".akg"
             versionNameSuffix "-akg"
-            buildConfigField "String", "API_KEY", "\"bkoi_93a10397ab1c13934fc6d719b3e09d6bdcb23894ea4ab1f4e7ec8d2a96dcfb41\""
+            buildConfigField "String", "API_KEY", "\"${localProps.getProperty('AKG_API_KEY', '')}\""
             dimension "brand"
         }
 
         barikoi {
             // Default/Barikoi flavor - no suffixes
-            buildConfigField "String", "API_KEY", "\"MjA1NDo4MjBSTUxLTEs5\""
+            buildConfigField "String", "API_KEY", "\"${localProps.getProperty('BARIKOI_API_KEY', '')}\""
             dimension "brand"
         }
     }
@@ -60,7 +67,7 @@ android {
 }
 
 dependencies {
-    implementation project(':barikoiloctrace')
+    implementation project(':barikoitrace')
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.appcompat:appcompat:1.4.2'
