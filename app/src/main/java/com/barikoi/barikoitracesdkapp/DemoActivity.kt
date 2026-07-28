@@ -2,23 +2,21 @@ package com.barikoi.barikoitracesdkapp
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.location.Location
 import android.os.Bundle
 import android.util.Log
-import android.widget.ArrayAdapter
+import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.barikoi.barikoiloctrace.BarikoiLocTrace
-import com.barikoi.barikoiloctrace.TraceMode
-import com.barikoi.barikoiloctrace.model.TraceError
-import com.barikoi.barikoiloctrace.model.TraceUser
-import android.widget.EditText
-import android.widget.ImageButton
-import androidx.appcompat.app.AlertDialog
+import com.barikoi.barikoitrace.BarikoiTrace
+import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.model.TraceUser
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
@@ -49,7 +47,7 @@ class DemoActivity : AppCompatActivity() {
         // --- Initialize SDK ---
         val defaultApiKey = BuildConfig.API_KEY
         var currentApiKey = defaultApiKey
-        BarikoiLocTrace.initialize(this, currentApiKey)
+        BarikoiTrace.initialize(this, currentApiKey)
         log("SDK initialized with API key from flavor")
 
         // --- API Key ---
@@ -66,7 +64,7 @@ class DemoActivity : AppCompatActivity() {
                     val newKey = input.text.toString().trim()
                     if (newKey.isNotEmpty()) {
                         currentApiKey = newKey
-                        BarikoiLocTrace.initialize(this@DemoActivity, newKey)
+                        BarikoiTrace.initialize(this@DemoActivity, newKey)
                         log("API key updated and SDK re-initialized")
                         toast("API key updated")
                     } else {
@@ -81,7 +79,7 @@ class DemoActivity : AppCompatActivity() {
         requestPermissionsIfNeeded()
 
         // --- SDK Log Listener ---
-        BarikoiLocTrace.setLogListener(object : BarikoiLocTrace.TraceLogListener {
+        BarikoiTrace.setLogListener(object : BarikoiTrace.TraceLogListener {
             override fun onLog(level: String, tag: String, message: String) {
                 log("[$tag] $message")
             }
@@ -115,8 +113,8 @@ class DemoActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnSetUrl).setOnClickListener {
             val base = inputBaseUrl.text.toString()
             val mqtt = inputMqttUrl.text.toString()
-            if (base.isNotEmpty()) BarikoiLocTrace.setBaseUrl(base)
-            if (mqtt.isNotEmpty()) BarikoiLocTrace.setMqttUrl(mqtt)
+            if (base.isNotEmpty()) BarikoiTrace.setBaseUrl(base)
+            if (mqtt.isNotEmpty()) BarikoiTrace.setMqttUrl(mqtt)
             log("URLs set: base=$base, mqtt=$mqtt")
         }
 
@@ -124,7 +122,7 @@ class DemoActivity : AppCompatActivity() {
         val inputPhone = findViewById<TextInputEditText>(R.id.inputPhone)
         val inputName = findViewById<TextInputEditText>(R.id.inputName)
 
-        val cachedUser = BarikoiLocTrace.getUser()
+        val cachedUser = BarikoiTrace.getUser()
         if (cachedUser?.phone != null) {
             inputPhone.setText(cachedUser.phone)
             inputName.setText(cachedUser.name)
@@ -139,7 +137,7 @@ class DemoActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             log("Creating user: $name, $phone")
-            BarikoiLocTrace.setOrCreateUser(name, null, phone, object : BarikoiLocTrace.TraceUserCallback {
+            BarikoiTrace.setOrCreateUser(name, null, phone, object : BarikoiTrace.TraceUserCallback {
                 override fun onSuccess(user: TraceUser) {
                     log("User set: ${user.name} (${user.userId})")
                     tvStatus.text = "User: ${user.name}"
@@ -161,19 +159,19 @@ class DemoActivity : AppCompatActivity() {
         val switchTrip = findViewById<SwitchMaterial>(R.id.switchTrip)
         val btnToggleTracking = findViewById<MaterialButton>(R.id.btnToggleTracking)
 
-        if (BarikoiLocTrace.isLocationTracking() || BarikoiLocTrace.isOnTrip()) {
+        if (BarikoiTrace.isLocationTracking() || BarikoiTrace.isOnTrip()) {
             btnToggleTracking.text = "Stop"
             btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE53935.toInt())
             log("Tracking already active")
         }
-        if (BarikoiLocTrace.isOnTrip()) {
+        if (BarikoiTrace.isOnTrip()) {
             switchTrip.isChecked = true
         }
 
         btnToggleTracking.setOnClickListener {
-            if (BarikoiLocTrace.isLocationTracking()) {
+            if (BarikoiTrace.isLocationTracking()) {
                 log("Stopping tracking")
-                BarikoiLocTrace.stopTracking()
+                BarikoiTrace.stopTracking()
                 tvStatus.text = "Tracking: stopped"
                 btnToggleTracking.text = "Start"
                 btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF43bc5d.toInt())
@@ -182,7 +180,7 @@ class DemoActivity : AppCompatActivity() {
                 val mode = buildTraceMode(spinnerMode, inputInterval, inputDistance, inputAccuracy)
                 val withTrip = switchTrip.isChecked
                 log("Starting tracking: $mode, withTrip=$withTrip")
-                BarikoiLocTrace.startTracking(mode, withTrip)
+                BarikoiTrace.startTracking(mode, withTrip)
                 tvStatus.text = "Tracking: active"
                 btnToggleTracking.text = "Stop"
                 btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE53935.toInt())
@@ -193,7 +191,7 @@ class DemoActivity : AppCompatActivity() {
         // --- Broadcast ---
         val switchBroadcast = findViewById<SwitchMaterial>(R.id.switchBroadcast)
         switchBroadcast.setOnCheckedChangeListener { _, isChecked ->
-            BarikoiLocTrace.setBroadcastingEnabled(isChecked)
+            BarikoiTrace.setBroadcastingEnabled(isChecked)
             log("Broadcast: $isChecked")
         }
 
@@ -234,7 +232,7 @@ class DemoActivity : AppCompatActivity() {
     }
 
     private fun updateTripStatus() {
-        val tripId = BarikoiLocTrace.getTripId()
+        val tripId = BarikoiTrace.getTripId()
         tvTripStatus.text = if (tripId != null) "On trip: $tripId" else "No active trip"
     }
 
@@ -254,7 +252,7 @@ class DemoActivity : AppCompatActivity() {
     }
 
     private fun requestPermissionsIfNeeded() {
-        if (!BarikoiLocTrace.isLocationPermissionsGranted()) {
+        if (!BarikoiTrace.isLocationPermissionsGranted()) {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(
@@ -264,8 +262,8 @@ class DemoActivity : AppCompatActivity() {
                 10221
             )
         }
-        if (!BarikoiLocTrace.isLocationSettingsOn()) {
-            BarikoiLocTrace.requestLocationServices(this)
+        if (!BarikoiTrace.isLocationSettingsOn()) {
+            BarikoiTrace.requestLocationServices(this)
         }
     }
 
@@ -277,7 +275,7 @@ class DemoActivity : AppCompatActivity() {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 log("Location permission granted")
                 // Request notification permission after location permission is granted
-                BarikoiLocTrace.requestNotificationPermission(this)
+                BarikoiTrace.requestNotificationPermission(this)
             } else {
                 log("Location permission denied")
                 toast("Location permission denied")
@@ -294,6 +292,6 @@ class DemoActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        BarikoiLocTrace.setLogListener(null)
+        BarikoiTrace.setLogListener(null)
     }
 }
