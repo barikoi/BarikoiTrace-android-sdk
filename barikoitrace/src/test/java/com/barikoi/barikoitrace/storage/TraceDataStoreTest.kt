@@ -1,8 +1,8 @@
-package com.barikoi.barikoiloctrace.storage
+package com.barikoi.barikoitrace.storage
 
 import androidx.test.core.app.ApplicationProvider
-import com.barikoi.barikoiloctrace.TraceMode
-import com.barikoi.barikoiloctrace.model.TraceUser
+import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.model.TraceUser
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
