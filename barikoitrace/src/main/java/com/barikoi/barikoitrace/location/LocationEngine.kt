@@ -1,12 +1,12 @@
-package com.barikoi.barikoiloctrace.location
+package com.barikoi.barikoitrace.location
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.os.Looper
-import com.barikoi.barikoiloctrace.TraceMode
-import com.barikoi.barikoiloctrace.model.TraceError
-import com.barikoi.barikoiloctrace.util.SystemSettingsManager
+import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.util.SystemSettingsManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
