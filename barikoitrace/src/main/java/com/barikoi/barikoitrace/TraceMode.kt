@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace
+package com.barikoi.barikoitrace
 
 import java.time.LocalTime
 
