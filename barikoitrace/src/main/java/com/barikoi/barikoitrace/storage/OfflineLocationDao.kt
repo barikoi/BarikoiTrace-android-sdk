@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.storage
+package com.barikoi.barikoitrace.storage
 
 import androidx.room.Dao
 import androidx.room.Insert
