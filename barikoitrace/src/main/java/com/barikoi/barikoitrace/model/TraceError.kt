@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.model
+package com.barikoi.barikoitrace.model
 
 data class TraceError(
     val code: String,
