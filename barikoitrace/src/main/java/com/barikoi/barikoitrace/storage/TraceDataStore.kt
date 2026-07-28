@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.storage
+package com.barikoi.barikoitrace.storage
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -9,8 +9,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.barikoi.barikoiloctrace.TraceMode
-import com.barikoi.barikoiloctrace.model.TraceUser
+import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.model.TraceUser
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.time.LocalTime
