@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.util
+package com.barikoi.barikoitrace.util
 
 import android.content.Context
 import android.net.ConnectivityManager
