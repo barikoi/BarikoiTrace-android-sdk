@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.api
+package com.barikoi.barikoitrace.api
 
 import android.content.Context
 import android.location.Location
