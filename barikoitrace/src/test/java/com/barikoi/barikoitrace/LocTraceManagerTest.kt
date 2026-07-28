@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace
+package com.barikoi.barikoitrace
 
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
@@ -12,13 +12,13 @@ import org.robolectric.RobolectricTestRunner
 class LocTraceManagerTest {
 
     private lateinit var manager: LocTraceManager
-    private lateinit var dataStore: com.barikoi.barikoiloctrace.storage.TraceDataStore
+    private lateinit var dataStore: com.barikoi.barikoitrace.storage.TraceDataStore
 
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         manager = LocTraceManager.getInstance(context)
-        dataStore = com.barikoi.barikoiloctrace.storage.TraceDataStore(context)
+        dataStore = com.barikoi.barikoitrace.storage.TraceDataStore(context)
     }
 
     @Test
@@ -62,7 +62,7 @@ class LocTraceManagerTest {
 
     @Test
     fun getUser_returnsStoredUser() = runBlocking {
-        val user = com.barikoi.barikoiloctrace.model.TraceUser(
+        val user = com.barikoi.barikoitrace.model.TraceUser(
             userId = "u123",
             name = "Test",
             phone = "01700000000"
@@ -77,7 +77,7 @@ class LocTraceManagerTest {
     @Test
     fun getUserId_returnsStoredUserId() = runBlocking {
         dataStore.setUser(
-            com.barikoi.barikoiloctrace.model.TraceUser(
+            com.barikoi.barikoitrace.model.TraceUser(
                 userId = "user-abc",
                 phone = "01700000000"
             )
