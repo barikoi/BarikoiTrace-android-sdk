@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.storage
+package com.barikoi.barikoitrace.storage
 
 import android.content.Context
 import androidx.room.Database
