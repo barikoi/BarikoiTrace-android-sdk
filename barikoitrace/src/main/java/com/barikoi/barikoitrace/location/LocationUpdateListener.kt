@@ -1,7 +1,7 @@
-package com.barikoi.barikoiloctrace.location
+package com.barikoi.barikoitrace.location
 
 import android.location.Location
-import com.barikoi.barikoiloctrace.model.TraceError
+import com.barikoi.barikoitrace.model.TraceError
 
 interface LocationUpdateListener {
     fun onLocationReceived(location: Location)
