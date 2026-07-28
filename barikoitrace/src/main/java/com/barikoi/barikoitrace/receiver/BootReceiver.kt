@@ -1,10 +1,10 @@
-package com.barikoi.barikoiloctrace.receiver
+package com.barikoi.barikoitrace.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.barikoi.barikoiloctrace.LocTraceManager
+import com.barikoi.barikoitrace.LocTraceManager
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -13,7 +13,7 @@ class BootReceiver : BroadcastReceiver() {
             Log.d("BootReceiver", "Boot completed, checking tracking state")
             try {
                 val manager = LocTraceManager.getInstance(context)
-                val dataStore = com.barikoi.barikoiloctrace.storage.TraceDataStore(context)
+                val dataStore = com.barikoi.barikoitrace.storage.TraceDataStore(context)
                 if (dataStore.isSdkTracking()) {
                     val traceMode = dataStore.getTraceMode()
                     if (traceMode != null) {
