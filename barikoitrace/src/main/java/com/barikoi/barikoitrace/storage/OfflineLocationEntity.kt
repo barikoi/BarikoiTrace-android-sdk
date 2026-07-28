@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.storage
+package com.barikoi.barikoitrace.storage
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
