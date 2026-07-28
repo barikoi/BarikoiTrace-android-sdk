@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.api
+package com.barikoi.barikoitrace.api
 
 import com.google.gson.JsonObject
 import retrofit2.Response
