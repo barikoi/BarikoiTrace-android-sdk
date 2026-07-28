@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.service
+package com.barikoi.barikoitrace.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -13,17 +13,17 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import com.barikoi.barikoiloctrace.BarikoiLocTrace
-import com.barikoi.barikoiloctrace.R
-import com.barikoi.barikoiloctrace.api.ApiRoutes
-import com.barikoi.barikoiloctrace.api.MqttManager
-import com.barikoi.barikoiloctrace.location.LocationEngine
-import com.barikoi.barikoiloctrace.location.LocationUpdateListener
-import com.barikoi.barikoiloctrace.model.TraceError
-import com.barikoi.barikoiloctrace.storage.OfflineLocationEntity
-import com.barikoi.barikoiloctrace.storage.TraceDataStore
-import com.barikoi.barikoiloctrace.util.DateTimeUtils
-import com.barikoi.barikoiloctrace.util.SystemSettingsManager
+import com.barikoi.barikoitrace.BarikoiTrace
+import com.barikoi.barikoitrace.R
+import com.barikoi.barikoitrace.api.ApiRoutes
+import com.barikoi.barikoitrace.api.MqttManager
+import com.barikoi.barikoitrace.location.LocationEngine
+import com.barikoi.barikoitrace.location.LocationUpdateListener
+import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.storage.OfflineLocationEntity
+import com.barikoi.barikoitrace.storage.TraceDataStore
+import com.barikoi.barikoitrace.util.DateTimeUtils
+import com.barikoi.barikoitrace.util.SystemSettingsManager
 import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,14 +35,14 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     companion object {
         private const val TAG = "LocTraceService"
-        private const val CHANNEL_ID = "BarikoiLocTrace"
+        private const val CHANNEL_ID = "BarikoiTrace"
         private const val NOTIFICATION_ID = 1
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var dataStore: TraceDataStore
     private lateinit var locationEngine: LocationEngine
-    private lateinit var offlineDb: com.barikoi.barikoiloctrace.storage.OfflineLocationDb
+    private lateinit var offlineDb: com.barikoi.barikoitrace.storage.OfflineLocationDb
     private var mqttManager: MqttManager? = null
     private var lastLocation: Location? = null
 
@@ -59,7 +59,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         try {
             dataStore = TraceDataStore(this)
             locationEngine = LocationEngine(this)
-            offlineDb = com.barikoi.barikoiloctrace.storage.OfflineLocationDb.getInstance(this)
+            offlineDb = com.barikoi.barikoitrace.storage.OfflineLocationDb.getInstance(this)
 
             val user = dataStore.getUser()
             val uuid = dataStore.getDeviceToken()
@@ -138,7 +138,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
         // Broadcast location to in-app subscribers
         if (dataStore.isBroadcasting()) {
-            com.barikoi.barikoiloctrace.LocTraceManager.getInstance(this).broadcastLocation(location)
+            com.barikoi.barikoitrace.LocTraceManager.getInstance(this).broadcastLocation(location)
         }
 
         // Publish via MQTT, or save offline if not connected
@@ -192,13 +192,13 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
             this, serverUri, userId, companyId, groupId, uuid,
             callback = object : MqttManager.MqttStatusCallback {
                 override fun onConnectionStatusChanged(connected: Boolean, message: String) {
-                    BarikoiLocTrace.notifyLog("INFO", TAG, "MQTT $message")
+                    BarikoiTrace.notifyLog("INFO", TAG, "MQTT $message")
                     if (connected) {
                         flushOfflineData()
                     }
                 }
                 override fun onMessageDelivered(topic: String) {
-                    BarikoiLocTrace.notifyLog("DEBUG", TAG, "Published to topic: $topic")
+                    BarikoiTrace.notifyLog("DEBUG", TAG, "Published to topic: $topic")
                 }
                 override fun onMessageReceived(topic: String, message: String) {
                     if (topic.endsWith("/command")) {
