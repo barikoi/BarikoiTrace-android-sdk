@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.util
+package com.barikoi.barikoitrace.util
 
 import android.Manifest
 import android.app.Activity
