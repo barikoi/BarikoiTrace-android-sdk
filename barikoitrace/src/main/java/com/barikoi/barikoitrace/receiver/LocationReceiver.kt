@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.receiver
+package com.barikoi.barikoitrace.receiver
 
 import android.content.BroadcastReceiver
 import android.content.Context
