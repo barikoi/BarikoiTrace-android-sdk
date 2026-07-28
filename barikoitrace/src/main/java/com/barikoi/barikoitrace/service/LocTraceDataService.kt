@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.service
+package com.barikoi.barikoitrace.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,12 +12,12 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import com.barikoi.barikoiloctrace.R
-import com.barikoi.barikoiloctrace.location.LocationEngine
-import com.barikoi.barikoiloctrace.storage.OfflineLocationDb
-import com.barikoi.barikoiloctrace.storage.OfflineLocationEntity
-import com.barikoi.barikoiloctrace.storage.TraceDataStore
-import com.barikoi.barikoiloctrace.util.DateTimeUtils
+import com.barikoi.barikoitrace.R
+import com.barikoi.barikoitrace.location.LocationEngine
+import com.barikoi.barikoitrace.storage.OfflineLocationDb
+import com.barikoi.barikoitrace.storage.OfflineLocationEntity
+import com.barikoi.barikoitrace.storage.TraceDataStore
+import com.barikoi.barikoitrace.util.DateTimeUtils
 import com.google.gson.JsonObject
 
 class LocTraceDataService(
