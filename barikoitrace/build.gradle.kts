@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.barikoi.barikoiloctrace"
+    namespace = "com.barikoi.barikoitrace"
     compileSdk = 35
 
     defaultConfig {
@@ -106,7 +106,7 @@ publishing {
     publications {
         register<MavenPublication>("release") {
             groupId = "com.github.barikoi"
-            artifactId = "barikoiloctrace"
+            artifactId = "barikoitrace"
             version = "1.0.0"
 
             afterEvaluate {
