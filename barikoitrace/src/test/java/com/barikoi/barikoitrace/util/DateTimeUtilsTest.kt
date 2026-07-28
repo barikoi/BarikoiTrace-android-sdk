@@ -1,4 +1,4 @@
-package com.barikoi.barikoiloctrace.util
+package com.barikoi.barikoitrace.util
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
