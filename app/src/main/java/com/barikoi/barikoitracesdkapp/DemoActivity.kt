@@ -45,16 +45,14 @@ class DemoActivity : AppCompatActivity() {
         spinnerMode = findViewById(R.id.spinnerMode)
 
         // --- Initialize SDK ---
-        val defaultApiKey = BuildConfig.API_KEY
-        var currentApiKey = defaultApiKey
-        BarikoiTrace.initialize(this, currentApiKey)
+        BarikoiTrace.initialize(this, BuildConfig.API_KEY)
         log("SDK initialized with API key from flavor")
 
         // --- API Key ---
         findViewById<ImageButton>(R.id.ivApiKey).setOnClickListener {
             val input = EditText(this).apply {
                 hint = "Enter API Key"
-                setText(currentApiKey)
+                setText("")
                 setSelection(text.length)
             }
             AlertDialog.Builder(this)
@@ -63,7 +61,6 @@ class DemoActivity : AppCompatActivity() {
                 .setPositiveButton("Apply") { _, _ ->
                     val newKey = input.text.toString().trim()
                     if (newKey.isNotEmpty()) {
-                        currentApiKey = newKey
                         BarikoiTrace.initialize(this@DemoActivity, newKey)
                         log("API key updated and SDK re-initialized")
                         toast("API key updated")
@@ -88,26 +85,6 @@ class DemoActivity : AppCompatActivity() {
         // --- Server URL ---
         val inputBaseUrl = findViewById<TextInputEditText>(R.id.inputBaseUrl)
         val inputMqttUrl = findViewById<TextInputEditText>(R.id.inputMqttUrl)
-
-        // Set default URLs based on flavor
-        val defaultBaseUrl: String
-        val defaultMqttUrl: String
-
-        when (BuildConfig.FLAVOR) {
-            "akg" -> {
-                defaultBaseUrl = "http://slv.abulkhairgroup.com:3881/api/v1"
-                defaultMqttUrl = "tcp://slv.abulkhairgroup.com:4883"
-                log("Using AKG flavor URLs")
-            }
-            else -> {
-                defaultBaseUrl = "https://api.trace.bmapsbd.com/api/v1/"
-                defaultMqttUrl = "tcp://broker.trace.bmapsbd.com:1883"
-                log("Using default Barikoi URLs")
-            }
-        }
-
-        inputBaseUrl.setText(defaultBaseUrl)
-        inputMqttUrl.setText(defaultMqttUrl)
 
 
         findViewById<MaterialButton>(R.id.btnSetUrl).setOnClickListener {

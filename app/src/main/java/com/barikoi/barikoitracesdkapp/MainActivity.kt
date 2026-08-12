@@ -42,8 +42,6 @@ class MainActivity : AppCompatActivity() {
         // URL configuration
         val baseurlform = findViewById<EditText>(R.id.input_base_url)
         val mqtturlform = findViewById<EditText>(R.id.input_mqtt_url)
-        baseurlform.setText("https://api.trace.bmapsbd.com/api/v1/")
-        mqtturlform.setText("tcp://broker.trace.bmapsbd.com:1883")
 
         findViewById<Button>(R.id.button_seturl).setOnClickListener {
             if (baseurlform.text.toString().isNotEmpty())

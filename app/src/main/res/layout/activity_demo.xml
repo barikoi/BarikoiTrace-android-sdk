@@ -160,7 +160,7 @@
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputPhone"
                         android:layout_width="match_parent"
-                        android:text="01333234567"
+                        android:text=""
                         android:layout_height="wrap_content"
                         android:inputType="phone" />
                 </com.google.android.material.textfield.TextInputLayout>

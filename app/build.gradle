@@ -29,20 +29,6 @@ android {
 
     flavorDimensions += "brand"
     productFlavors {
-        jti {
-            applicationIdSuffix ".jti"
-            versionNameSuffix "-jti"
-            buildConfigField "String", "API_KEY", "\"${localProps.getProperty('JTI_API_KEY', '')}\""
-            dimension "brand"
-        }
-
-        akg {
-            applicationIdSuffix ".akg"
-            versionNameSuffix "-akg"
-            buildConfigField "String", "API_KEY", "\"${localProps.getProperty('AKG_API_KEY', '')}\""
-            dimension "brand"
-        }
-
         barikoi {
             // Default/Barikoi flavor - no suffixes
             buildConfigField "String", "API_KEY", "\"${localProps.getProperty('BARIKOI_API_KEY', '')}\""
@@ -67,8 +53,9 @@ android {
 }
 
 dependencies {
-    implementation project(':barikoitrace')
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation project(':barikoitrace')
 
     implementation 'androidx.appcompat:appcompat:1.4.2'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
