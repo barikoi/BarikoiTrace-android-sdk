@@ -29,6 +29,12 @@ class TraceDataStore private constructor(context: Context) {
         val API_KEY = stringPreferencesKey("api_key")
         val BASE_URL = stringPreferencesKey("base_url")
         val MQTT_URL = stringPreferencesKey("mqtt_url")
+        // Replaces the hardcoded MQTT_USERNAME/MQTT_PASSWORD constants that
+        // used to live in MqttManager.kt — every app using this SDK shared
+        // the same broker login. Now injected per-app via
+        // BarikoiTrace.initialize(context, apiKey, mqttUsername, mqttPassword).
+        val MQTT_USERNAME = stringPreferencesKey("mqtt_username")
+        val MQTT_PASSWORD = stringPreferencesKey("mqtt_password")
         val DEVICE_TOKEN = stringPreferencesKey("device_token")
         val USER_ID = stringPreferencesKey("user_id")
         val USER_NAME = stringPreferencesKey("user_name")
@@ -63,6 +69,8 @@ class TraceDataStore private constructor(context: Context) {
                 prefs[Keys.API_KEY]?.let { cache[Keys.API_KEY.name] = it }
                 prefs[Keys.BASE_URL]?.let { cache[Keys.BASE_URL.name] = it }
                 prefs[Keys.MQTT_URL]?.let { cache[Keys.MQTT_URL.name] = it }
+                prefs[Keys.MQTT_USERNAME]?.let { cache[Keys.MQTT_USERNAME.name] = it }
+                prefs[Keys.MQTT_PASSWORD]?.let { cache[Keys.MQTT_PASSWORD.name] = it }
                 prefs[Keys.DEVICE_TOKEN]?.let { cache[Keys.DEVICE_TOKEN.name] = it }
                 prefs[Keys.USER_ID]?.let { cache[Keys.USER_ID.name] = it }
                 prefs[Keys.USER_NAME]?.let { cache[Keys.USER_NAME.name] = it }
@@ -119,6 +127,18 @@ class TraceDataStore private constructor(context: Context) {
     fun getBaseUrl(): String? = getString(Keys.BASE_URL)
     suspend fun setMqttUrl(url: String) = putAndCache(Keys.MQTT_URL, url)
     fun getMqttUrl(): String? = getString(Keys.MQTT_URL)
+
+    // Stored the same way API_KEY already is (plain DataStore Preferences,
+    // not EncryptedSharedPreferences/Keystore-backed) — matches this
+    // class's existing storage posture rather than introducing a new,
+    // inconsistent mechanism for just these two keys. Worth revisiting
+    // for both API_KEY and these together if stronger at-rest protection
+    // is needed; not a new gap this change introduces.
+    suspend fun setMqttUsername(username: String) = putAndCache(Keys.MQTT_USERNAME, username)
+    fun getMqttUsername(): String? = getString(Keys.MQTT_USERNAME)
+    suspend fun setMqttPassword(password: String) = putAndCache(Keys.MQTT_PASSWORD, password)
+    fun getMqttPassword(): String? = getString(Keys.MQTT_PASSWORD)
+
     suspend fun resetUrls() {
         cache.remove(Keys.BASE_URL.name)
         cache.remove(Keys.MQTT_URL.name)

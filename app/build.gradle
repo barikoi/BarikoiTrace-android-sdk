@@ -25,6 +25,13 @@ android {
 
         // API key is read from BARIKOI_API_KEY in local.properties (gitignored)
         buildConfigField "String", "API_KEY", "\"${localProps.getProperty('BARIKOI_API_KEY', '')}\""
+        // Real per-environment broker login — replaces the hardcoded
+        // MQTT_USERNAME/MQTT_PASSWORD constants MqttManager.kt used to ship
+        // with. Add BARIKOI_MQTT_USERNAME / BARIKOI_MQTT_PASSWORD to your
+        // (gitignored) local.properties; empty defaults here are a build-time
+        // placeholder, not a fallback credential.
+        buildConfigField "String", "MQTT_USERNAME", "\"${localProps.getProperty('BARIKOI_MQTT_USERNAME', '')}\""
+        buildConfigField "String", "MQTT_PASSWORD", "\"${localProps.getProperty('BARIKOI_MQTT_PASSWORD', '')}\""
     }
 
     flavorDimensions += "brand"

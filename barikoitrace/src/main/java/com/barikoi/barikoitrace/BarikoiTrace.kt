@@ -38,10 +38,19 @@ object BarikoiTrace {
 
     // --- Init & Config ---
 
+    /**
+     * BREAKING CHANGE: `mqttUsername`/`mqttPassword` are now required.
+     * Previously this SDK connected to the MQTT broker with a single
+     * hardcoded username/password baked into `MqttManager.kt`, shared by
+     * every app that depended on this library. Get real per-app/
+     * per-environment broker credentials from your backend and pass them
+     * here — do not hardcode them in the calling app either; that just
+     * moves the same problem up one layer.
+     */
     @JvmStatic
-    fun initialize(context: Context, apiKey: String) {
+    fun initialize(context: Context, apiKey: String, mqttUsername: String, mqttPassword: String) {
         manager = LocTraceManager.getInstance(context)
-        getInstance().initialize(apiKey)
+        getInstance().initialize(apiKey, mqttUsername, mqttPassword)
     }
 
     @JvmStatic

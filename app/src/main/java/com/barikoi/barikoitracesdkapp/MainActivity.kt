@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        BarikoiTrace.initialize(this, "API_KEY")
+        BarikoiTrace.initialize(this, BuildConfig.API_KEY, BuildConfig.MQTT_USERNAME, BuildConfig.MQTT_PASSWORD)
 
         BarikoiTrace.requestNotificationPermission(this)
         if (!BarikoiTrace.isLocationPermissionsGranted()) {

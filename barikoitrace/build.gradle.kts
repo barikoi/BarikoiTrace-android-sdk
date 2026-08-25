@@ -107,7 +107,11 @@ publishing {
         register<MavenPublication>("release") {
             groupId = "com.github.barikoi"
             artifactId = "barikoitrace"
-            version = "1.0.0"
+            // Bumped for the breaking BarikoiTrace.initialize() signature
+            // change (added required mqttUsername/mqttPassword params,
+            // removed the hardcoded broker credentials) — see
+            // docs/SDK_DOCUMENTATION.md §6 finding #1's update.
+            version = "2.0.0"
 
             afterEvaluate {
                 from(components["release"])

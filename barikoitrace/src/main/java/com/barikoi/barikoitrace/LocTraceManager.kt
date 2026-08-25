@@ -18,6 +18,9 @@ import com.barikoi.barikoitrace.util.DateTimeUtils
 import com.barikoi.barikoitrace.util.NetworkChecker
 import com.barikoi.barikoitrace.util.SystemSettingsManager
 import com.google.gson.JsonObject
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +28,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class LocTraceManager private constructor(private val context: Context) {
 
@@ -38,6 +42,8 @@ class LocTraceManager private constructor(private val context: Context) {
     val locationBroadcast: SharedFlow<Location> = _locationBroadcast
 
     companion object {
+        private const val OFFLINE_SYNC_WORK_NAME = "com.barikoi.barikoitrace.offline_sync"
+
         @Volatile
         private var INSTANCE: LocTraceManager? = null
 
@@ -50,10 +56,12 @@ class LocTraceManager private constructor(private val context: Context) {
 
     // --- Init ---
 
-    fun initialize(apiKey: String) {
+    fun initialize(apiKey: String, mqttUsername: String, mqttPassword: String) {
         scope.launch {
             dataStore.setApiKey(apiKey)
             apiClient.setApiKey(apiKey)
+            dataStore.setMqttUsername(mqttUsername)
+            dataStore.setMqttPassword(mqttPassword)
             dataStore.setLogging(true)
 
             if (dataStore.getDeviceToken() == null) {
@@ -173,6 +181,7 @@ class LocTraceManager private constructor(private val context: Context) {
         }
 
         startLocationService()
+        scheduleOfflineSyncWork()
     }
 
     fun stopTracking() {
@@ -180,6 +189,7 @@ class LocTraceManager private constructor(private val context: Context) {
             dataStore.stopSdkTracking()
         }
         stopLocationService()
+        cancelOfflineSyncWork()
     }
 
     fun isLocationTracking(): Boolean = isServiceRunning()
@@ -273,6 +283,37 @@ class LocTraceManager private constructor(private val context: Context) {
 
     private fun stopLocationService() {
         context.stopService(Intent(context, LocTraceForegroundService::class.java))
+    }
+
+    // --- Offline sync fallback (WorkManager) ---
+    //
+    // LocTraceDataService was fully implemented (one-shot location fetch,
+    // insert into the offline queue) but never scheduled anywhere in this
+    // codebase — dead code, flagged in the iOS work plan's defect
+    // carry-forward checklist. Wired up here as a periodic safety-net sync,
+    // independent of the foreground service's own location-driven publish/
+    // offline-write path: if the foreground service is killed or the OS
+    // withholds location callbacks for a stretch, this still gets a fix
+    // into the offline queue periodically for the next successful MQTT
+    // flush to pick up.
+    //
+    // Deliberately NOT wired to TraceMode.pingSyncInterval (30-120s in the
+    // presets): WorkManager enforces a hard 15-minute floor on periodic
+    // work (PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS) regardless of
+    // what's requested, so honoring pingSyncInterval literally isn't
+    // possible here — same kind of OS-imposed coarseness as iOS's
+    // BGProcessingTask, not a bug to work around.
+    private fun scheduleOfflineSyncWork() {
+        val request = PeriodicWorkRequestBuilder<com.barikoi.barikoitrace.service.LocTraceDataService>(
+            15, TimeUnit.MINUTES
+        ).build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            OFFLINE_SYNC_WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request
+        )
+    }
+
+    private fun cancelOfflineSyncWork() {
+        WorkManager.getInstance(context).cancelUniqueWork(OFFLINE_SYNC_WORK_NAME)
     }
 
     private fun isServiceRunning(): Boolean {

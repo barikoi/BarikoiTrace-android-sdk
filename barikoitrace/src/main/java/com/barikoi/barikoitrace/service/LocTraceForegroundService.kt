@@ -67,7 +67,16 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
             if (user != null && uuid != null) {
                 val mqttUrl = dataStore.getMqttUrl() ?: ApiRoutes.MQTT_URL
-                initializeMqtt(mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "", user.name)
+                val mqttUsername = dataStore.getMqttUsername()
+                val mqttPassword = dataStore.getMqttPassword()
+                if (mqttUsername.isNullOrBlank() || mqttPassword.isNullOrBlank()) {
+                    Log.e(TAG, "No MQTT credentials set — call BarikoiTrace.initialize(context, apiKey, mqttUsername, mqttPassword) before starting tracking")
+                } else {
+                    initializeMqtt(
+                        mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "", user.name,
+                        mqttUsername, mqttPassword
+                    )
+                }
             }
 
             if (traceMode != null) {
@@ -149,6 +158,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         } else {
             serviceScope.launch {
                 val tripId = dataStore.getLocalTripId()
+                val user = dataStore.getUser()
                 val json = com.google.gson.JsonObject().apply {
                     addProperty("latitude", location.latitude)
                     addProperty("longitude", location.longitude)
@@ -157,6 +167,13 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
                     addProperty("speed", location.speed)
                     addProperty("accuracy", location.accuracy)
+                    // company_id/user_name used to be missing from this
+                    // payload entirely (only user_id got backfilled at
+                    // flush time, in flushOfflineData() below) — the queued
+                    // shape now carries the same fields the live-publish
+                    // path does, whenever they're known at write time.
+                    user?.companyId?.takeIf { it.isNotBlank() }?.let { addProperty("company_id", it) }
+                    user?.name?.takeIf { it.isNotBlank() }?.let { addProperty("user_name", it) }
                     tripId?.let {
                         addProperty("trip_id", it)
                         addProperty("trip_status", "active")
@@ -186,7 +203,8 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     private fun initializeMqtt(
         serverUri: String, userId: String, uuid: String,
-        companyId: String, groupId: String, userName: String?
+        companyId: String, groupId: String, userName: String?,
+        mqttUsername: String, mqttPassword: String
     ) {
         mqttManager = MqttManager(
             this, serverUri, userId, companyId, groupId, uuid,
@@ -206,7 +224,9 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     }
                 }
             },
-            userName = userName
+            userName = userName,
+            mqttUsername = mqttUsername,
+            mqttPassword = mqttPassword
         )
         mqttManager?.connect()
     }
@@ -234,11 +254,22 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     dataStore.setDataSyncing(false)
                     return@launch
                 }
+                val user = dataStore.getUser()
 
                 for (entity in batch) {
                     try {
                         val locJson = JsonParser.parseString(entity.json).asJsonObject
                         locJson.addProperty("user_id", userId)
+                        // Backfill company_id/user_name for rows queued
+                        // before this fix that don't already carry them
+                        // (fresh writes already include both — see
+                        // onLocationReceived's offline branch above).
+                        if (!locJson.has("company_id")) {
+                            user?.companyId?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("company_id", it) }
+                        }
+                        if (!locJson.has("user_name")) {
+                            user?.name?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("user_name", it) }
+                        }
                         mqtt.publishLocationJson(locJson)
                     } catch (_: Exception) {}
                 }

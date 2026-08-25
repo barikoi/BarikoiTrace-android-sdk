@@ -5,6 +5,7 @@ import android.location.Location
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.barikoi.barikoitrace.util.DateTimeUtils
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import info.mqtt.android.service.Ack
@@ -25,13 +26,15 @@ class MqttManager(
     private val groupId: String,
     private val uuid: String,
     private val callback: MqttStatusCallback? = null,
-    private val userName: String? = null
+    private val userName: String? = null,
+    // Required now — was a hardcoded companion-object constant
+    // ("rilus"/"r1lu5") shared by every consumer of this library. Caller
+    // (LocTraceForegroundService) reads the real per-app/per-environment
+    // credentials from TraceDataStore. See BarikoiTrace.initialize()'s doc
+    // comment for the migration note on this breaking change.
+    private val mqttUsername: String,
+    private val mqttPassword: String
 ) {
-    private companion object {
-        const val MQTT_USERNAME = "rilus"
-        const val MQTT_PASSWORD = "r1lu5"
-    }
-
     interface MqttStatusCallback {
         fun onConnectionStatusChanged(connected: Boolean, message: String)
         fun onMessageDelivered(topic: String)
@@ -142,8 +145,8 @@ class MqttManager(
             } catch (e: Exception) {
                 Log.e(tag, "Error setting LWT", e)
             }
-            userName = MQTT_USERNAME
-            password = MQTT_PASSWORD.toCharArray()
+            userName = mqttUsername
+            password = mqttPassword.toCharArray()
         }
     }
 
@@ -171,7 +174,13 @@ class MqttManager(
             val locationData = JsonObject().apply {
                 addProperty("latitude", location.latitude)
                 addProperty("longitude", location.longitude)
-                addProperty("gpx_time", location.time)
+                // Was raw epoch-ms (location.time) here vs. a formatted UTC
+                // string on the offline-write/flush path — the two payload
+                // shapes silently disagreed on this field's type. Now uses
+                // the same DateTimeUtils formatting everywhere, matching
+                // what the iOS SDK standardized on (see its work plan's
+                // Phase 0 / defect carry-forward checklist).
+                addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
                 addProperty("user_id", deviceId)
                 addProperty("company_id", companyId)
                 addProperty("speed", location.speed)

@@ -45,7 +45,7 @@ class DemoActivity : AppCompatActivity() {
         spinnerMode = findViewById(R.id.spinnerMode)
 
         // --- Initialize SDK ---
-        BarikoiTrace.initialize(this, BuildConfig.API_KEY)
+        BarikoiTrace.initialize(this, BuildConfig.API_KEY, BuildConfig.MQTT_USERNAME, BuildConfig.MQTT_PASSWORD)
         log("SDK initialized with API key from flavor")
 
         // --- API Key ---
@@ -61,7 +61,7 @@ class DemoActivity : AppCompatActivity() {
                 .setPositiveButton("Apply") { _, _ ->
                     val newKey = input.text.toString().trim()
                     if (newKey.isNotEmpty()) {
-                        BarikoiTrace.initialize(this@DemoActivity, newKey)
+                        BarikoiTrace.initialize(this@DemoActivity, newKey, BuildConfig.MQTT_USERNAME, BuildConfig.MQTT_PASSWORD)
                         log("API key updated and SDK re-initialized")
                         toast("API key updated")
                     } else {
