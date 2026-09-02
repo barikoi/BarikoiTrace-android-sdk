@@ -135,4 +135,24 @@ class TraceDataStoreTest {
         dataStore.setLogging(false)
         assertThat(dataStore.isLogging()).isFalse()
     }
+
+    @Test
+    fun updateUserName_andGetUser_returnsUpdatedName() = runBlocking {
+        dataStore.setUser(TraceUser(userId = "u123", name = "Old", phone = "01700000000"))
+        dataStore.updateUserName("New Name")
+        val retrieved = dataStore.getUser()
+        assertThat(retrieved).isNotNull()
+        assertThat(retrieved!!.name).isEqualTo("New Name")
+        assertThat(retrieved.userId).isEqualTo("u123")
+        assertThat(retrieved.phone).isEqualTo("01700000000")
+    }
+
+    @Test
+    fun updateUserName_preservesUserUpdatedAt() = runBlocking {
+        dataStore.setUser(
+            TraceUser(userId = "u123", name = "Old", phone = "01700000000", updatedAt = 1000L)
+        )
+        dataStore.updateUserName("New")
+        assertThat(dataStore.getUser()!!.updatedAt).isEqualTo(1000L)
+    }
 }

@@ -25,7 +25,7 @@ class MqttManager(
     private val groupId: String,
     private val uuid: String,
     private val callback: MqttStatusCallback? = null,
-    private val userName: String? = null
+    userName: String? = null
 ) {
     private companion object {
         const val MQTT_USERNAME = "rilus"
@@ -51,6 +51,9 @@ class MqttManager(
     private val maxReconnectAttempts = 10
     private val reconnectIntervalMs = 5000L
     private val handler = Handler(Looper.getMainLooper())
+
+    @Volatile
+    private var userName: String? = userName
 
     private val mqttCallback = object : MqttCallbackExtended {
         override fun connectComplete(reconnect: Boolean, serverURI: String?) {
@@ -168,29 +171,41 @@ class MqttManager(
 
     fun publishLocation(location: Location, tripId: String? = null, tripStatus: String = "active") {
         try {
-            val locationData = JsonObject().apply {
-                addProperty("latitude", location.latitude)
-                addProperty("longitude", location.longitude)
-                addProperty("gpx_time", location.time)
-                addProperty("user_id", deviceId)
-                addProperty("company_id", companyId)
-                addProperty("speed", location.speed)
-                addProperty("bearing", location.bearing)
-                addProperty("altitude", location.altitude)
-                addProperty("accuracy", location.accuracy)
-                userName?.takeIf { it.isNotBlank() }?.let {
-                    addProperty("user_name", it)
-                }
-                tripId?.let {
-                    addProperty("trip_id", it)
-                    addProperty("trip_status", tripStatus)
-                }
-            }
+            val locationData = buildLocationJson(location, tripId, tripStatus)
             Log.d(tag, "Publishing location: $locationData")
             publishMessage(channelTopic, locationData.toString(), 1, false)
         } catch (e: Exception) {
             Log.e(tag, "Error creating location JSON", e)
         }
+    }
+
+    internal fun buildLocationJson(
+        location: Location,
+        tripId: String? = null,
+        tripStatus: String = "active"
+    ): JsonObject {
+        return JsonObject().apply {
+            addProperty("latitude", location.latitude)
+            addProperty("longitude", location.longitude)
+            addProperty("gpx_time", location.time)
+            addProperty("user_id", deviceId)
+            addProperty("company_id", companyId)
+            addProperty("speed", location.speed)
+            addProperty("bearing", location.bearing)
+            addProperty("altitude", location.altitude)
+            addProperty("accuracy", location.accuracy)
+            userName?.takeIf { it.isNotBlank() }?.let {
+                addProperty("user_name", it)
+            }
+            tripId?.let {
+                addProperty("trip_id", it)
+                addProperty("trip_status", tripStatus)
+            }
+        }
+    }
+
+    fun updateUserName(name: String?) {
+        userName = name
     }
 
     fun publishLocationJson(json: JsonObject) {

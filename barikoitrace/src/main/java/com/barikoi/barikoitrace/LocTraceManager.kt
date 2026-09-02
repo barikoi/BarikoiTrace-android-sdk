@@ -107,6 +107,15 @@ class LocTraceManager private constructor(private val context: Context) {
         return user
     }
 
+    suspend fun updateUserName(name: String): TraceUser {
+        if (dataStore.getUser() == null) throw Exception(TraceError.noUserError().message)
+        if (name.isBlank()) throw Exception(TraceError.noDataError().message)
+
+        dataStore.updateUserName(name.trim())
+        if (isServiceRunning()) sendUpdateUserNameIntent()
+        return dataStore.getUser()!!
+    }
+
     fun getUser(): TraceUser? = dataStore.getUser()
     fun getUserId(): String? = dataStore.getUserId()
 
@@ -268,6 +277,17 @@ class LocTraceManager private constructor(private val context: Context) {
             Log.e("LocTrace", "Cannot start foreground service from background", e)
         } catch (e: Exception) {
             Log.e("LocTrace", "Error starting location service", e)
+        }
+    }
+
+    private fun sendUpdateUserNameIntent() {
+        try {
+            val intent = Intent(context, LocTraceForegroundService::class.java).apply {
+                action = LocTraceForegroundService.ACTION_UPDATE_USER_NAME
+            }
+            context.startService(intent)
+        } catch (e: Exception) {
+            Log.e("LocTrace", "Failed to deliver user name update to service", e)
         }
     }
 

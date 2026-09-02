@@ -60,6 +60,10 @@ object BarikoiTrace {
         getInstance().setOrCreateUser(name, email, phone)
 
     @JvmStatic
+    suspend fun updateUserName(name: String): TraceUser =
+        getInstance().updateUserName(name)
+
+    @JvmStatic
     fun getUser(): TraceUser? = getInstance().getUser()
 
     @JvmStatic
@@ -185,6 +189,18 @@ object BarikoiTrace {
         scope.launch {
             try {
                 val user = setOrCreateUser(name, email, phone)
+                callback.onSuccess(user)
+            } catch (e: Exception) {
+                callback.onFailure(TraceError("USER_ERROR", e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    @JvmStatic
+    fun updateUserName(name: String, callback: TraceUserCallback) {
+        scope.launch {
+            try {
+                val user = updateUserName(name)
                 callback.onSuccess(user)
             } catch (e: Exception) {
                 callback.onFailure(TraceError("USER_ERROR", e.message ?: "Unknown error"))

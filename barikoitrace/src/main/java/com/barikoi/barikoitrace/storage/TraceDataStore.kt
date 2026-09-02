@@ -152,6 +152,8 @@ class TraceDataStore private constructor(context: Context) {
         }
     }
 
+    suspend fun updateUserName(name: String) = putAndCache(Keys.USER_NAME, name)
+
     fun getUser(): TraceUser? {
         val userId = getString(Keys.USER_ID) ?: return null
         return TraceUser(

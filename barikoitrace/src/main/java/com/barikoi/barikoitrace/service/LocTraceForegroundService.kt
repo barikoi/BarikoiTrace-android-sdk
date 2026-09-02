@@ -37,6 +37,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         private const val TAG = "LocTraceService"
         private const val CHANNEL_ID = "BarikoiTrace"
         private const val NOTIFICATION_ID = 1
+        const val ACTION_UPDATE_USER_NAME = "com.barikoi.barikoitrace.action.UPDATE_USER_NAME"
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -55,6 +56,11 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureForegroundStarted()
+
+        if (intent?.action == ACTION_UPDATE_USER_NAME) {
+            handleUpdateUserName()
+            return START_STICKY
+        }
 
         try {
             dataStore = TraceDataStore(this)
@@ -82,7 +88,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     override fun onDestroy() {
         // Send final location with trip_status "completed" before tearing down MQTT
-        val tripId = dataStore.getLocalTripId()
+        val tripId = if (::dataStore.isInitialized) dataStore.getLocalTripId() else null
         if (tripId != null) {
             val location = lastLocation
             if (location != null && mqttManager?.isConnected() == true) {
@@ -180,6 +186,22 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             nm.cancel(2)
         }
+    }
+
+    private fun handleUpdateUserName() {
+        if (!::dataStore.isInitialized) dataStore = TraceDataStore(this)
+        val name = dataStore.getUser()?.name
+        val mqtt = mqttManager
+        if (mqtt == null) {
+            Log.w(TAG, "updateUserName action ignored - MQTT not initialized")
+            return
+        }
+        if (name.isNullOrBlank()) {
+            Log.w(TAG, "updateUserName action ignored - no stored user name")
+            return
+        }
+        mqtt.updateUserName(name)
+        BarikoiTrace.notifyLog("INFO", TAG, "MQTT user name updated to $name")
     }
 
     // --- MQTT ---

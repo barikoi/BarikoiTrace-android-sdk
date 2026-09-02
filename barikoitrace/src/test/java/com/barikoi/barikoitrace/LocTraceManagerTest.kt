@@ -101,4 +101,52 @@ class LocTraceManagerTest {
         dataStore.stopSdkTracking()
         assertThat(dataStore.isSdkTracking()).isFalse()
     }
+
+    @Test
+    fun updateUserName_noUserSet_throwsException() {
+        runBlocking { dataStore.clearUser() }
+        var thrown: Exception? = null
+        try {
+            runBlocking { manager.updateUserName("New") }
+        } catch (e: Exception) {
+            thrown = e
+        }
+        assertThat(thrown).isNotNull()
+        assertThat(thrown!!.message)
+            .isEqualTo(com.barikoi.barikoitrace.model.TraceError.noUserError().message)
+    }
+
+    @Test
+    fun updateUserName_blankName_throwsException() = runBlocking {
+        dataStore.setUser(
+            com.barikoi.barikoitrace.model.TraceUser(
+                userId = "u123",
+                name = "Old",
+                phone = "01700000000"
+            )
+        )
+        var thrown: Exception? = null
+        try {
+            manager.updateUserName("   ")
+        } catch (e: Exception) {
+            thrown = e
+        }
+        assertThat(thrown).isNotNull()
+        assertThat(thrown!!.message)
+            .isEqualTo(com.barikoi.barikoitrace.model.TraceError.noDataError().message)
+    }
+
+    @Test
+    fun updateUserName_returnsUpdatedUser() = runBlocking {
+        dataStore.setUser(
+            com.barikoi.barikoitrace.model.TraceUser(
+                userId = "u123",
+                name = "Old",
+                phone = "01700000000"
+            )
+        )
+        val updated = manager.updateUserName("New")
+        assertThat(updated.name).isEqualTo("New")
+        assertThat(manager.getUser()!!.name).isEqualTo("New")
+    }
 }
