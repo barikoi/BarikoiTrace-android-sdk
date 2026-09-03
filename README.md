@@ -54,13 +54,46 @@ App module:
 
 ```groovy
 dependencies {
-    implementation 'com.github.barikoi:barikoitrace:2.0.0'
+    implementation 'com.github.barikoi:barikoitrace:0.4.0'
 }
 ```
 
-`2.0.0` is a **breaking** release: `initialize()` now requires MQTT
-credentials. The hardcoded broker constants that shipped in every earlier
-version are gone — see [Where to put your API key](#where-to-put-your-api-key).
+Kotlin DSL (`build.gradle.kts`):
+
+```kotlin
+dependencies {
+    implementation("com.github.barikoi:barikoitrace:0.4.0")
+}
+```
+
+### Choosing a version
+
+Versions are **git tags on this repository** — JitPack builds the tagged commit
+on first request. There is no registry step, so anything that exists as a tag is
+installable:
+
+| What you write | What you get |
+|---|---|
+| `com.github.barikoi:barikoitrace:0.4.0` | that exact tag — what you want in a shipped app |
+| `com.github.barikoi:barikoitrace:dev-v4-SNAPSHOT` | latest commit on the `dev-v4` branch |
+| `com.github.barikoi:barikoitrace:f767158` | a specific commit, by short hash |
+| `com.github.barikoi:barikoitrace:0.4.+` | latest `0.4.x` patch |
+
+Pin an exact tag for anything you release. Branch snapshots move under you and
+JitPack caches them for a while, which produces "works on my machine" in its
+purest form.
+
+The first build of a new tag is compiled by JitPack on demand and takes a few
+minutes; later requests are served from its cache. If resolution fails, check
+the build log at
+`https://jitpack.io/#barikoi/BarikoiTrace-android-sdk` before assuming the
+coordinate is wrong.
+
+`0.4.0` **breaks** `initialize()`: MQTT credentials are now required. The
+hardcoded broker constants that shipped in every version up to `0.3.0` are gone
+— see [Where to put your API key](#where-to-put-your-api-key). It also moves
+credentials and user identity into `EncryptedSharedPreferences`, so an upgrading
+install re-authenticates once.
 
 ---
 
@@ -592,11 +625,18 @@ then reboot.
 
 ## Releasing
 
-JitPack builds from git tags:
+JitPack builds from git tags. Full rules and checklist in
+[`docs/RELEASING.md`](docs/RELEASING.md); short version:
 
 ```bash
-git tag -a 2.0.1 -m "2.0.1" && git push origin 2.0.1
+git tag -a 0.4.0 -m "0.4.0"
+git push origin dev-v4
+git push origin 0.4.0
 ```
+
+Then open `https://jitpack.io/#barikoi/BarikoiTrace-android-sdk/0.4.0` to make
+JitPack build it, rather than leaving the first consumer to wait — and to catch
+a red build, which is a broken release even though the tag pushed cleanly.
 
 Keep `version` in `barikoitrace/build.gradle.kts` in step with the tag. Tags are
 immutable to consumers — never move one, ship a patch instead.
@@ -605,5 +645,6 @@ immutable to consumers — never move one, ship a patch instead.
 
 ## Further reading
 
+- [`docs/RELEASING.md`](docs/RELEASING.md) — tagging rules, checklist, consumer verification
 - [`docs/SDK_DOCUMENTATION.md`](docs/SDK_DOCUMENTATION.md) — architecture and API detail
 - [`docs/IOS_NATIVE_LIBRARY_WORK_PLAN.md`](docs/IOS_NATIVE_LIBRARY_WORK_PLAN.md) — the plan the iOS port was built from

@@ -111,11 +111,16 @@ publishing {
         register<MavenPublication>("release") {
             groupId = "com.github.barikoi"
             artifactId = "barikoitrace"
-            // Bumped for the breaking BarikoiTrace.initialize() signature
-            // change (added required mqttUsername/mqttPassword params,
-            // removed the hardcoded broker credentials) — see
-            // docs/SDK_DOCUMENTATION.md §6 finding #1's update.
-            version = "2.0.0"
+            // Must equal the git tag being cut — JitPack resolves by tag name,
+            // so a mismatch makes the POM disagree with the coordinate people
+            // type. Continues the existing tag series (…0.2.9, 0.3.0), which
+            // the previous "2.0.0" here never matched.
+            //
+            // 0.4.0 carries the breaking BarikoiTrace.initialize() signature
+            // change (required mqttUsername/mqttPassword, hardcoded broker
+            // credentials removed) plus the iOS-parity config work. Below
+            // 1.0.0 a minor bump is the breaking one.
+            version = "0.4.0"
 
             afterEvaluate {
                 from(components["release"])
