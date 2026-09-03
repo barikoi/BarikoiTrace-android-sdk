@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.location.Location
 import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.model.TraceException
 import com.barikoi.barikoitrace.model.TraceUser
 import com.barikoi.barikoitrace.receiver.LocationReceiver
 import com.barikoi.barikoitrace.util.SystemSettingsManager
@@ -49,8 +50,20 @@ object BarikoiTrace {
      */
     @JvmStatic
     fun initialize(context: Context, apiKey: String, mqttUsername: String, mqttPassword: String) {
+        initialize(context, TraceConfig(apiKey, mqttUsername, mqttPassword))
+    }
+
+    /**
+     * One-call configuration — API key, broker credentials and endpoints
+     * together, so nothing depends on the order of a follow-up
+     * `setBaseUrl`/`setMqttUrl`/`setMqttClientIdPrefix` call.
+     *
+     * Same shape as the iOS SDK's `BarikoiTrace.initialize(_ config:)`.
+     */
+    @JvmStatic
+    fun initialize(context: Context, config: TraceConfig) {
         manager = LocTraceManager.getInstance(context)
-        getInstance().initialize(apiKey, mqttUsername, mqttPassword)
+        getInstance().initialize(config)
     }
 
     @JvmStatic
@@ -58,6 +71,14 @@ object BarikoiTrace {
 
     @JvmStatic
     fun setMqttUrl(url: String) = getInstance().setMqttUrl(url)
+
+    /**
+     * Overrides the MQTT client-id prefix (default `"AndroidClient-"`; the iOS
+     * SDK uses `"iOSClient-"`). Needed only when the broker authorizes by
+     * client-id pattern. Call before `startTracking`.
+     */
+    @JvmStatic
+    fun setMqttClientIdPrefix(prefix: String) = getInstance().setMqttClientIdPrefix(prefix)
 
     @JvmStatic
     fun resetUrls() = getInstance().resetUrls()
@@ -196,7 +217,7 @@ object BarikoiTrace {
                 val user = setOrCreateUser(name, email, phone)
                 callback.onSuccess(user)
             } catch (e: Exception) {
-                callback.onFailure(TraceError("USER_ERROR", e.message ?: "Unknown error"))
+                callback.onFailure(asTraceError(e, "USER_ERROR"))
             }
         }
     }
@@ -208,7 +229,7 @@ object BarikoiTrace {
                 val location = updateCurrentLocation()
                 callback.onLocationUpdate(location)
             } catch (e: Exception) {
-                callback.onFailure(TraceError("LOCATION_ERROR", e.message ?: "Unknown error"))
+                callback.onFailure(asTraceError(e, "LOCATION_ERROR"))
             }
         }
     }
@@ -220,10 +241,20 @@ object BarikoiTrace {
                 val mode = getSettingsFromRemote()
                 callback.onSuccess(mode)
             } catch (e: Exception) {
-                callback.onFailure(TraceError("SETTINGS_ERROR", e.message ?: "Unknown error"))
+                callback.onFailure(asTraceError(e, "SETTINGS_ERROR"))
             }
         }
     }
+
+
+    /**
+     * Unwraps the real [TraceError] when the failure carries one, so a Java
+     * caller sees the same stable code the `suspend` API throws instead of a
+     * generic per-call-site placeholder. Falls back to [fallbackCode] for
+     * anything that is not a [TraceException].
+     */
+    private fun asTraceError(e: Exception, fallbackCode: String): TraceError =
+        (e as? TraceException)?.error ?: TraceError(fallbackCode, e.message ?: "Unknown error")
 
     // --- Callback Interfaces ---
 

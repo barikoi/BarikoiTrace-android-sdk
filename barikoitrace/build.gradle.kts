@@ -72,6 +72,10 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.4")
 
+    // Keystore-backed storage for credentials and user PII — the counterpart
+    // to the iOS SDK's Keychain use. See storage/SecureStore.kt.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // Room
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

@@ -3,6 +3,8 @@ package com.barikoi.barikoitrace.api
 import android.content.Context
 import android.util.Log
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.model.TraceException
 import com.barikoi.barikoitrace.model.TraceUser
 import com.barikoi.barikoitrace.storage.TraceDataStore
 import com.google.gson.JsonObject
@@ -94,7 +96,7 @@ class TraceApiClient private constructor(context: Context) {
         val userName = userJson.get("name").asString
         val userEmail = userJson.get("email").asString
         val companies = userJson.getAsJsonArray("companies")
-        if (companies.size() == 0) throw Exception("Company not found")
+        if (companies.size() == 0) throw TraceException(TraceError.noCompanyError())
         val company = companies[0].asJsonObject.get("company_id").asString
         val group = companies[0].asJsonObject.get("group_id").asString
 
@@ -133,7 +135,7 @@ class TraceApiClient private constructor(context: Context) {
     private fun parseResponse(response: Response<JsonObject>): JsonObject {
         if (!response.isSuccessful || response.body() == null) {
             Log.e("TraceApi", "API ERROR: ${response.code()} ${response.message()}")
-            throw Exception("Server error: ${response.code()}")
+            throw TraceException(TraceError("SERVER", "Server error: ${response.code()}"))
         }
         Log.d("TraceApi", "API RESPONSE: ${response.code()} | ${response.body()}")
         return response.body()!!

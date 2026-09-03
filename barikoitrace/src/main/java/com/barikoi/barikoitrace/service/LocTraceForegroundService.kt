@@ -15,6 +15,7 @@ import android.os.IBinder
 import android.util.Log
 import com.barikoi.barikoitrace.BarikoiTrace
 import com.barikoi.barikoitrace.R
+import com.barikoi.barikoitrace.TraceMode
 import com.barikoi.barikoitrace.api.ApiRoutes
 import com.barikoi.barikoitrace.api.MqttManager
 import com.barikoi.barikoitrace.location.LocationEngine
@@ -111,13 +112,10 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         val traceMode = dataStore.getTraceMode() ?: return
 
         // Check time window
-        if (traceMode.endTime != LocalTime.MAX) {
-            val now = LocalTime.now()
-            if (now.isAfter(traceMode.endTime) || now.isBefore(traceMode.startTime)) {
-                serviceScope.launch { dataStore.setSdkTracking(false) }
-                stopSelf()
-                return
-            }
+        if (traceMode.endTime != LocalTime.MAX && !isWithinTrackingWindow(traceMode)) {
+            serviceScope.launch { dataStore.setSdkTracking(false) }
+            stopSelf()
+            return
         }
 
         // Check location staleness (reject locations older than 10 seconds)
@@ -179,10 +177,42 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                         addProperty("trip_status", "active")
                     }
                 }
-                offlineDb.locationDao().insert(
-                    OfflineLocationEntity(json = json.toString())
-                )
+                // Gated on the same flag iOS gates on. Android used to queue
+                // unconditionally, so `setOfflineTracking(false)` did nothing
+                // here while it took effect on iOS — the one config knob whose
+                // meaning differed between the platforms. The flag now defaults
+                // to true (see TraceDataStore.isOfflineTracking), so the
+                // queue-everything behavior is unchanged unless a host app
+                // explicitly turns it off.
+                if (dataStore.isOfflineTracking()) {
+                    offlineDb.locationDao().insert(
+                        OfflineLocationEntity(json = json.toString())
+                    )
+                } else {
+                    BarikoiTrace.notifyLog(
+                        "WARN", TAG,
+                        "MQTT not connected and offline tracking is off — location discarded"
+                    )
+                }
             }
+        }
+    }
+
+    /**
+     * A window that wraps past midnight (start > end, e.g. 22:00–06:00) is the
+     * union of both sides. The previous `now.isAfter(end) || now.isBefore(start)`
+     * pair rejected *every* instant in that case — a night-shift window meant
+     * tracking stopped on the first fix. Matches the iOS SDK's
+     * `TraceManager.isWithinTrackingWindow`.
+     */
+    private fun isWithinTrackingWindow(traceMode: TraceMode): Boolean {
+        val now = LocalTime.now()
+        val start = traceMode.startTime
+        val end = traceMode.endTime
+        return if (start > end) {
+            !now.isBefore(start) || !now.isAfter(end)
+        } else {
+            !now.isBefore(start) && !now.isAfter(end)
         }
     }
 
@@ -223,10 +253,18 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                         Log.d(TAG, "Received command: $message")
                     }
                 }
+                override fun onConnectionRejected(message: String) {
+                    // Surfaced at ERROR and not retried — the broker refused
+                    // this exact CONNECT, so the host app has to change
+                    // something before another attempt can succeed.
+                    Log.e(TAG, message)
+                    BarikoiTrace.notifyLog("ERROR", TAG, message)
+                }
             },
             userName = userName,
             mqttUsername = mqttUsername,
-            mqttPassword = mqttPassword
+            mqttPassword = mqttPassword,
+            clientIdPrefix = dataStore.getMqttClientIdPrefix()
         )
         mqttManager?.connect()
     }
@@ -234,53 +272,76 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
     // --- Offline Data Sync ---
 
     private fun flushOfflineData() {
-        if (dataStore.isDataSyncing()) return
-        serviceScope.launch {
-            if (dataStore.isDataSyncing()) return@launch
-            val dao = offlineDb.locationDao()
-            if (dao.getCount() == 0) return@launch
-            val mqtt = mqttManager
-            if (mqtt == null || !mqtt.isConnected()) return@launch
-            dataStore.setDataSyncing(true)
-            try {
-                val batch = dao.getBatch()
-                if (batch.isEmpty()) {
-                    dataStore.setDataSyncing(false)
-                    return@launch
-                }
+        // Single compare-and-set. The old `if (isDataSyncing()) return` +
+        // `setDataSyncing(true)` was check-then-act across two calls, so two
+        // callers could both pass and whichever finished first cleared the
+        // flag for both. Same fix as the iOS SDK's `beginDataSyncIfIdle()`.
+        if (!dataStore.beginDataSyncIfIdle()) return
 
-                val userId = dataStore.getUserId()
-                if (userId == null) {
-                    dataStore.setDataSyncing(false)
+        serviceScope.launch {
+            try {
+                val dao = offlineDb.locationDao()
+                val mqtt = mqttManager
+                if (mqtt == null || !mqtt.isConnected()) return@launch
+
+                // Android used to refuse to flush at all without a user id;
+                // the rows now simply stay queued rather than being skipped
+                // silently, matching iOS.
+                val userId = dataStore.getUserId() ?: run {
+                    BarikoiTrace.notifyLog(
+                        "WARN", TAG,
+                        "Offline flush deferred — no authenticated user to attribute rows to"
+                    )
                     return@launch
                 }
                 val user = dataStore.getUser()
 
-                for (entity in batch) {
-                    try {
-                        val locJson = JsonParser.parseString(entity.json).asJsonObject
-                        locJson.addProperty("user_id", userId)
-                        // Backfill company_id/user_name for rows queued
-                        // before this fix that don't already carry them
-                        // (fresh writes already include both — see
-                        // onLocationReceived's offline branch above).
-                        if (!locJson.has("company_id")) {
-                            user?.companyId?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("company_id", it) }
-                        }
-                        if (!locJson.has("user_name")) {
-                            user?.name?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("user_name", it) }
-                        }
-                        mqtt.publishLocationJson(locJson)
-                    } catch (_: Exception) {}
+                // Bounded loop instead of recursion. The old tail call
+                // re-entered through `flushOfflineData()`, which re-launched a
+                // coroutine per batch and could not terminate at all if
+                // `deleteBatch()` failed — the same rows were republished
+                // forever while `getCount()` never dropped.
+                var remaining = dao.getCount()
+                while (remaining > 0) {
+                    val batch = dao.getBatch()
+                    if (batch.isEmpty()) break
+
+                    for (entity in batch) {
+                        try {
+                            val locJson = JsonParser.parseString(entity.json).asJsonObject
+                            locJson.addProperty("user_id", userId)
+                            // Backfill company_id/user_name for rows queued
+                            // before this fix that don't already carry them
+                            // (fresh writes already include both — see
+                            // onLocationReceived's offline branch above).
+                            if (!locJson.has("company_id")) {
+                                user?.companyId?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("company_id", it) }
+                            }
+                            if (!locJson.has("user_name")) {
+                                user?.name?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("user_name", it) }
+                            }
+                            mqtt.publishLocationJson(locJson)
+                        } catch (_: Exception) {}
+                    }
+
+                    // Checked before the delete: a link that dropped mid-batch
+                    // means those publishes went nowhere, and deleting first
+                    // would discard them.
+                    if (!mqtt.isConnected()) break
+
+                    dao.deleteBatch()
+
+                    val afterDelete = dao.getCount()
+                    // Stall guard: a delete that frees nothing would otherwise
+                    // spin this loop.
+                    if (afterDelete >= remaining) break
+                    remaining = afterDelete
                 }
-
-                dao.deleteBatch()
-                dataStore.setDataSyncing(false)
-
-                // Recursively flush if more data remains
-                flushOfflineData()
             } catch (e: Exception) {
                 Log.e(TAG, "Auto-sync failed", e)
+            } finally {
+                // `finally`, so no early return or thrown exception can leave
+                // the claim held.
                 dataStore.setDataSyncing(false)
             }
         }

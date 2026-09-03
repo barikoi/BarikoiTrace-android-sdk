@@ -15,5 +15,12 @@ data class TraceError(
         fun tripStateError() = TraceError("TRIP", "Not currently on a trip.")
         fun mockAppError() = TraceError("MOCK", "Mock location detected. Please disable mock location.")
         fun jsonError(detail: String) = TraceError("JSON", "JSON parsing error: $detail")
+
+        /**
+         * The authenticated account has no company association, so no MQTT
+         * topic can be resolved for it. Was a bare `Exception("Company not
+         * found")`; the iOS SDK has always had this code.
+         */
+        fun noCompanyError() = TraceError("NO_COMPANY", "User has no company association.")
     }
 }

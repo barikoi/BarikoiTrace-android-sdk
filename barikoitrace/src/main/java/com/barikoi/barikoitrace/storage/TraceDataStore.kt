@@ -6,10 +6,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.api.MqttManager
 import com.barikoi.barikoitrace.model.TraceUser
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -25,29 +25,51 @@ class TraceDataStore private constructor(context: Context) {
     // In-memory cache to avoid runBlocking reads on main thread (shared across all instances)
     private val cache = sharedCache
 
+    /**
+     * Credentials and user identity live here, not in [store]. Mirrors the
+     * iOS SDK, which puts exactly this set in the Keychain and leaves runtime
+     * config in UserDefaults — the same sensitivity split, so the two SDKs can
+     * be described identically to a wrapper.
+     */
+    private val secure = SecureStore(context.applicationContext)
+
+    private object SecureKeys {
+        const val API_KEY = "api_key"
+        const val MQTT_USERNAME = "mqtt_username"
+        const val MQTT_PASSWORD = "mqtt_password"
+        const val USER_ID = "user_id"
+        const val USER_NAME = "user_name"
+        const val USER_EMAIL = "user_email"
+        const val USER_PHONE = "user_phone"
+        const val USER_COMPANY = "user_company"
+        const val USER_GROUP = "user_group"
+        const val USER_UPDATED_AT = "user_updated_at"
+    }
+
     private object Keys {
-        val API_KEY = stringPreferencesKey("api_key")
+        // The API key, broker credentials and user identity are NOT here —
+        // see [SecureKeys]/[SecureStore]. This object is runtime config only,
+        // matching the iOS SDK's UserDefaults/Keychain split.
         val BASE_URL = stringPreferencesKey("base_url")
         val MQTT_URL = stringPreferencesKey("mqtt_url")
-        // Replaces the hardcoded MQTT_USERNAME/MQTT_PASSWORD constants that
-        // used to live in MqttManager.kt — every app using this SDK shared
-        // the same broker login. Now injected per-app via
-        // BarikoiTrace.initialize(context, apiKey, mqttUsername, mqttPassword).
-        val MQTT_USERNAME = stringPreferencesKey("mqtt_username")
-        val MQTT_PASSWORD = stringPreferencesKey("mqtt_password")
+        val MQTT_CLIENT_ID_PREFIX = stringPreferencesKey("mqtt_client_id_prefix")
         val DEVICE_TOKEN = stringPreferencesKey("device_token")
-        val USER_ID = stringPreferencesKey("user_id")
-        val USER_NAME = stringPreferencesKey("user_name")
-        val USER_EMAIL = stringPreferencesKey("user_email")
-        val USER_PHONE = stringPreferencesKey("user_phone")
-        val USER_COMPANY = stringPreferencesKey("user_company")
-        val USER_GROUP = stringPreferencesKey("user_group")
-        val USER_UPDATED_AT = longPreferencesKey("user_updated_at")
         val SDK_TRACKING = booleanPreferencesKey("sdk_tracking")
+        /**
+         * Never written by the SDK — `isOnTrip()` is derived from
+         * [LOCAL_TRIP_ID] everywhere that matters. Kept only because
+         * `setOnTrip`/`isOnTrip` are public.
+         */
         val ON_TRIP = booleanPreferencesKey("on_trip")
         val LOCAL_TRIP_ID = stringPreferencesKey("local_trip_id")
+        /** The host app's explicit `setOfflineTracking()` override. */
         val OFFLINE_TRACKING = booleanPreferencesKey("offlineTracking")
-        val DATA_SYNCING = booleanPreferencesKey("offline_syncing")
+        /**
+         * `TraceMode.offline`, on its own key. These used to share
+         * [OFFLINE_TRACKING], which is why a mode's `offline` value was both
+         * unwritable and able to be clobbered by the host app's toggle.
+         */
+        val MODE_OFFLINE_SYNC = booleanPreferencesKey("mode_offline_sync")
         val LOGGING = booleanPreferencesKey("logger")
         val BROADCASTING = booleanPreferencesKey("broadcasting")
         val DESIRED_ACCURACY = stringPreferencesKey("desiredAccuracy")
@@ -66,24 +88,20 @@ class TraceDataStore private constructor(context: Context) {
         // Pre-warm cache from DataStore on first instantiation
         runBlocking {
             store.data.first().let { prefs ->
-                prefs[Keys.API_KEY]?.let { cache[Keys.API_KEY.name] = it }
+                // The API key, broker credentials and user identity are no
+                // longer here — they live in `secure` (SecureStore), whose
+                // reads are synchronous and need no pre-warming.
                 prefs[Keys.BASE_URL]?.let { cache[Keys.BASE_URL.name] = it }
                 prefs[Keys.MQTT_URL]?.let { cache[Keys.MQTT_URL.name] = it }
-                prefs[Keys.MQTT_USERNAME]?.let { cache[Keys.MQTT_USERNAME.name] = it }
-                prefs[Keys.MQTT_PASSWORD]?.let { cache[Keys.MQTT_PASSWORD.name] = it }
+                prefs[Keys.MQTT_CLIENT_ID_PREFIX]?.let { cache[Keys.MQTT_CLIENT_ID_PREFIX.name] = it }
                 prefs[Keys.DEVICE_TOKEN]?.let { cache[Keys.DEVICE_TOKEN.name] = it }
-                prefs[Keys.USER_ID]?.let { cache[Keys.USER_ID.name] = it }
-                prefs[Keys.USER_NAME]?.let { cache[Keys.USER_NAME.name] = it }
-                prefs[Keys.USER_EMAIL]?.let { cache[Keys.USER_EMAIL.name] = it }
-                prefs[Keys.USER_PHONE]?.let { cache[Keys.USER_PHONE.name] = it }
-                prefs[Keys.USER_COMPANY]?.let { cache[Keys.USER_COMPANY.name] = it }
-                prefs[Keys.USER_GROUP]?.let { cache[Keys.USER_GROUP.name] = it }
-                cache[Keys.USER_UPDATED_AT.name] = prefs[Keys.USER_UPDATED_AT] ?: 0L
                 cache[Keys.SDK_TRACKING.name] = prefs[Keys.SDK_TRACKING] ?: false
-                cache[Keys.ON_TRIP.name] = prefs[Keys.ON_TRIP] ?: false
                 prefs[Keys.LOCAL_TRIP_ID]?.let { cache[Keys.LOCAL_TRIP_ID.name] = it }
-                cache[Keys.OFFLINE_TRACKING.name] = prefs[Keys.OFFLINE_TRACKING] ?: false
-                cache[Keys.DATA_SYNCING.name] = prefs[Keys.DATA_SYNCING] ?: false
+                // Left absent when unset, rather than defaulted: absence is
+                // what `isOfflineTracking()` distinguishes to decide between
+                // the host override, the mode's value, and its own default.
+                prefs[Keys.OFFLINE_TRACKING]?.let { cache[Keys.OFFLINE_TRACKING.name] = it }
+                prefs[Keys.MODE_OFFLINE_SYNC]?.let { cache[Keys.MODE_OFFLINE_SYNC.name] = it }
                 cache[Keys.LOGGING.name] = prefs[Keys.LOGGING] ?: false
                 cache[Keys.BROADCASTING.name] = prefs[Keys.BROADCASTING] ?: false
                 prefs[Keys.DESIRED_ACCURACY]?.let { cache[Keys.DESIRED_ACCURACY.name] = it }
@@ -104,8 +122,6 @@ class TraceDataStore private constructor(context: Context) {
 
     private fun getInt(key: Preferences.Key<Int>, default: Int = 0): Int = (cache[key.name] as? Int) ?: default
 
-    private fun getLong(key: Preferences.Key<Long>, default: Long = 0L): Long = (cache[key.name] as? Long) ?: default
-
     private fun getBoolean(key: Preferences.Key<Boolean>, default: Boolean = false): Boolean = (cache[key.name] as? Boolean) ?: default
 
     private suspend fun <T> putAndCache(key: Preferences.Key<T>, value: T) {
@@ -119,8 +135,8 @@ class TraceDataStore private constructor(context: Context) {
     }
 
     // --- API Key ---
-    suspend fun setApiKey(key: String) = putAndCache(Keys.API_KEY, key)
-    fun getApiKey(): String? = getString(Keys.API_KEY)
+    suspend fun setApiKey(key: String) = secure.putString(SecureKeys.API_KEY, key)
+    fun getApiKey(): String? = secure.getString(SecureKeys.API_KEY)
 
     // --- URLs ---
     suspend fun setBaseUrl(url: String) = putAndCache(Keys.BASE_URL, url)
@@ -128,16 +144,18 @@ class TraceDataStore private constructor(context: Context) {
     suspend fun setMqttUrl(url: String) = putAndCache(Keys.MQTT_URL, url)
     fun getMqttUrl(): String? = getString(Keys.MQTT_URL)
 
-    // Stored the same way API_KEY already is (plain DataStore Preferences,
-    // not EncryptedSharedPreferences/Keystore-backed) — matches this
-    // class's existing storage posture rather than introducing a new,
-    // inconsistent mechanism for just these two keys. Worth revisiting
-    // for both API_KEY and these together if stronger at-rest protection
-    // is needed; not a new gap this change introduces.
-    suspend fun setMqttUsername(username: String) = putAndCache(Keys.MQTT_USERNAME, username)
-    fun getMqttUsername(): String? = getString(Keys.MQTT_USERNAME)
-    suspend fun setMqttPassword(password: String) = putAndCache(Keys.MQTT_PASSWORD, password)
-    fun getMqttPassword(): String? = getString(Keys.MQTT_PASSWORD)
+    /** See [MqttManager.DEFAULT_CLIENT_ID_PREFIX]. */
+    suspend fun setMqttClientIdPrefix(prefix: String) = putAndCache(Keys.MQTT_CLIENT_ID_PREFIX, prefix)
+    fun getMqttClientIdPrefix(): String =
+        getString(Keys.MQTT_CLIENT_ID_PREFIX) ?: MqttManager.DEFAULT_CLIENT_ID_PREFIX
+
+    // Keystore-backed now, together with API_KEY and the user fields — the
+    // revisit the previous comment here asked for. Matches the iOS SDK, which
+    // has always kept this set in the Keychain.
+    suspend fun setMqttUsername(username: String) = secure.putString(SecureKeys.MQTT_USERNAME, username)
+    fun getMqttUsername(): String? = secure.getString(SecureKeys.MQTT_USERNAME)
+    suspend fun setMqttPassword(password: String) = secure.putString(SecureKeys.MQTT_PASSWORD, password)
+    fun getMqttPassword(): String? = secure.getString(SecureKeys.MQTT_PASSWORD)
 
     suspend fun resetUrls() {
         cache.remove(Keys.BASE_URL.name)
@@ -153,43 +171,38 @@ class TraceDataStore private constructor(context: Context) {
     fun getDeviceToken(): String? = getString(Keys.DEVICE_TOKEN)
 
     // --- User ---
+    // Identity is PII and lives in [secure], matching the iOS SDK's Keychain
+    // split. `EncryptedSharedPreferences` reads are synchronous and cheap, so
+    // these need no cache layer of their own.
     suspend fun setUser(user: TraceUser) {
-        cache[Keys.USER_ID.name] = user.userId
-        user.name?.let { cache[Keys.USER_NAME.name] = it }
-        user.email?.let { cache[Keys.USER_EMAIL.name] = it }
-        user.phone?.let { cache[Keys.USER_PHONE.name] = it }
-        user.companyId?.let { cache[Keys.USER_COMPANY.name] = it }
-        user.group?.let { cache[Keys.USER_GROUP.name] = it }
-        cache[Keys.USER_UPDATED_AT.name] = user.updatedAt
-        store.edit {
-            it[Keys.USER_ID] = user.userId
-            user.name?.let { n -> it[Keys.USER_NAME] = n }
-            user.email?.let { e -> it[Keys.USER_EMAIL] = e }
-            user.phone?.let { p -> it[Keys.USER_PHONE] = p }
-            user.companyId?.let { c -> it[Keys.USER_COMPANY] = c }
-            user.group?.let { g -> it[Keys.USER_GROUP] = g }
-            it[Keys.USER_UPDATED_AT] = user.updatedAt
-        }
+        secure.putString(SecureKeys.USER_ID, user.userId)
+        user.name?.let { secure.putString(SecureKeys.USER_NAME, it) }
+        user.email?.let { secure.putString(SecureKeys.USER_EMAIL, it) }
+        user.phone?.let { secure.putString(SecureKeys.USER_PHONE, it) }
+        user.companyId?.let { secure.putString(SecureKeys.USER_COMPANY, it) }
+        user.group?.let { secure.putString(SecureKeys.USER_GROUP, it) }
+        secure.putLong(SecureKeys.USER_UPDATED_AT, user.updatedAt)
     }
 
     fun getUser(): TraceUser? {
-        val userId = getString(Keys.USER_ID) ?: return null
+        val userId = secure.getString(SecureKeys.USER_ID) ?: return null
         return TraceUser(
             userId = userId,
-            name = getString(Keys.USER_NAME),
-            email = getString(Keys.USER_EMAIL),
-            phone = getString(Keys.USER_PHONE),
-            companyId = getString(Keys.USER_COMPANY),
-            group = getString(Keys.USER_GROUP),
-            updatedAt = getLong(Keys.USER_UPDATED_AT)
+            name = secure.getString(SecureKeys.USER_NAME),
+            email = secure.getString(SecureKeys.USER_EMAIL),
+            phone = secure.getString(SecureKeys.USER_PHONE),
+            companyId = secure.getString(SecureKeys.USER_COMPANY),
+            group = secure.getString(SecureKeys.USER_GROUP),
+            updatedAt = secure.getLong(SecureKeys.USER_UPDATED_AT)
         )
     }
 
-    fun getUserId(): String? = getString(Keys.USER_ID)
+    fun getUserId(): String? = secure.getString(SecureKeys.USER_ID)
 
-    suspend fun clearUser() = removeAndCache(
-        Keys.USER_ID, Keys.USER_NAME, Keys.USER_EMAIL,
-        Keys.USER_PHONE, Keys.USER_COMPANY, Keys.USER_GROUP, Keys.USER_UPDATED_AT
+    suspend fun clearUser() = secure.remove(
+        SecureKeys.USER_ID, SecureKeys.USER_NAME, SecureKeys.USER_EMAIL,
+        SecureKeys.USER_PHONE, SecureKeys.USER_COMPANY, SecureKeys.USER_GROUP,
+        SecureKeys.USER_UPDATED_AT
     )
 
     // --- Tracking State ---
@@ -207,10 +220,49 @@ class TraceDataStore private constructor(context: Context) {
     suspend fun clearLocalTrip() = removeAndCache(Keys.LOCAL_TRIP_ID)
 
     suspend fun setOfflineTracking(enabled: Boolean) = putAndCache(Keys.OFFLINE_TRACKING, enabled)
-    fun isOfflineTracking(): Boolean = getBoolean(Keys.OFFLINE_TRACKING)
 
-    suspend fun setDataSyncing(syncing: Boolean) = putAndCache(Keys.DATA_SYNCING, syncing)
-    fun isDataSyncing(): Boolean = getBoolean(Keys.DATA_SYNCING)
+    /**
+     * Defaults to **true** when neither the host app nor a [TraceMode] has set
+     * it. The host app's explicit [setOfflineTracking] wins; failing that the
+     * mode's `offline` value; failing that the durable queue is on.
+     *
+     * Previously this defaulted to false, and the mode's `offline` was read
+     * from this same key while [setTraceMode] never wrote it — so the two
+     * public setters fought over one slot and `TraceMode.Builder().setOfflineSync(false)`
+     * was silently ignored. Same fix as the iOS SDK's.
+     */
+    fun isOfflineTracking(): Boolean {
+        (cache[Keys.OFFLINE_TRACKING.name] as? Boolean)?.let { return it }
+        (cache[Keys.MODE_OFFLINE_SYNC.name] as? Boolean)?.let { return it }
+        return true
+    }
+
+    /**
+     * In-memory only, deliberately — this guards a single flush run, it is not
+     * durable state. Persisted, a process kill mid-flush left it `true` and
+     * blocked every later flush for the lifetime of the install. Static so all
+     * [TraceDataStore] instances share one flag; a per-instance one would not
+     * actually guard anything.
+     */
+    @Suppress("RedundantSuspendModifier") // signature kept for source compatibility
+    suspend fun setDataSyncing(syncing: Boolean) {
+        synchronized(syncLock) { dataSyncing = syncing }
+    }
+
+    fun isDataSyncing(): Boolean = synchronized(syncLock) { dataSyncing }
+
+    /**
+     * Compare-and-set entry point for the flush guard. `isDataSyncing()` then
+     * `setDataSyncing(true)` is check-then-act across two calls, and there are
+     * several concurrent flush callers, so two runs could both pass and the
+     * first to finish would clear the flag for both. Returns true only to the
+     * caller that actually claimed the run.
+     */
+    fun beginDataSyncIfIdle(): Boolean = synchronized(syncLock) {
+        if (dataSyncing) return@synchronized false
+        dataSyncing = true
+        true
+    }
 
     suspend fun setLogging(enabled: Boolean) = putAndCache(Keys.LOGGING, enabled)
     fun isLogging(): Boolean = getBoolean(Keys.LOGGING)
@@ -228,6 +280,11 @@ class TraceDataStore private constructor(context: Context) {
         cache[Keys.PING_SYNC_INTERVAL.name] = mode.pingSyncInterval
         cache[Keys.TRACKING_TYPE.name] = mode.trackingMode.option
         cache[Keys.DEBUG.name] = mode.debug
+        // `getTraceMode()` reads `offline` back out, but this method never
+        // wrote it — a mode built with `.setOfflineSync(false)` was silently
+        // ignored. Written and read on the same key now, and that key is the
+        // mode's own rather than the host app's override.
+        cache[Keys.MODE_OFFLINE_SYNC.name] = mode.offline
         store.edit {
             it[Keys.DESIRED_ACCURACY] = mode.desiredAccuracy.name
             it[Keys.UPDATE_INTERVAL] = mode.updateInterval
@@ -237,6 +294,7 @@ class TraceDataStore private constructor(context: Context) {
             it[Keys.PING_SYNC_INTERVAL] = mode.pingSyncInterval
             it[Keys.TRACKING_TYPE] = mode.trackingMode.option
             it[Keys.DEBUG] = mode.debug
+            it[Keys.MODE_OFFLINE_SYNC] = mode.offline
         }
     }
 
@@ -257,11 +315,21 @@ class TraceDataStore private constructor(context: Context) {
         val builder = if (updateInterval != 0 || distanceFilter != 0) {
             TraceMode.Builder()
                 .setAccuracyFilter(getInt(Keys.ACCURACY_FILTER, 200))
-                .setDistanceFilter(distanceFilter)
-                .setUpdateInterval(updateInterval)
-                .setOfflineSync(getBoolean(Keys.OFFLINE_TRACKING, true))
+                .setOfflineSync(getBoolean(Keys.MODE_OFFLINE_SYNC, true))
                 .setPingSyncInterval(getInt(Keys.PING_SYNC_INTERVAL))
                 .setDesiredAccuracy(TraceMode.DesiredAccuracy.fromString(getString(Keys.DESIRED_ACCURACY)))
+                .apply {
+                    // `updateInterval` and `distanceFilter` are alternatives,
+                    // and zero means "not this axis". The builder floors them
+                    // (5s / 10m), so calling both setters unconditionally
+                    // turned a stored 0 into a live value: a PASSIVE mode
+                    // (interval 0, distance 100) round-tripped as interval 5,
+                    // and ACTIVE (interval 5, distance 0) came back
+                    // distance-gated at 10m. LocationEngine reads the two as
+                    // an if/else-if, so the wrong one silently won.
+                    if (updateInterval != 0) setUpdateInterval(updateInterval)
+                    if (distanceFilter != 0) setDistanceFilter(distanceFilter)
+                }
         } else {
             TraceMode.Builder()
                 .setAccuracyFilter(200)
@@ -286,10 +354,13 @@ class TraceDataStore private constructor(context: Context) {
     fun getTrackingType(): Int = getInt(Keys.TRACKING_TYPE)
     fun getUpdateInterval(): Int = getInt(Keys.UPDATE_INTERVAL)
 
+    // MODE_OFFLINE_SYNC belongs to the mode, so it clears with it — otherwise
+    // a mode with `offline == false` would keep the durable queue disabled
+    // after the mode itself was cleared.
     suspend fun clearTraceMode() = removeAndCache(
         Keys.DESIRED_ACCURACY, Keys.UPDATE_INTERVAL, Keys.DISTANCE_FILTER,
         Keys.STOP_DURATION, Keys.ACCURACY_FILTER, Keys.PING_SYNC_INTERVAL,
-        Keys.TRACKING_TYPE, Keys.DEBUG
+        Keys.TRACKING_TYPE, Keys.DEBUG, Keys.MODE_OFFLINE_SYNC
     )
 
     suspend fun clearTraceModeWithTiming() {
@@ -304,6 +375,10 @@ class TraceDataStore private constructor(context: Context) {
 
     companion object {
         private val sharedCache = ConcurrentHashMap<String, Any?>()
+
+        /** See [setDataSyncing] — process-wide, never persisted. */
+        private val syncLock = Any()
+        private var dataSyncing = false
 
         @Volatile
         private var INSTANCE: TraceDataStore? = null

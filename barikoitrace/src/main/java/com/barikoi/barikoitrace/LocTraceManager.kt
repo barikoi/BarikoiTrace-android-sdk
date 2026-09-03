@@ -9,6 +9,7 @@ import com.barikoi.barikoitrace.api.ApiRoutes
 import com.barikoi.barikoitrace.api.TraceApiClient
 import com.barikoi.barikoitrace.location.LocationEngine
 import com.barikoi.barikoitrace.model.TraceError
+import com.barikoi.barikoitrace.model.TraceException
 import com.barikoi.barikoitrace.model.TraceUser
 import com.barikoi.barikoitrace.service.LocTraceForegroundService
 import com.barikoi.barikoitrace.storage.OfflineLocationDb
@@ -57,11 +58,44 @@ class LocTraceManager private constructor(private val context: Context) {
     // --- Init ---
 
     fun initialize(apiKey: String, mqttUsername: String, mqttPassword: String) {
+        initialize(TraceConfig(apiKey, mqttUsername, mqttPassword))
+    }
+
+    /**
+     * One-call configuration — endpoints included, so nothing depends on the
+     * order of a follow-up `setBaseUrl`/`setMqttUrl` call. Mirrors the iOS
+     * SDK's `initialize(_ config: TraceConfig)`.
+     */
+    fun initialize(config: TraceConfig) {
+        for (warning in config.warnings) {
+            Log.w("LocTrace", warning)
+            BarikoiTrace.notifyLog("WARN", "LocTrace", warning)
+        }
+
+        val apiKey = config.apiKey
+        val mqttUsername = config.mqttUsername
+        val mqttPassword = config.mqttPassword
+
         scope.launch {
             dataStore.setApiKey(apiKey)
             apiClient.setApiKey(apiKey)
             dataStore.setMqttUsername(mqttUsername)
             dataStore.setMqttPassword(mqttPassword)
+            dataStore.setMqttClientIdPrefix(config.mqttClientIdPrefix)
+
+            // Endpoints are applied here rather than through setBaseUrl()/
+            // setMqttUrl(), which clear the cached user and stop tracking when
+            // the value changes — correct for a mid-session switch, wrong for
+            // the initial configuration that names the same defaults.
+            val normalizedBaseUrl = config.baseUrl.trimEnd('/') + "/"
+            if (dataStore.getBaseUrl() != normalizedBaseUrl) {
+                dataStore.setBaseUrl(normalizedBaseUrl)
+            }
+            apiClient.setBaseUrl(normalizedBaseUrl)
+            if (dataStore.getMqttUrl() != config.mqttUrl) {
+                dataStore.setMqttUrl(config.mqttUrl)
+            }
+
             dataStore.setLogging(true)
 
             if (dataStore.getDeviceToken() == null) {
@@ -86,9 +120,9 @@ class LocTraceManager private constructor(private val context: Context) {
     // --- User ---
 
     suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser {
-        if (phone.isBlank()) throw Exception(TraceError.noDataError().message)
-        if (dataStore.getApiKey().isNullOrBlank()) throw Exception(TraceError.noKeyError().message)
-        if (!NetworkChecker.isNetworkAvailable(context)) throw Exception(TraceError.networkError().message)
+        if (phone.isBlank()) throw TraceException(TraceError.noDataError())
+        if (dataStore.getApiKey().isNullOrBlank()) throw TraceException(TraceError.noKeyError())
+        if (!NetworkChecker.isNetworkAvailable(context)) throw TraceException(TraceError.networkError())
 
         // Check cached user
         val cached = dataStore.getUser()
@@ -132,6 +166,18 @@ class LocTraceManager private constructor(private val context: Context) {
                 stopTracking()
             }
         }
+    }
+
+    /**
+     * Overrides the MQTT client-id prefix (default `"AndroidClient-"`; the iOS
+     * SDK uses `"iOSClient-"`). Only needed when the broker's ACL authorizes
+     * by client-id pattern rather than by credentials alone — the symptom is a
+     * refusal on a CONNECT whose username and password are correct. Call
+     * before `startTracking`. Mirrors `BarikoiTrace.setMqttClientIdPrefix` on
+     * iOS.
+     */
+    fun setMqttClientIdPrefix(prefix: String) {
+        scope.launch { dataStore.setMqttClientIdPrefix(prefix) }
     }
 
     fun setMqttUrl(url: String) {
@@ -249,7 +295,7 @@ class LocTraceManager private constructor(private val context: Context) {
 
     suspend fun getSettingsFromRemote(): TraceMode {
         val user = dataStore.getUser()
-        if (user == null || user.phone.isNullOrBlank()) throw Exception(TraceError.noUserError().message)
+        if (user == null || user.phone.isNullOrBlank()) throw TraceException(TraceError.noUserError())
 
         val mode = apiClient.getCompanySettings(user.phone)
         dataStore.setTraceModeWithTiming(mode)

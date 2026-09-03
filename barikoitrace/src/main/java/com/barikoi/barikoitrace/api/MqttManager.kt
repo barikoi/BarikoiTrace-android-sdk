@@ -15,6 +15,7 @@ import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
 
@@ -33,17 +34,36 @@ class MqttManager(
     // credentials from TraceDataStore. See BarikoiTrace.initialize()'s doc
     // comment for the migration note on this breaking change.
     private val mqttUsername: String,
-    private val mqttPassword: String
+    private val mqttPassword: String,
+    /**
+     * Client id is `"$clientIdPrefix$userId-$uuid"`. Configurable because
+     * brokers commonly gate authorization on a client-id pattern as well as on
+     * username/password, so an ACL written for one platform refuses the other
+     * with credentials that are perfectly correct. Matches the iOS SDK's
+     * `TraceMqttClient.defaultClientIdPrefix` / `BarikoiTrace.setMqttClientIdPrefix`.
+     */
+    private val clientIdPrefix: String = DEFAULT_CLIENT_ID_PREFIX
 ) {
     interface MqttStatusCallback {
         fun onConnectionStatusChanged(connected: Boolean, message: String)
         fun onMessageDelivered(topic: String)
         fun onMessageReceived(topic: String, message: String)
+
+        /**
+         * The broker examined the CONNECT and refused it — bad credentials, or
+         * a client id its ACL does not allow. Distinct from a failed
+         * connection because retrying cannot fix it; the SDK stops the backoff
+         * ladder rather than burning ten attempts on a guaranteed refusal.
+         *
+         * Default no-op so existing implementors keep compiling. Mirrors the
+         * iOS SDK's `TraceMqttState.rejected`.
+         */
+        fun onConnectionRejected(message: String) {}
     }
 
     private val tag = "MqttManager"
 
-    private val clientId = "AndroidClient-$userId-$uuid"
+    private val clientId = "$clientIdPrefix$userId-$uuid"
     private val deviceId = userId
     private val channelTopic = "company/$companyId/$groupId/$userId/location"
 
@@ -128,15 +148,50 @@ class MqttManager(
                 isConnected = false
                 isConnecting = false
                 Log.e(tag, "Connection failed", exception)
+
+                // A refusal the broker made deliberately is not worth
+                // retrying: the same CONNECT will be refused every time, and
+                // ten attempts only delay the one message the integrator
+                // needs to see. Same three cases the iOS SDK treats as
+                // permanent (notAuthorized / badUsernameOrPassword /
+                // identifierRejected).
+                if (isPermanentRefusal(exception)) {
+                    val message = "Broker refused the connection (${refusalReason(exception)}) — " +
+                        "check the mqttUsername/mqttPassword passed to BarikoiTrace.initialize"
+                    Log.e(tag, message)
+                    callback?.onConnectionRejected(message)
+                    return
+                }
+
                 callback?.onConnectionStatusChanged(false, "Connection failed: ${exception?.message}")
                 scheduleReconnect()
             }
         })
     }
 
+    /** CONNACK codes that no amount of retrying will change. */
+    private fun isPermanentRefusal(exception: Throwable?): Boolean {
+        val code = (exception as? MqttException)?.reasonCode?.toInt() ?: return false
+        return code == MqttException.REASON_CODE_FAILED_AUTHENTICATION.toInt() ||
+            code == MqttException.REASON_CODE_NOT_AUTHORIZED.toInt() ||
+            code == MqttException.REASON_CODE_INVALID_CLIENT_ID.toInt()
+    }
+
+    private fun refusalReason(exception: Throwable?): String =
+        when ((exception as? MqttException)?.reasonCode?.toInt()) {
+            MqttException.REASON_CODE_FAILED_AUTHENTICATION.toInt() -> "badUsernameOrPassword"
+            MqttException.REASON_CODE_NOT_AUTHORIZED.toInt() -> "notAuthorized"
+            MqttException.REASON_CODE_INVALID_CLIENT_ID.toInt() -> "identifierRejected"
+            else -> exception?.message ?: "unknown"
+        }
+
     private fun createConnectionOptions(): MqttConnectOptions {
         return MqttConnectOptions().apply {
-            isAutomaticReconnect = true
+            // Off, matching iOS: this class already owns an explicit backoff
+            // ladder in scheduleReconnect(), and Paho's own reconnect ran
+            // alongside it — two mechanisms racing on one connection, with the
+            // Paho one ignoring the permanent-refusal rule above.
+            isAutomaticReconnect = false
             isCleanSession = false
             keepAliveInterval = 60
             serverURIs = arrayOf(this@MqttManager.serverUri)
@@ -262,5 +317,14 @@ class MqttManager(
             mqttClient = null
             isConnected = false
         }
+    }
+
+    companion object {
+        /**
+         * Default client-id prefix. The iOS SDK's counterpart is
+         * `TraceMqttClient.defaultClientIdPrefix` (`"iOSClient-"`), so a
+         * broker ACL that authorizes by client id has to allow both.
+         */
+        const val DEFAULT_CLIENT_ID_PREFIX = "AndroidClient-"
     }
 }
