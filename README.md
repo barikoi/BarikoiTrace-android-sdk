@@ -21,6 +21,7 @@ on both platforms.
 - [Installation](#installation)
 - [How it works](#how-it-works)
 - [Required app setup](#required-app-setup)
+- [Configuration — base URL and MQTT broker](#configuration--base-url-and-mqtt-broker)
 - [Where to put your API key](#where-to-put-your-api-key)
 - [Quick start](#quick-start)
 - [API reference](#api-reference)
@@ -136,7 +137,79 @@ BarikoiTrace.openAutostartSettings(context)
 
 ### 4. Credentials
 
-`initialize` needs an API key **and** broker credentials. See the next section.
+`initialize` needs an API key **and** broker credentials. See
+[Configuration](#configuration--base-url-and-mqtt-broker) for the endpoints and
+[Where to put your API key](#where-to-put-your-api-key) for the secrets.
+
+---
+
+## Configuration — base URL and MQTT broker
+
+The SDK reads no config file, no manifest `meta-data` and no environment
+variable. You hand it a `TraceConfig`, and that is the entire contract:
+
+```kotlin
+BarikoiTrace.initialize(
+    context,
+    TraceConfig(
+        apiKey = "…",        // Barikoi dashboard
+        mqttUsername = "…",  // issued separately, per company
+        mqttPassword = "…"
+    )
+)
+```
+
+Endpoints default to production and are overridable for staging or a
+self-hosted deployment:
+
+```kotlin
+val config = TraceConfig(
+    apiKey = BuildConfig.API_KEY,
+    mqttUsername = BuildConfig.MQTT_USERNAME,
+    mqttPassword = BuildConfig.MQTT_PASSWORD,
+    baseUrl = "https://api.staging.example.com/api/v1/",
+    mqttUrl = "ssl://broker.staging.example.com:8883",
+    mqttClientIdPrefix = "fleet-android-"  // only if the broker ACL matches on client id
+)
+
+check(config.warnings.isEmpty()) { config.warnings.toString() }  // plaintext broker, non-HTTPS API, empty key…
+BarikoiTrace.initialize(context, config)
+```
+
+Configure through `TraceConfig` rather than calling `setBaseUrl`/`setMqttUrl`
+after `initialize`. `initialize` resumes tracking if the previous process was
+tracking, and a resumed session starts the foreground service — and with it the
+MQTT client — immediately, so endpoints set afterwards arrive too late for that
+first connection.
+
+| Field | Default | |
+|---|---|---|
+| `apiKey` | — | required |
+| `mqttUsername` / `mqttPassword` | — | required |
+| `baseUrl` | `https://api.trace.bmapsbd.com/api/v1/` | trailing slash normalized |
+| `mqttUrl` | `tcp://broker.trace.bmapsbd.com:1883` | **plaintext** — see below |
+| `mqttClientIdPrefix` | `AndroidClient-` | iOS uses `iOSClient-` |
+
+`mqttUrl` accepts `tcp`/`mqtt`/`ws` (plaintext) and `ssl`/`mqtts`/`tls`/`wss`
+(TLS); Paho reads the scheme and the port from the URL.
+`config.isMqttTransportEncrypted` tells you which you got — the SDK default is
+plaintext, meaning both broker credentials and every location fix travel
+unencrypted. Point it at a TLS listener for anything carrying real user
+locations.
+
+### Changing endpoints mid-session
+
+`setBaseUrl`, `setMqttUrl` and `setMqttClientIdPrefix` exist for switching a
+*running* app between environments. `setBaseUrl` is destructive on purpose —
+a different backend means a different user namespace, so it clears the cached
+user and stops tracking. `resetUrls()` returns to the SDK defaults and does the
+same.
+
+```kotlin
+BarikoiTrace.setBaseUrl("https://api.staging.example.com/api/v1/")
+BarikoiTrace.setMqttUrl("ssl://broker.staging.example.com:8883")
+BarikoiTrace.setMqttClientIdPrefix("fleet-android-")   // before startTracking
+```
 
 ---
 
@@ -145,6 +218,9 @@ BarikoiTrace.openAutostartSettings(context)
 The API key and the MQTT username/password are **three separate secrets**. None
 is derivable from the others, and the broker pair is not a public identifier —
 a leaked pair lets anyone publish fixes to your company's topics.
+
+Where the credential *values* come from is your app's decision. Three options,
+in increasing order of safety.
 
 ### Option A — `local.properties` → `BuildConfig` (local development)
 
