@@ -54,7 +54,7 @@ App module:
 
 ```groovy
 dependencies {
-    implementation 'com.github.barikoi:barikoitrace:0.4.0'
+    implementation 'com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.0'
 }
 ```
 
@@ -62,7 +62,7 @@ Kotlin DSL (`build.gradle.kts`):
 
 ```kotlin
 dependencies {
-    implementation("com.github.barikoi:barikoitrace:0.4.0")
+    implementation("com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.0")
 }
 ```
 
@@ -74,10 +74,10 @@ installable:
 
 | What you write | What you get |
 |---|---|
-| `com.github.barikoi:barikoitrace:0.4.0` | that exact tag — what you want in a shipped app |
-| `com.github.barikoi:barikoitrace:dev-v4-SNAPSHOT` | latest commit on the `dev-v4` branch |
-| `com.github.barikoi:barikoitrace:f767158` | a specific commit, by short hash |
-| `com.github.barikoi:barikoitrace:0.4.+` | latest `0.4.x` patch |
+| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.0` | that exact tag — what you want in a shipped app |
+| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:dev-v4-SNAPSHOT` | latest commit on the `dev-v4` branch |
+| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:f767158` | a specific commit, by short hash |
+| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.+` | latest `0.4.x` patch |
 
 Pin an exact tag for anything you release. Branch snapshots move under you and
 JitPack caches them for a while, which produces "works on my machine" in its

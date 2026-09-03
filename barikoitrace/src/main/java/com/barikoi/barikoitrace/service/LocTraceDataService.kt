@@ -3,6 +3,7 @@ package com.barikoi.barikoitrace.service
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
@@ -33,7 +34,25 @@ class LocTraceDataService(
 
     override suspend fun doWork(): Result {
         Log.d(TAG, "doWork: Started to work")
-        setForeground(createForegroundInfo())
+
+        // Promotion to a foreground worker is best-effort. It is *not* worth
+        // taking the host app down for: an exception thrown out of
+        // `setForeground` reaches WorkManager's SystemForegroundService on the
+        // main thread and becomes a fatal RuntimeException in the host process
+        // — a library killing an app over a periodic sync it could simply run
+        // in the background instead.
+        //
+        // Real cases that throw here: the app lacks location permission at
+        // this instant (SecurityException, since the FGS type is `location`),
+        // the OS refuses a background FGS start
+        // (ForegroundServiceStartNotAllowedException on API 31+), or the
+        // process is otherwise restricted. In all of them the work below still
+        // runs, just without the notification and its wake guarantees.
+        try {
+            setForeground(createForegroundInfo())
+        } catch (e: Exception) {
+            Log.w(TAG, "Continuing as a background worker — foreground promotion refused", e)
+        }
 
         return try {
             val location = LocationEngine(applicationContext).getCurrentLocation()
@@ -76,7 +95,28 @@ class LocTraceDataService(
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             .build()
 
-        return ForegroundInfo(NOTIFICATION_ID, notification)
+        // The type has to be supplied *here*, not only in the manifest.
+        // WorkManager passes `ForegroundInfo.foregroundServiceType` straight to
+        // `Service.startForeground(...)`, and the two-argument constructor
+        // leaves it at `FOREGROUND_SERVICE_TYPE_NONE` (0). On a targetSdk-34+
+        // app that is fatal:
+        //
+        //   android.app.InvalidForegroundServiceTypeException:
+        //   Starting FGS with type none ... has been prohibited
+        //
+        // The `<service android:name="androidx.work.impl.foreground.SystemForegroundService"
+        // android:foregroundServiceType="location" tools:node="merge"/>` entry
+        // in this SDK's manifest declares the *permitted* type; this declares
+        // the one actually being used. Both are required.
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+            )
+        } else {
+            ForegroundInfo(NOTIFICATION_ID, notification)
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

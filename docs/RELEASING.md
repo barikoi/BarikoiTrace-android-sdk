@@ -5,7 +5,7 @@ tag — there is no Maven Central staging, no review queue, nothing to submit.
 JitPack builds the tagged commit the first time someone asks for it and caches
 the result.
 
-Consumers resolve `com.github.barikoi:barikoitrace:<tag>`.
+Consumers resolve `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:<tag>`.
 
 ## Rules
 
@@ -78,7 +78,7 @@ dependencyResolutionManagement {
 and to `build.gradle`:
 
 ```groovy
-dependencies { implementation 'com.github.barikoi:barikoitrace:0.4.0' }
+dependencies { implementation 'com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.0' }
 ```
 
 then `gradle dependencies --configuration runtimeClasspath`. Resolving from a

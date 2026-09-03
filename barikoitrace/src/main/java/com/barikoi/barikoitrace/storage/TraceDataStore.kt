@@ -296,6 +296,25 @@ class TraceDataStore private constructor(context: Context) {
             it[Keys.DEBUG] = mode.debug
             it[Keys.MODE_OFFLINE_SYNC] = mode.offline
         }
+
+        // A caller-supplied daily window is persisted here too. Only
+        // `setTraceModeWithTiming` used to write these keys, and nothing but
+        // the remote-settings path calls it — so a mode built with
+        // `.setStartTime`/`.setEndTime` and handed to `startTracking` had its
+        // window silently dropped, while the service's window check read the
+        // store and found none.
+        //
+        // A full-day mode writes nothing, deliberately: a mode built without
+        // times must not erase a window that `/sdk/company/settings`
+        // configured. Clearing one is `clearTraceModeWithTiming()`'s job.
+        if (mode.startTime != LocalTime.MIN || mode.endTime != LocalTime.MAX) {
+            cache[Keys.START_TIME.name] = mode.startTime.toString()
+            cache[Keys.END_TIME.name] = mode.endTime.toString()
+            store.edit {
+                it[Keys.START_TIME] = mode.startTime.toString()
+                it[Keys.END_TIME] = mode.endTime.toString()
+            }
+        }
     }
 
     suspend fun setTraceModeWithTiming(mode: TraceMode) {
