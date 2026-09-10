@@ -19,7 +19,6 @@ on both platforms.
 ## Table of contents
 
 - [Installation](#installation)
-- [How it works](#how-it-works)
 - [Required app setup](#required-app-setup)
 - [Configuration — base URL and MQTT broker](#configuration--base-url-and-mqtt-broker)
 - [Where to put your API key](#where-to-put-your-api-key)
@@ -27,7 +26,6 @@ on both platforms.
 - [API reference](#api-reference)
 - [Tracking modes](#tracking-modes)
 - [Offline behavior](#offline-behavior)
-- [MQTT contract](#mqtt-contract)
 - [Error handling](#error-handling)
 - [Background execution — read this before shipping](#background-execution--read-this-before-shipping)
 - [Platform differences from the iOS SDK](#platform-differences-from-the-ios-sdk)
@@ -94,33 +92,6 @@ hardcoded broker constants that shipped in every version up to `0.3.0` are gone
 — see [Where to put your API key](#where-to-put-your-api-key). It also moves
 credentials and user identity into `EncryptedSharedPreferences`, so an upgrading
 install re-authenticates once.
-
----
-
-## How it works
-
-```
-FusedLocationProvider ──▶ LocationEngine ──▶ LocTraceForegroundService ──┬──▶ MqttManager ──▶ broker
-                                                                        │
-                                                                        └──▶ OfflineLocationDb (Room)
-                                                                                   │  network back
-                                                                                   └──▶ flush, batch of 100
-```
-
-| Component | Responsibility |
-|---|---|
-| `TraceApiClient` | `POST /sdk/authenticate`, `POST /sdk/company/settings`. Retrofit + coroutines. |
-| `LocationEngine` | `FusedLocationProviderClient` wrapper — continuous updates and one-shot fetch. |
-| `MqttManager` | Paho wrapper. Topic resolution, LWT, QoS 1, exponential-backoff reconnect, permanent-refusal detection. |
-| `OfflineLocationDb` | Room-backed durable queue. Survives process death — not an in-memory buffer. |
-| `LocTraceForegroundService` | The foreground service that owns the tracking session: validation, publish-or-queue, offline flush. |
-| `LocTraceDataService` | `WorkManager` job — periodic fix + queue flush when the service is starved. |
-| `LocTraceManager` | Orchestrator. Auth state, mode, trip state, service lifecycle. |
-| `BarikoiTrace` | The public facade. The only type you call against. |
-
-Credentials and user identity live in `EncryptedSharedPreferences`
-(`SecureStore`); non-secret runtime config in DataStore Preferences
-(`TraceDataStore`). Same split as the iOS SDK's Keychain/UserDefaults.
 
 ---
 
@@ -487,44 +458,6 @@ Disable with `setOfflineTracking(false)` or
 `TraceMode.Builder().setOfflineSync(false)`. Force a flush with
 `uploadOfflineData()`. `LocTraceDataService` (WorkManager, ~15 min) also takes a
 fix and flushes when the foreground service is starved.
-
----
-
-## MQTT contract
-
-**Location topic:** `company/{companyId}/{groupId}/{userId}/location`
-**LWT topic:** `device/{userId}/status`, retained, payload `offline`
-**Client ID:** `{prefix}{userId}-{deviceUuid}` — QoS 1 throughout.
-
-Payload:
-
-```json
-{
-  "latitude": 23.8103,
-  "longitude": 90.4125,
-  "altitude": 4.0,
-  "speed": 1.4,
-  "bearing": 275.0,
-  "accuracy": 12.0,
-  "gpx_time": "2026-09-02 11:04:38",
-  "user_id": "…",
-  "company_id": "…",
-  "user_name": "Jane",
-  "trip_id": "…",
-  "trip_status": "active"
-}
-```
-
-`trip_id`/`trip_status` appear only while on a trip; stopping publishes a final
-full payload with `trip_status: "completed"`. `gpx_time` uses one UTC string
-format on every path — live publish, offline insert and offline flush alike.
-
-A CONNACK of `notAuthorized`, `badUsernameOrPassword` or `identifierRejected`
-is treated as permanent: the SDK stops the retry ladder and reports through
-`MqttStatusCallback.onConnectionRejected`, because the same CONNECT will be
-refused every time. Check the credentials, then the broker's client-id ACL —
-Android connects as `AndroidClient-…` and iOS as `iOSClient-…`, so an ACL
-written for one platform refuses the other.
 
 ---
 
