@@ -19,7 +19,6 @@ on both platforms.
 ## Table of contents
 
 - [Installation](#installation)
-- [How it works](#how-it-works)
 - [Required app setup](#required-app-setup)
 - [Configuration — base URL and MQTT broker](#configuration--base-url-and-mqtt-broker)
 - [Where to put your API key](#where-to-put-your-api-key)
