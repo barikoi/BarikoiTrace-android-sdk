@@ -90,6 +90,55 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         return START_STICKY
     }
 
+    /**
+     * The user swiped the app out of Recents.
+     *
+     * A foreground service is not supposed to die with the task —
+     * `stopWithTask` defaults to false and this service declares it
+     * explicitly — but several OEM builds (vivo/Funtouch, Xiaomi/MIUI,
+     * Oppo/ColorOS) kill the whole process on swipe unless the app is exempt
+     * from battery optimization, and a process kill takes the service with it.
+     * `START_STICKY` covers a *system* kill, but OEM killers usually cancel
+     * the sticky restart too.
+     *
+     * Re-issuing the start intent here is the standard mitigation: at this
+     * point the app still counts as foreground, so starting a foreground
+     * service is permitted (the Android 12+ background-start restriction does
+     * not apply yet), and the service is left in a freshly-started state that
+     * survives the task going away. Only re-armed when tracking is actually
+     * meant to be running — a swipe after `stopTracking()` must stay stopped.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        val shouldKeepTracking = try {
+            dataStore.isSdkTracking()
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read tracking state on task removal", e)
+            false
+        }
+
+        if (shouldKeepTracking) {
+            Log.i(TAG, "Task removed while tracking — re-arming the foreground service")
+            BarikoiTrace.notifyLog(
+                "INFO", TAG,
+                "App cleared from Recents while tracking — foreground service re-armed"
+            )
+            try {
+                val restart = Intent(applicationContext, LocTraceForegroundService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    applicationContext.startForegroundService(restart)
+                } else {
+                    applicationContext.startService(restart)
+                }
+            } catch (e: Exception) {
+                // A device that refuses this is one where only a
+                // battery-optimization exemption will keep tracking alive.
+                Log.e(TAG, "Could not re-arm the service after task removal", e)
+            }
+        }
+
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         // Send final location with trip_status "completed" before tearing down MQTT
         val tripId = dataStore.getLocalTripId()
@@ -113,6 +162,17 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
         // Check time window
         if (traceMode.endTime != LocalTime.MAX && !isWithinTrackingWindow(traceMode)) {
+            // Logged, not silent. This path clears `sdkTracking` and stops the
+            // service, so tracking does not resume by itself — not on the next
+            // fix, not on app relaunch, not after a reboot. Indistinguishable
+            // from "background tracking is broken" unless it says so, and the
+            // window usually arrives from /sdk/company/settings rather than
+            // from anything the integrator wrote.
+            val message = "Outside the configured tracking window " +
+                "(${traceMode.startTime}–${traceMode.endTime}, now ${LocalTime.now()}) — " +
+                "stopping tracking. Call startTracking() again inside the window."
+            Log.i(TAG, message)
+            BarikoiTrace.notifyLog("INFO", TAG, message)
             serviceScope.launch { dataStore.setSdkTracking(false) }
             stopSelf()
             return
