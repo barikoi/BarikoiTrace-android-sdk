@@ -97,33 +97,6 @@ install re-authenticates once.
 
 ---
 
-## How it works
-
-```
-FusedLocationProvider ──▶ LocationEngine ──▶ LocTraceForegroundService ──┬──▶ MqttManager ──▶ broker
-                                                                        │
-                                                                        └──▶ OfflineLocationDb (Room)
-                                                                                   │  network back
-                                                                                   └──▶ flush, batch of 100
-```
-
-| Component | Responsibility |
-|---|---|
-| `TraceApiClient` | `POST /sdk/authenticate`, `POST /sdk/company/settings`. Retrofit + coroutines. |
-| `LocationEngine` | `FusedLocationProviderClient` wrapper — continuous updates and one-shot fetch. |
-| `MqttManager` | Paho wrapper. Topic resolution, LWT, QoS 1, exponential-backoff reconnect, permanent-refusal detection. |
-| `OfflineLocationDb` | Room-backed durable queue. Survives process death — not an in-memory buffer. |
-| `LocTraceForegroundService` | The foreground service that owns the tracking session: validation, publish-or-queue, offline flush. |
-| `LocTraceDataService` | `WorkManager` job — periodic fix + queue flush when the service is starved. |
-| `LocTraceManager` | Orchestrator. Auth state, mode, trip state, service lifecycle. |
-| `BarikoiTrace` | The public facade. The only type you call against. |
-
-Credentials and user identity live in `EncryptedSharedPreferences`
-(`SecureStore`); non-secret runtime config in DataStore Preferences
-(`TraceDataStore`). Same split as the iOS SDK's Keychain/UserDefaults.
-
----
-
 ## Required app setup
 
 A library cannot grant its own permissions. These steps are the host app's job,
