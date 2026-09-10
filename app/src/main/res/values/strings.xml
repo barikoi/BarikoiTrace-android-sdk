@@ -1,7 +1,14 @@
 <resources>
-    <string name="app_name">BarikoiTrace SDK app</string>
+    <string name="sdk_title">Barikoi LocTrace SDK</string>
     <string name="user_icon">User Icon</string>
     <string name="set_user">Set User</string>
     <string name="gps_indicator">gps indicator</string>
+    <string name="title_demo">LocTrace Demo</string>
 
+    <string-array name="tracking_modes">
+        <item>CUSTOM</item>
+        <item>ACTIVE</item>
+        <item>REACTIVE</item>
+        <item>PASSIVE</item>
+    </string-array>
 </resources>
