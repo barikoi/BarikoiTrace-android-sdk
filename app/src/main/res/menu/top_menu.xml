@@ -3,6 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/menu_demo"
+        android:title="New Demo" />
+    <item
         android:id="@+id/menu_settings"
         android:title="Settings" />
     <item

@@ -1,15 +1,46 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+// API keys are read from the gitignored local.properties file so they are never committed.
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localProps.load(new FileInputStream(localPropsFile))
+}
 
 android {
-    compileSdk 34
+    compileSdk 35
+
+    buildFeatures {
+        buildConfig true
+    }
 
     defaultConfig {
         applicationId "com.barikoi.barikoitracesdkapp"
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdkVersion 24
+        targetSdkVersion 35
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // API key is read from BARIKOI_API_KEY in local.properties (gitignored)
+        buildConfigField "String", "API_KEY", "\"${localProps.getProperty('BARIKOI_API_KEY', '')}\""
+        // Real per-environment broker login — replaces the hardcoded
+        // MQTT_USERNAME/MQTT_PASSWORD constants MqttManager.kt used to ship
+        // with. Add BARIKOI_MQTT_USERNAME / BARIKOI_MQTT_PASSWORD to your
+        // (gitignored) local.properties; empty defaults here are a build-time
+        // placeholder, not a fallback credential.
+        buildConfigField "String", "MQTT_USERNAME", "\"${localProps.getProperty('BARIKOI_MQTT_USERNAME', '')}\""
+        buildConfigField "String", "MQTT_PASSWORD", "\"${localProps.getProperty('BARIKOI_MQTT_PASSWORD', '')}\""
+    }
+
+    flavorDimensions += "brand"
+    productFlavors {
+        barikoi {
+            // Default/Barikoi flavor - no suffixes
+            buildConfigField "String", "API_KEY", "\"${localProps.getProperty('BARIKOI_API_KEY', '')}\""
+            dimension "brand"
+        }
     }
     buildTypes {
         release {
@@ -18,23 +49,29 @@ android {
         }
     }
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
     }
     namespace 'com.barikoi.barikoitracesdkapp'
 }
 
 dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
     implementation project(':barikoitrace')
-   implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.appcompat:appcompat:1.4.2'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'androidx.core:core-ktx:1.15.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation 'com.google.android.material:material:1.2.0-alpha01'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'com.android.volley:volley:1.2.1'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 }
