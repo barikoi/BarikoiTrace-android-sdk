@@ -66,6 +66,16 @@ object BarikoiTrace {
         getInstance().initialize(config)
     }
 
+    /**
+     * Swaps the API key without re-initializing. Suspends until the key is
+     * persisted and live, so a following `setOrCreateUser` cannot race it
+     * (unlike `initialize`, which writes in the background). Use when the key
+     * is only known after startup, e.g. at login. Same as iOS
+     * `BarikoiTrace.setApiKey(_:)`.
+     */
+    @JvmStatic
+    suspend fun setApiKey(apiKey: String) = getInstance().setApiKey(apiKey)
+
     @JvmStatic
     fun setBaseUrl(url: String) = getInstance().setBaseUrl(url)
 

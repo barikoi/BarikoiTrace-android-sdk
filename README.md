@@ -52,7 +52,7 @@ App module:
 
 ```groovy
 dependencies {
-    implementation 'com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.0'
+    implementation 'com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.1'
 }
 ```
 
@@ -60,7 +60,7 @@ Kotlin DSL (`build.gradle.kts`):
 
 ```kotlin
 dependencies {
-    implementation("com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.0")
+    implementation("com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.1")
 }
 ```
 
@@ -72,7 +72,7 @@ installable:
 
 | What you write | What you get |
 |---|---|
-| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.0` | that exact tag — what you want in a shipped app |
+| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.1` | that exact tag — what you want in a shipped app |
 | `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:dev-v4-SNAPSHOT` | latest commit on the `dev-v4` branch |
 | `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:f767158` | a specific commit, by short hash |
 | `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.+` | latest `0.4.x` patch |
@@ -333,6 +333,7 @@ Everything public is a static member of the `BarikoiTrace` object.
 |---|---|
 | `initialize(context, config: TraceConfig)` | Call once, first, before anything else. |
 | `initialize(context, apiKey, mqttUsername, mqttPassword)` | Convenience — forwards to the above with default endpoints. |
+| `suspend setApiKey(apiKey)` | Swap the API key without re-initializing (e.g. at login). Persisted and live before it returns. |
 | `setLogListener(listener)` | Implement `TraceLogListener` to pipe SDK logs into your own debug console. |
 
 Tracking resumes on its own after a reboot (`BootReceiver`) and after a process

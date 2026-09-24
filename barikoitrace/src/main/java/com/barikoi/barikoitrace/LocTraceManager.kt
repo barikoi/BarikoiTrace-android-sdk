@@ -117,6 +117,17 @@ class LocTraceManager private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * Replaces the API key for the running process — persisted and applied to
+     * the live API client before returning, so a following `setOrCreateUser`
+     * sees it. Unlike [initialize] it touches nothing else (no endpoints, no
+     * tracking resume). Mirrors the iOS SDK's `setApiKey(_:)`.
+     */
+    suspend fun setApiKey(apiKey: String) {
+        dataStore.setApiKey(apiKey)
+        apiClient.setApiKey(apiKey)
+    }
+
     // --- User ---
 
     suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser {

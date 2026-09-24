@@ -120,7 +120,9 @@ publishing {
             // change (required mqttUsername/mqttPassword, hardcoded broker
             // credentials removed) plus the iOS-parity config work. Below
             // 1.0.0 a minor bump is the breaking one.
-            version = "0.4.0"
+            //
+            // 0.4.1 adds BarikoiTrace.setApiKey (iOS parity; no breaking change).
+            version = "0.4.1"
 
             afterEvaluate {
                 from(components["release"])
