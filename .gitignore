@@ -24,3 +24,4 @@ src/main/res/values/barikoi_config.xml
 /.idea/misc.xml
 /.idea/vcs.xml
 /barikoitrace/build
+/.kotlin
