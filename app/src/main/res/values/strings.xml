@@ -11,4 +11,9 @@
         <item>REACTIVE</item>
         <item>PASSIVE</item>
     </string-array>
+
+    <string-array name="trace_mode_sources">
+        <item>LOCAL</item>
+        <item>REMOTE</item>
+    </string-array>
 </resources>

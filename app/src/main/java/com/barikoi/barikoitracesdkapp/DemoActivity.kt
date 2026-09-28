@@ -13,13 +13,16 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
 import com.barikoi.barikoitrace.BarikoiTrace
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.TraceModeSource
 import com.barikoi.barikoitrace.model.TraceError
 import com.barikoi.barikoitrace.model.TraceUser
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,6 +34,7 @@ class DemoActivity : AppCompatActivity() {
     private lateinit var logScrollView: ScrollView
     private lateinit var tvTripStatus: TextView
     private lateinit var spinnerMode: Spinner
+    private lateinit var spinnerSource: Spinner
     private val logBuilder = StringBuilder()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +47,7 @@ class DemoActivity : AppCompatActivity() {
         logScrollView = logContainer
         tvTripStatus = findViewById(R.id.tvTripStatus)
         spinnerMode = findViewById(R.id.spinnerMode)
+        spinnerSource = findViewById(R.id.spinnerSource)
 
         // --- Initialize SDK ---
         BarikoiTrace.initialize(this, BuildConfig.API_KEY)
@@ -119,6 +124,10 @@ class DemoActivity : AppCompatActivity() {
                     log("User set: ${user.name} (${user.userId})")
                     tvStatus.text = "User: ${user.name}"
                     toast("User set: ${user.name}")
+
+                    lifecycleScope.launch {
+                        BarikoiTrace.updateUserName("hello world")
+                    }
                 }
 
                 override fun onFailure(error: TraceError) {
@@ -156,13 +165,27 @@ class DemoActivity : AppCompatActivity() {
             } else {
                 val mode = buildTraceMode(spinnerMode, inputInterval, inputDistance, inputAccuracy)
                 val withTrip = switchTrip.isChecked
-                log("Starting tracking: $mode, withTrip=$withTrip")
-                BarikoiTrace.startTracking(mode, withTrip)
+                val source = if (spinnerSource.selectedItem.toString() == "REMOTE") TraceModeSource.REMOTE else TraceModeSource.LOCAL
+                log("Starting tracking: $mode, withTrip=$withTrip, source=$source")
+                BarikoiTrace.startTracking(mode, withTrip, source)
                 tvStatus.text = "Tracking: active"
                 btnToggleTracking.text = "Stop"
                 btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE53935.toInt())
                 updateTripStatus()
             }
+        }
+
+        // --- Logout ---
+        findViewById<MaterialButton>(R.id.btnLogout).setOnClickListener {
+            log("Logging out")
+            BarikoiTrace.logout()
+            tvStatus.text = "Logged out"
+            inputPhone.setText("")
+            inputName.setText("")
+            btnToggleTracking.text = "Start"
+            btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF43bc5d.toInt())
+            updateTripStatus()
+            toast("Logged out")
         }
 
         // --- Broadcast ---

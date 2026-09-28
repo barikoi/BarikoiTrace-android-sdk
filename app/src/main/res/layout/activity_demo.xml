@@ -188,6 +188,15 @@
                     app:backgroundTint="#43bc5d"
                     app:cornerRadius="8dp" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLogout"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="8dp"
+                    android:text="Logout"
+                    app:backgroundTint="#E53935"
+                    app:cornerRadius="8dp" />
+
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -277,6 +286,13 @@
                     android:layout_height="48dp"
                     android:layout_marginTop="8dp"
                     android:entries="@array/tracking_modes" />
+
+                <Spinner
+                    android:id="@+id/spinnerSource"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="8dp"
+                    android:entries="@array/trace_mode_sources" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
