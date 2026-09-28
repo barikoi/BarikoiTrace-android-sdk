@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.TraceModeSource
 import com.barikoi.barikoitrace.model.TraceUser
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -54,6 +55,8 @@ class TraceDataStore private constructor(context: Context) {
         val START_TIME = stringPreferencesKey("startTime")
         val END_TIME = stringPreferencesKey("endTime")
         val DEBUG = booleanPreferencesKey("debug")
+        val TRACE_MODE_SOURCE = stringPreferencesKey("traceModeSource")
+        val TRACE_MODE_REMOTE = booleanPreferencesKey("traceModeRemote")
     }
 
     init {
@@ -88,6 +91,8 @@ class TraceDataStore private constructor(context: Context) {
                 prefs[Keys.START_TIME]?.let { cache[Keys.START_TIME.name] = it }
                 prefs[Keys.END_TIME]?.let { cache[Keys.END_TIME.name] = it }
                 cache[Keys.DEBUG.name] = prefs[Keys.DEBUG] ?: false
+                cache[Keys.TRACE_MODE_SOURCE.name] = prefs[Keys.TRACE_MODE_SOURCE] ?: TraceModeSource.LOCAL.name
+                cache[Keys.TRACE_MODE_REMOTE.name] = prefs[Keys.TRACE_MODE_REMOTE] ?: false
             }
         }
     }
@@ -210,6 +215,7 @@ class TraceDataStore private constructor(context: Context) {
         cache[Keys.PING_SYNC_INTERVAL.name] = mode.pingSyncInterval
         cache[Keys.TRACKING_TYPE.name] = mode.trackingMode.option
         cache[Keys.DEBUG.name] = mode.debug
+        cache[Keys.TRACE_MODE_REMOTE.name] = false
         store.edit {
             it[Keys.DESIRED_ACCURACY] = mode.desiredAccuracy.name
             it[Keys.UPDATE_INTERVAL] = mode.updateInterval
@@ -219,6 +225,7 @@ class TraceDataStore private constructor(context: Context) {
             it[Keys.PING_SYNC_INTERVAL] = mode.pingSyncInterval
             it[Keys.TRACKING_TYPE] = mode.trackingMode.option
             it[Keys.DEBUG] = mode.debug
+            it[Keys.TRACE_MODE_REMOTE] = false
         }
     }
 
@@ -268,20 +275,37 @@ class TraceDataStore private constructor(context: Context) {
     fun getTrackingType(): Int = getInt(Keys.TRACKING_TYPE)
     fun getUpdateInterval(): Int = getInt(Keys.UPDATE_INTERVAL)
 
+    // --- TraceModeSource ---
+
+    suspend fun setTraceModeSource(source: TraceModeSource) = putAndCache(Keys.TRACE_MODE_SOURCE, source.name)
+
+    fun getTraceModeSource(): TraceModeSource {
+        val name = getString(Keys.TRACE_MODE_SOURCE) ?: return TraceModeSource.LOCAL
+        return try { TraceModeSource.valueOf(name) } catch (_: Exception) { TraceModeSource.LOCAL }
+    }
+
+    suspend fun setTraceModeFromRemote(mode: TraceMode) {
+        setTraceModeWithTiming(mode)
+        putAndCache(Keys.TRACE_MODE_REMOTE, true)
+    }
+
+    fun isTraceModeFromRemote(): Boolean = getBoolean(Keys.TRACE_MODE_REMOTE)
+
     suspend fun clearTraceMode() = removeAndCache(
         Keys.DESIRED_ACCURACY, Keys.UPDATE_INTERVAL, Keys.DISTANCE_FILTER,
         Keys.STOP_DURATION, Keys.ACCURACY_FILTER, Keys.PING_SYNC_INTERVAL,
-        Keys.TRACKING_TYPE, Keys.DEBUG
+        Keys.TRACKING_TYPE, Keys.DEBUG, Keys.TRACE_MODE_REMOTE
     )
 
     suspend fun clearTraceModeWithTiming() {
         clearTraceMode()
-        removeAndCache(Keys.START_TIME, Keys.END_TIME)
+        removeAndCache(Keys.START_TIME, Keys.END_TIME, Keys.TRACE_MODE_SOURCE)
     }
 
     suspend fun stopSdkTracking() {
         putAndCache(Keys.SDK_TRACKING, false)
         clearTraceMode()
+        removeAndCache(Keys.TRACE_MODE_SOURCE)
     }
 
     companion object {

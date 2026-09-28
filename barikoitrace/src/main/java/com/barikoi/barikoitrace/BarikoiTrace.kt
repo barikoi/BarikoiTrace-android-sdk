@@ -69,6 +69,9 @@ object BarikoiTrace {
     @JvmStatic
     fun getUserId(): String? = getInstance().getUserId()
 
+    @JvmStatic
+    fun logout() = getInstance().logout()
+
     // --- Permissions & Settings ---
 
     @JvmStatic
@@ -119,6 +122,10 @@ object BarikoiTrace {
     @JvmStatic
     fun startTracking(traceMode: TraceMode, withTrip: Boolean) =
         getInstance().startTracking(traceMode, withTrip)
+
+    @JvmStatic
+    fun startTracking(traceMode: TraceMode, withTrip: Boolean, source: TraceModeSource) =
+        getInstance().startTracking(traceMode, withTrip, source)
 
     @JvmStatic
     fun stopTracking() = getInstance().stopTracking()

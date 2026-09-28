@@ -2,6 +2,7 @@ package com.barikoi.barikoitrace.storage
 
 import androidx.test.core.app.ApplicationProvider
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.TraceModeSource
 import com.barikoi.barikoitrace.model.TraceUser
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
@@ -154,5 +155,69 @@ class TraceDataStoreTest {
         )
         dataStore.updateUserName("New")
         assertThat(dataStore.getUser()!!.updatedAt).isEqualTo(1000L)
+    }
+
+    @Test
+    fun getTraceModeSource_defaultsToLocal() = runBlocking {
+        dataStore.clearTraceModeWithTiming()
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+    }
+
+    @Test
+    fun setTraceModeSource_roundTrip() = runBlocking {
+        dataStore.setTraceModeSource(TraceModeSource.REMOTE)
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.REMOTE)
+        dataStore.setTraceModeSource(TraceModeSource.LOCAL)
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+    }
+
+    @Test
+    fun setTraceModeFromRemote_marksOriginAndStoresMode() = runBlocking {
+        val mode = TraceMode.Builder()
+            .setUpdateInterval(30)
+            .setDistanceFilter(50)
+            .setAccuracyFilter(150)
+            .setStartTime(LocalTime.of(6, 0))
+            .setEndTime(LocalTime.of(20, 0))
+            .build()
+        dataStore.setTraceModeFromRemote(mode)
+        assertThat(dataStore.isTraceModeFromRemote()).isTrue()
+        assertThat(dataStore.getTraceMode().updateInterval).isEqualTo(30)
+        assertThat(dataStore.getTraceMode().distanceFilter).isEqualTo(50)
+        assertThat(dataStore.getTraceMode().startTime).isEqualTo(LocalTime.of(6, 0))
+        assertThat(dataStore.getTraceMode().endTime).isEqualTo(LocalTime.of(20, 0))
+    }
+
+    @Test
+    fun setTraceMode_demotesRemoteOrigin() = runBlocking {
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.setTraceMode(TraceMode.Builder().setUpdateInterval(7).build())
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
+        assertThat(dataStore.getTraceMode().updateInterval).isEqualTo(7)
+    }
+
+    @Test
+    fun clearTraceMode_clearsRemoteOrigin() = runBlocking {
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.clearTraceMode()
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
+    }
+
+    @Test
+    fun clearTraceModeWithTiming_resetsSourceAndOrigin() = runBlocking {
+        dataStore.setTraceModeSource(TraceModeSource.REMOTE)
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.clearTraceModeWithTiming()
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
+    }
+
+    @Test
+    fun stopSdkTracking_resetsSourceToLocal() = runBlocking {
+        dataStore.setTraceModeSource(TraceModeSource.REMOTE)
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.stopSdkTracking()
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
     }
 }

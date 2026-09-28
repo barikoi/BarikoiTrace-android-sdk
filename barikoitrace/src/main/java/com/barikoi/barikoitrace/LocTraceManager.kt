@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 class LocTraceManager private constructor(private val context: Context) {
@@ -33,6 +34,16 @@ class LocTraceManager private constructor(private val context: Context) {
     private val apiClient = TraceApiClient.getInstance(context)
     private val locationEngine = LocationEngine(context)
     private val offlineDb = OfflineLocationDb.getInstance(context)
+
+    // Test seam for the company-settings fetch
+    internal var settingsFetcher: suspend (String) -> TraceMode = { apiClient.getCompanySettings(it) }
+
+    // Test seam for user authentication
+    internal var authenticator: suspend (String?, String?, String) -> TraceUser =
+        { name, email, phone -> apiClient.authenticate(name, email, phone) }
+
+    // Test seam for the foreground-service running check
+    internal var serviceRunningChecker: () -> Boolean = { isServiceRunning() }
 
     private val _locationBroadcast = MutableSharedFlow<Location>(replay = 0)
     val locationBroadcast: SharedFlow<Location> = _locationBroadcast
@@ -69,7 +80,7 @@ class LocTraceManager private constructor(private val context: Context) {
                 val traceMode = dataStore.getTraceMode()
                 if (traceMode != null && !isServiceRunning()) {
                     val hasActiveTrip = dataStore.getLocalTripId() != null
-                    startTracking(traceMode, hasActiveTrip)
+                    startTracking(traceMode, hasActiveTrip, dataStore.getTraceModeSource())
                 }
             }
         }
@@ -84,27 +95,48 @@ class LocTraceManager private constructor(private val context: Context) {
 
         // Check cached user
         val cached = dataStore.getUser()
+        val switchingUser = cached != null && phone != cached.phone
+        val wasTracking = serviceRunningChecker()
+        if (switchingUser) {
+            // Discard the outgoing user's undelivered data so it can't be
+            // mis-attributed to the new user's session
+            offlineDb.locationDao().deleteAll()
+        }
         val user = if (cached != null && phone == cached.phone &&
             (System.currentTimeMillis() - cached.updatedAt) < 24 * 60 * 60 * 1000
         ) {
             cached
         } else {
-            val freshUser = apiClient.authenticate(name, email, phone)
+            val freshUser = authenticator(name, email, phone)
             apiClient.setUserId(freshUser.userId)
             freshUser
         }
 
-        // Best-effort remote settings refresh
-        try {
-            if (!user.phone.isNullOrBlank()) {
-                val mode = apiClient.getCompanySettings(user.phone)
-                dataStore.setTraceModeWithTiming(mode)
-            }
-        } catch (e: Exception) {
-            Log.w("LocTrace", "Failed to fetch remote settings: ${e.message}")
+        if (switchingUser && wasTracking) {
+            // Session handoff: stop+start the service so onDestroy completes the
+            // outgoing user's trip and tears down their MQTT, and onStartCommand
+            // rebuilds everything from the newly stored user
+            refreshTracking()
+        }
+
+        // Remote settings only apply when the app opted into the REMOTE mode source
+        if (dataStore.getTraceModeSource() == TraceModeSource.REMOTE) {
+            fetchAndApplyRemoteSettings()
         }
 
         return user
+    }
+
+    fun logout() {
+        // Wipe user-scoped state before the service tears down so no trailing
+        // publishes or leftover data survive (same pattern as startTracking)
+        runBlocking {
+            offlineDb.locationDao().deleteAll()
+            dataStore.stopSdkTracking()
+            dataStore.clearLocalTrip()
+            dataStore.clearUser()
+        }
+        stopLocationService()
     }
 
     suspend fun updateUserName(name: String): TraceUser {
@@ -156,7 +188,11 @@ class LocTraceManager private constructor(private val context: Context) {
 
     // --- Tracking ---
 
-    fun startTracking(traceMode: TraceMode, withTrip: Boolean = false) {
+    fun startTracking(
+        traceMode: TraceMode,
+        withTrip: Boolean = false,
+        source: TraceModeSource = TraceModeSource.LOCAL
+    ) {
         val userId = dataStore.getUserId()
         if (userId.isNullOrBlank()) {
             Log.w("LocTrace", TraceError.noUserError().message)
@@ -169,9 +205,15 @@ class LocTraceManager private constructor(private val context: Context) {
             return
         }
 
-        scope.launch {
+        val keepStoredRemote = source == TraceModeSource.REMOTE && dataStore.isTraceModeFromRemote()
+
+        // Persist synchronously so the service reads the freshly decided mode, not a stale one
+        runBlocking {
             dataStore.setSdkTracking(true)
-            dataStore.setTraceMode(traceMode)
+            dataStore.setTraceModeSource(source)
+            if (!keepStoredRemote) {
+                dataStore.setTraceMode(traceMode)
+            }
             if (withTrip) {
                 if (dataStore.getLocalTripId() == null) {
                     dataStore.setLocalTripId(UUID.randomUUID().toString())
@@ -182,6 +224,10 @@ class LocTraceManager private constructor(private val context: Context) {
         }
 
         startLocationService()
+
+        if (source == TraceModeSource.REMOTE) {
+            scope.launch { fetchAndApplyRemoteSettings() }
+        }
     }
 
     fun stopTracking() {
@@ -230,6 +276,7 @@ class LocTraceManager private constructor(private val context: Context) {
             addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
             addProperty("speed", location.speed)
             addProperty("accuracy", location.accuracy)
+            dataStore.getUserId()?.let { addProperty("user_id", it) }
             tripId?.let {
                 addProperty("trip_id", it)
                 addProperty("trip_status", "active")
@@ -250,9 +297,28 @@ class LocTraceManager private constructor(private val context: Context) {
         val user = dataStore.getUser()
         if (user == null || user.phone.isNullOrBlank()) throw Exception(TraceError.noUserError().message)
 
-        val mode = apiClient.getCompanySettings(user.phone)
-        dataStore.setTraceModeWithTiming(mode)
+        val mode = settingsFetcher(user.phone)
+        if (dataStore.getTraceModeSource() == TraceModeSource.REMOTE) {
+            dataStore.setTraceModeFromRemote(mode)
+            if (isServiceRunning()) sendTraceModeChangedIntent()
+        }
         return mode
+    }
+
+    internal suspend fun fetchAndApplyRemoteSettings() {
+        val user = dataStore.getUser() ?: return
+        if (user.phone.isNullOrBlank()) return
+        try {
+            val mode = settingsFetcher(user.phone)
+            dataStore.setTraceModeFromRemote(mode)
+            if (isServiceRunning()) sendTraceModeChangedIntent()
+            BarikoiTrace.notifyLog(
+                "INFO", "LocTrace",
+                "Remote trace settings applied: interval=${mode.updateInterval}s distance=${mode.distanceFilter}m accuracyFilter=${mode.accuracyFilter}m"
+            )
+        } catch (e: Exception) {
+            Log.w("LocTrace", "Remote settings fetch failed, keeping current mode: ${e.message}")
+        }
     }
 
     // --- Broadcast ---
@@ -288,6 +354,17 @@ class LocTraceManager private constructor(private val context: Context) {
             context.startService(intent)
         } catch (e: Exception) {
             Log.e("LocTrace", "Failed to deliver user name update to service", e)
+        }
+    }
+
+    private fun sendTraceModeChangedIntent() {
+        try {
+            val intent = Intent(context, LocTraceForegroundService::class.java).apply {
+                action = LocTraceForegroundService.ACTION_TRACE_MODE_CHANGED
+            }
+            context.startService(intent)
+        } catch (e: Exception) {
+            Log.e("LocTrace", "Failed to deliver trace mode change to service", e)
         }
     }
 

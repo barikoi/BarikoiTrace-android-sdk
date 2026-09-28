@@ -38,6 +38,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         private const val CHANNEL_ID = "BarikoiTrace"
         private const val NOTIFICATION_ID = 1
         const val ACTION_UPDATE_USER_NAME = "com.barikoi.barikoitrace.action.UPDATE_USER_NAME"
+        const val ACTION_TRACE_MODE_CHANGED = "com.barikoi.barikoitrace.action.TRACE_MODE_CHANGED"
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -59,6 +60,11 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
         if (intent?.action == ACTION_UPDATE_USER_NAME) {
             handleUpdateUserName()
+            return START_STICKY
+        }
+
+        if (intent?.action == ACTION_TRACE_MODE_CHANGED) {
+            handleTraceModeChanged()
             return START_STICKY
         }
 
@@ -163,6 +169,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
                     addProperty("speed", location.speed)
                     addProperty("accuracy", location.accuracy)
+                    dataStore.getUserId()?.let { addProperty("user_id", it) }
                     tripId?.let {
                         addProperty("trip_id", it)
                         addProperty("trip_status", "active")
@@ -204,12 +211,31 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         BarikoiTrace.notifyLog("INFO", TAG, "MQTT user name updated to $name")
     }
 
+    private fun handleTraceModeChanged() {
+        try {
+            if (!::dataStore.isInitialized) dataStore = TraceDataStore(this)
+            if (!::locationEngine.isInitialized) locationEngine = LocationEngine(this)
+            val traceMode = dataStore.getTraceMode()
+            // startLocationUpdates stops the previous request first, so this safely replaces it
+            locationEngine.startLocationUpdates(traceMode, this)
+            BarikoiTrace.notifyLog(
+                "INFO", TAG,
+                "Trace mode re-applied: interval=${traceMode.updateInterval}s distance=${traceMode.distanceFilter}m accuracyFilter=${traceMode.accuracyFilter}m"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error applying new trace mode", e)
+        }
+    }
+
     // --- MQTT ---
 
     private fun initializeMqtt(
         serverUri: String, userId: String, uuid: String,
         companyId: String, groupId: String, userName: String?
     ) {
+        // Tear down any previous client before replacing it (re-starts of the
+        // service would otherwise leave the old connection alive)
+        mqttManager?.destroy()
         mqttManager = MqttManager(
             this, serverUri, userId, companyId, groupId, uuid,
             callback = object : MqttManager.MqttStatusCallback {
@@ -260,7 +286,10 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                 for (entity in batch) {
                     try {
                         val locJson = JsonParser.parseString(entity.json).asJsonObject
-                        locJson.addProperty("user_id", userId)
+                        // Keep the user the row was captured under; only stamp legacy rows
+                        if (!locJson.has("user_id")) {
+                            locJson.addProperty("user_id", userId)
+                        }
                         mqtt.publishLocationJson(locJson)
                     } catch (_: Exception) {}
                 }

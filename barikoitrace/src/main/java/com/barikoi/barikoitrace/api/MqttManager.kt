@@ -244,14 +244,19 @@ class MqttManager(
     fun destroy() {
         handler.removeCallbacksAndMessages(null)
         val client = mqttClient ?: return
-        
+
         isConnecting = false
         reconnectAttempts = 0
-        
+
         client.removeCallback(mqttCallback)
         try {
             if (client.isConnected) {
-                client.disconnect(0, null, object : IMqttActionListener {
+                // MqttService.disconnect() removes the client handle from its
+                // connections map, so calling close() afterwards always throws
+                // "Invalid ClientHandle". Disconnect alone tears the connection
+                // down and stops the remote service. The quiesce window lets the
+                // final location / trip-completed publish land before teardown.
+                client.disconnect(1000, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         Log.i(tag, "Disconnected from MQTT broker")
                     }
@@ -259,12 +264,17 @@ class MqttManager(
                         Log.e(tag, "Failed to disconnect", exception)
                     }
                 })
+            } else {
+                // Not connected: the handle is still registered, close() releases it
+                client.close()
             }
-            client.unregisterResources()
-            client.close()
+        } catch (e: IllegalArgumentException) {
+            // Handle already gone (e.g. connect never registered) - nothing to release
+            Log.d(tag, "MQTT client already released: ${e.message}")
         } catch (e: Exception) {
             Log.e(tag, "Error during destroy", e)
         } finally {
+            client.unregisterResources()
             mqttClient = null
             isConnected = false
         }
