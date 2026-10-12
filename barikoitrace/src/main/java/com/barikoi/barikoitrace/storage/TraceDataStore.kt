@@ -176,8 +176,6 @@ class TraceDataStore private constructor(context: Context) {
     // these need no cache layer of their own.
     suspend fun setUser(user: TraceUser) {
         secure.putString(SecureKeys.USER_ID, user.userId)
-        user.name?.let { secure.putString(SecureKeys.USER_NAME, it) }
-        user.email?.let { secure.putString(SecureKeys.USER_EMAIL, it) }
         user.phone?.let { secure.putString(SecureKeys.USER_PHONE, it) }
         user.companyId?.let { secure.putString(SecureKeys.USER_COMPANY, it) }
         user.group?.let { secure.putString(SecureKeys.USER_GROUP, it) }
@@ -188,8 +186,6 @@ class TraceDataStore private constructor(context: Context) {
         val userId = secure.getString(SecureKeys.USER_ID) ?: return null
         return TraceUser(
             userId = userId,
-            name = secure.getString(SecureKeys.USER_NAME),
-            email = secure.getString(SecureKeys.USER_EMAIL),
             phone = secure.getString(SecureKeys.USER_PHONE),
             companyId = secure.getString(SecureKeys.USER_COMPANY),
             group = secure.getString(SecureKeys.USER_GROUP),
@@ -200,7 +196,7 @@ class TraceDataStore private constructor(context: Context) {
     fun getUserId(): String? = secure.getString(SecureKeys.USER_ID)
 
     suspend fun clearUser() = secure.remove(
-        SecureKeys.USER_ID, SecureKeys.USER_NAME, SecureKeys.USER_EMAIL,
+        SecureKeys.USER_ID,
         SecureKeys.USER_PHONE, SecureKeys.USER_COMPANY, SecureKeys.USER_GROUP,
         SecureKeys.USER_UPDATED_AT
     )

@@ -32,8 +32,6 @@ class TraceDataStoreTest {
     fun setUser_andGetUser_roundTrip() = runBlocking {
         val user = TraceUser(
             userId = "u123",
-            name = "Test User",
-            email = "test@test.com",
             phone = "01700000000",
             companyId = "c1",
             group = "g1"
@@ -42,8 +40,6 @@ class TraceDataStoreTest {
         val retrieved = dataStore.getUser()
         assertThat(retrieved).isNotNull()
         assertThat(retrieved!!.userId).isEqualTo("u123")
-        assertThat(retrieved.name).isEqualTo("Test User")
-        assertThat(retrieved.email).isEqualTo("test@test.com")
         assertThat(retrieved.phone).isEqualTo("01700000000")
         assertThat(retrieved.companyId).isEqualTo("c1")
         assertThat(retrieved.group).isEqualTo("g1")

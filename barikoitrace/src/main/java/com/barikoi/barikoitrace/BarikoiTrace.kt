@@ -96,8 +96,13 @@ object BarikoiTrace {
     // --- User ---
 
     @JvmStatic
+    suspend fun setOrCreateUser(phone: String): TraceUser =
+        getInstance().setOrCreateUser(phone)
+
+    @Deprecated("name and email are no longer supported by the backend; use setOrCreateUser(phone)")
+    @JvmStatic
     suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser =
-        getInstance().setOrCreateUser(name, email, phone)
+        setOrCreateUser(phone)
 
     @JvmStatic
     fun getUser(): TraceUser? = getInstance().getUser()
@@ -219,18 +224,25 @@ object BarikoiTrace {
 
     @JvmStatic
     fun setOrCreateUser(
-        name: String?, email: String?, phone: String,
+        phone: String,
         callback: TraceUserCallback
     ) {
         scope.launch {
             try {
-                val user = setOrCreateUser(name, email, phone)
+                val user = setOrCreateUser(phone)
                 callback.onSuccess(user)
             } catch (e: Exception) {
                 callback.onFailure(asTraceError(e, "USER_ERROR"))
             }
         }
     }
+
+    @Deprecated("name and email are no longer supported by the backend; use setOrCreateUser(phone, callback)")
+    @JvmStatic
+    fun setOrCreateUser(
+        name: String?, email: String?, phone: String,
+        callback: TraceUserCallback
+    ) = setOrCreateUser(phone, callback)
 
     @JvmStatic
     fun updateCurrentLocation(callback: TraceLocationUpdateCallback) {

@@ -130,7 +130,11 @@ class LocTraceManager private constructor(private val context: Context) {
 
     // --- User ---
 
-    suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser {
+    @Deprecated("name and email are no longer supported by the backend; use setOrCreateUser(phone)")
+    suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser =
+        setOrCreateUser(phone)
+
+    suspend fun setOrCreateUser(phone: String): TraceUser {
         if (phone.isBlank()) throw TraceException(TraceError.noDataError())
         if (dataStore.getApiKey().isNullOrBlank()) throw TraceException(TraceError.noKeyError())
         if (!NetworkChecker.isNetworkAvailable(context)) throw TraceException(TraceError.networkError())
@@ -142,7 +146,7 @@ class LocTraceManager private constructor(private val context: Context) {
         ) {
             cached
         } else {
-            val freshUser = apiClient.authenticate(name, email, phone)
+            val freshUser = apiClient.authenticate(phone)
             apiClient.setUserId(freshUser.userId)
             freshUser
         }

@@ -64,14 +64,13 @@ class LocTraceManagerTest {
     fun getUser_returnsStoredUser() = runBlocking {
         val user = com.barikoi.barikoitrace.model.TraceUser(
             userId = "u123",
-            name = "Test",
             phone = "01700000000"
         )
         dataStore.setUser(user)
         val retrieved = manager.getUser()
         assertThat(retrieved).isNotNull()
         assertThat(retrieved!!.userId).isEqualTo("u123")
-        assertThat(retrieved.name).isEqualTo("Test")
+        assertThat(retrieved.phone).isEqualTo("01700000000")
     }
 
     @Test

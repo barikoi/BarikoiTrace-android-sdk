@@ -74,7 +74,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     Log.e(TAG, "No MQTT credentials set — call BarikoiTrace.initialize(context, apiKey, mqttUsername, mqttPassword) before starting tracking")
                 } else {
                     initializeMqtt(
-                        mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "", user.name,
+                        mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "", null,
                         mqttUsername, mqttPassword
                     )
                 }
@@ -231,7 +231,6 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     // shape now carries the same fields the live-publish
                     // path does, whenever they're known at write time.
                     user?.companyId?.takeIf { it.isNotBlank() }?.let { addProperty("company_id", it) }
-                    user?.name?.takeIf { it.isNotBlank() }?.let { addProperty("user_name", it) }
                     tripId?.let {
                         addProperty("trip_id", it)
                         addProperty("trip_status", "active")
@@ -376,9 +375,6 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                             // onLocationReceived's offline branch above).
                             if (!locJson.has("company_id")) {
                                 user?.companyId?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("company_id", it) }
-                            }
-                            if (!locJson.has("user_name")) {
-                                user?.name?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("user_name", it) }
                             }
                             mqtt.publishLocationJson(locJson)
                         } catch (_: Exception) {}
