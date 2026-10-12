@@ -73,6 +73,21 @@ object BarikoiTrace {
      * is only known after startup, e.g. at login. Same as iOS
      * `BarikoiTrace.setApiKey(_:)`.
      */
+    /**
+     * Configures the foreground service notification title and message.
+     * When content is null or blank, defaults to "Trace is running as Background service".
+     */
+    @JvmStatic
+    fun setNotificationConfig(title: String? = null, content: String? = null) =
+        getInstance().setNotificationConfig(title, content)
+
+    /**
+     * Configures the foreground service notification message.
+     */
+    @JvmStatic
+    fun setNotificationContent(content: String) =
+        getInstance().setNotificationConfig(null, content)
+
     @JvmStatic
     suspend fun setApiKey(apiKey: String) = getInstance().setApiKey(apiKey)
 

@@ -82,6 +82,7 @@ class LocTraceManager private constructor(private val context: Context) {
             dataStore.setMqttUsername(mqttUsername)
             dataStore.setMqttPassword(mqttPassword)
             dataStore.setMqttClientIdPrefix(config.mqttClientIdPrefix)
+            dataStore.setNotificationConfig(config.notificationTitle, config.notificationContent)
 
             // Endpoints are applied here rather than through setBaseUrl()/
             // setMqttUrl(), which clear the cached user and stop tracking when
@@ -123,6 +124,12 @@ class LocTraceManager private constructor(private val context: Context) {
      * sees it. Unlike [initialize] it touches nothing else (no endpoints, no
      * tracking resume). Mirrors the iOS SDK's `setApiKey(_:)`.
      */
+    fun setNotificationConfig(title: String?, content: String?) {
+        scope.launch {
+            dataStore.setNotificationConfig(title, content)
+        }
+    }
+
     suspend fun setApiKey(apiKey: String) {
         dataStore.setApiKey(apiKey)
         apiClient.setApiKey(apiKey)

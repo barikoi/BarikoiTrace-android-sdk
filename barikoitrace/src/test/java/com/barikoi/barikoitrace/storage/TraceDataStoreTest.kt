@@ -143,4 +143,16 @@ class TraceDataStoreTest {
         assertThat(retrieved.companyId).isNull()
         assertThat(retrieved.group).isNull()
     }
+
+    @Test
+    fun setNotificationConfig_andGetNotificationConfig_roundTrip() = runBlocking {
+        assertThat(dataStore.getNotificationContent()).isNull()
+        dataStore.setNotificationConfig("Custom Title", "Custom Message")
+        assertThat(dataStore.getNotificationTitle()).isEqualTo("Custom Title")
+        assertThat(dataStore.getNotificationContent()).isEqualTo("Custom Message")
+
+        dataStore.setNotificationConfig(null, null)
+        assertThat(dataStore.getNotificationTitle()).isNull()
+        assertThat(dataStore.getNotificationContent()).isNull()
+    }
 }

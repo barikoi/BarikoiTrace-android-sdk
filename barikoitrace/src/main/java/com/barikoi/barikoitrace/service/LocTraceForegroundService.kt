@@ -51,6 +51,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     override fun onCreate() {
         super.onCreate()
+        dataStore = TraceDataStore(this)
         startForegroundNotification()
     }
 
@@ -415,7 +416,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     private fun startForegroundNotification() {
         val channelId = CHANNEL_ID
-        val channelName = "Trace is running as Background service"
+        val channelName = "Trace Background Service"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -425,7 +426,12 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                 .createNotificationChannel(channel)
         }
 
-        val notification = buildNotification(channelName)
+        val title = dataStore.getNotificationTitle()
+        val content = dataStore.getNotificationContent()
+            ?.takeIf { it.isNotBlank() }
+            ?: TraceDataStore.DEFAULT_NOTIFICATION_CONTENT
+
+        val notification = buildNotification(title, content)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID, notification,
@@ -436,15 +442,19 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         }
     }
 
-    private fun buildNotification(text: String): Notification {
-        return androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
+    private fun buildNotification(title: String?, text: String): Notification {
+        val builder = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_trace_logo)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             .setOngoing(true)
             .setForegroundServiceBehavior(androidx.core.app.NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
+
+        if (!title.isNullOrBlank()) {
+            builder.setContentTitle(title)
+        }
+        return builder.build()
     }
 
     private fun showLocationDisabledNotification() {

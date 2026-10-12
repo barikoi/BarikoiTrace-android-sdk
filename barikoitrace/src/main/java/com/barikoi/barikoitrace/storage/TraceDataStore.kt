@@ -82,6 +82,8 @@ class TraceDataStore private constructor(context: Context) {
         val START_TIME = stringPreferencesKey("startTime")
         val END_TIME = stringPreferencesKey("endTime")
         val DEBUG = booleanPreferencesKey("debug")
+        val NOTIFICATION_TITLE = stringPreferencesKey("notification_title")
+        val NOTIFICATION_CONTENT = stringPreferencesKey("notification_content")
     }
 
     init {
@@ -114,6 +116,8 @@ class TraceDataStore private constructor(context: Context) {
                 prefs[Keys.START_TIME]?.let { cache[Keys.START_TIME.name] = it }
                 prefs[Keys.END_TIME]?.let { cache[Keys.END_TIME.name] = it }
                 cache[Keys.DEBUG.name] = prefs[Keys.DEBUG] ?: false
+                prefs[Keys.NOTIFICATION_TITLE]?.let { cache[Keys.NOTIFICATION_TITLE.name] = it }
+                prefs[Keys.NOTIFICATION_CONTENT]?.let { cache[Keys.NOTIFICATION_CONTENT.name] = it }
             }
         }
     }
@@ -383,12 +387,32 @@ class TraceDataStore private constructor(context: Context) {
         removeAndCache(Keys.START_TIME, Keys.END_TIME)
     }
 
+    // --- Notification Config ---
+    suspend fun setNotificationTitle(title: String?) {
+        if (title == null) removeAndCache(Keys.NOTIFICATION_TITLE)
+        else putAndCache(Keys.NOTIFICATION_TITLE, title)
+    }
+    fun getNotificationTitle(): String? = getString(Keys.NOTIFICATION_TITLE)
+
+    suspend fun setNotificationContent(content: String?) {
+        if (content == null) removeAndCache(Keys.NOTIFICATION_CONTENT)
+        else putAndCache(Keys.NOTIFICATION_CONTENT, content)
+    }
+    fun getNotificationContent(): String? = getString(Keys.NOTIFICATION_CONTENT)
+
+    suspend fun setNotificationConfig(title: String?, content: String?) {
+        setNotificationTitle(title)
+        setNotificationContent(content)
+    }
+
     suspend fun stopSdkTracking() {
         putAndCache(Keys.SDK_TRACKING, false)
         clearTraceMode()
     }
 
     companion object {
+        const val DEFAULT_NOTIFICATION_CONTENT = "Trace is running as Background service"
+
         private val sharedCache = ConcurrentHashMap<String, Any?>()
 
         /** See [setDataSyncing] — process-wide, never persisted. */
