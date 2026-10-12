@@ -131,4 +131,16 @@ class TraceDataStoreTest {
         dataStore.setLogging(false)
         assertThat(dataStore.isLogging()).isFalse()
     }
+
+    @Test
+    fun setUser_withMinimalFields_roundTrip() = runBlocking {
+        val user = TraceUser(userId = "u-sparse")
+        dataStore.setUser(user)
+        val retrieved = dataStore.getUser()
+        assertThat(retrieved).isNotNull()
+        assertThat(retrieved!!.userId).isEqualTo("u-sparse")
+        assertThat(retrieved.phone).isNull()
+        assertThat(retrieved.companyId).isNull()
+        assertThat(retrieved.group).isNull()
+    }
 }
