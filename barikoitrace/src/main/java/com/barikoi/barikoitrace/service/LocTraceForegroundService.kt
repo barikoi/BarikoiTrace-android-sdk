@@ -164,7 +164,9 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         }
         mqttManager?.destroy()
         mqttManager = null
-        locationEngine.stopLocationUpdates()
+        if (::locationEngine.isInitialized) {
+            locationEngine.stopLocationUpdates()
+        }
         super.onDestroy()
     }
 

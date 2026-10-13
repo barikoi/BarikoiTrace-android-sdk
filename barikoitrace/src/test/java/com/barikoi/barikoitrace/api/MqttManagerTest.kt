@@ -51,6 +51,14 @@ class MqttManagerTest {
     }
 
     @Test
+    fun buildLocationJson_nullUserName_omitted() {
+        val manager = createManager(userName = "Old")
+        manager.updateUserName(null)
+        val json = manager.buildLocationJson(testLocation())
+        assertThat(json.has("user_name")).isFalse()
+    }
+
+    @Test
     fun buildLocationJson_containsCoreFields() {
         val manager = createManager(userName = "Tester")
         val json = manager.buildLocationJson(testLocation(), tripId = "trip-1")
@@ -59,5 +67,15 @@ class MqttManagerTest {
         assertThat(json.get("latitude").asString).isEqualTo("23.7925")
         assertThat(json.get("trip_id").asString).isEqualTo("trip-1")
         assertThat(json.get("trip_status").asString).isEqualTo("active")
+    }
+
+    @Test
+    fun buildLocationJson_completedTrip_includesUserNameAndCompletedStatus() {
+        val manager = createManager(userName = "Driver Bob")
+        val json = manager.buildLocationJson(testLocation(), tripId = "trip-99", tripStatus = "completed")
+        assertThat(json.get("user_id").asString).isEqualTo("u1")
+        assertThat(json.get("trip_id").asString).isEqualTo("trip-99")
+        assertThat(json.get("trip_status").asString).isEqualTo("completed")
+        assertThat(json.get("user_name").asString).isEqualTo("Driver Bob")
     }
 }

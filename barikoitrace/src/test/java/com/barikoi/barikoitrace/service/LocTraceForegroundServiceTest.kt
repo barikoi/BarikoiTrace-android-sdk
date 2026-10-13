@@ -24,4 +24,18 @@ class LocTraceForegroundServiceTest {
         assertThat(result).isEqualTo(Service.START_STICKY)
         controller.destroy()
     }
+
+    @Test
+    fun onStartCommand_withUpdateUserNameAction_returnsStickyWithoutCrashing() {
+        val controller = Robolectric.buildService(LocTraceForegroundService::class.java).create()
+        val service = controller.get()
+        val intent = Intent(service, LocTraceForegroundService::class.java).apply {
+            action = LocTraceForegroundService.ACTION_UPDATE_USER_NAME
+        }
+
+        val result = service.onStartCommand(intent, 0, 0)
+
+        assertThat(result).isEqualTo(Service.START_STICKY)
+        controller.destroy()
+    }
 }
