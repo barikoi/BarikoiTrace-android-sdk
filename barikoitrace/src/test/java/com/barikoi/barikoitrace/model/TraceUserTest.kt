@@ -81,4 +81,15 @@ class TraceUserTest {
         assertThat(updated.companyId).isEqualTo("c-new")
         assertThat(updated.group).isEqualTo("g-new")
     }
+
+    @Test
+    fun name_populatesAndCopiesCorrectly() {
+        val user = TraceUser(userId = "u-789", name = "Alice")
+        assertThat(user.userId).isEqualTo("u-789")
+        assertThat(user.name).isEqualTo("Alice")
+
+        val updated = user.copy(name = "Bob")
+        assertThat(updated.name).isEqualTo("Bob")
+        assertThat(updated.userId).isEqualTo("u-789")
+    }
 }

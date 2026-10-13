@@ -424,4 +424,36 @@ class LocTraceManagerTest {
         // App-level config survives logout
         assertThat(dataStore.getApiKey()).isEqualTo("test-key")
     }
+
+    @Test
+    fun updateUserName_updatesDataStore(): Unit = runBlocking {
+        dataStore.setUser(TraceUser(userId = "u1", name = "OldName", phone = "01700000000"))
+        val updated = manager.updateUserName("NewName")
+
+        assertThat(updated.name).isEqualTo("NewName")
+        assertThat(dataStore.getUser()?.name).isEqualTo("NewName")
+    }
+
+    @Test
+    fun updateUserName_throwsWhenBlankOrWhitespace(): Unit = runBlocking {
+        dataStore.setUser(TraceUser(userId = "u1", name = "OldName", phone = "01700000000"))
+        try {
+            manager.updateUserName("   ")
+            org.junit.Assert.fail("Expected TraceException")
+        } catch (e: com.barikoi.barikoitrace.model.TraceException) {
+            assertThat(e.error.code).isEqualTo(com.barikoi.barikoitrace.model.TraceError.noDataError().code)
+        }
+    }
+
+    @Test
+    fun updateUserName_throwsWhenNoUser(): Unit = runBlocking {
+        dataStore.clearUser()
+        try {
+            manager.updateUserName("NewName")
+            org.junit.Assert.fail("Expected TraceException")
+        } catch (e: com.barikoi.barikoitrace.model.TraceException) {
+            assertThat(e.error.code).isEqualTo(com.barikoi.barikoitrace.model.TraceError.noUserError().code)
+        }
+    }
+
 }
