@@ -79,11 +79,9 @@ class TraceApiClient private constructor(context: Context) {
 
     // --- API Methods ---
 
-    suspend fun authenticate(name: String?, email: String?, phone: String): TraceUser {
+    suspend fun authenticate(phone: String): TraceUser {
         val body = JsonObject().apply {
             addProperty("api_key", apiKey)
-            name?.let { addProperty("name", it) }
-            email?.let { addProperty("email", it) }
             addProperty("phone", phone)
         }
 
@@ -93,21 +91,26 @@ class TraceApiClient private constructor(context: Context) {
 
         val userJson = json.getAsJsonObject("user")
         val id = userJson.get("_id").asString
-        val userName = userJson.get("name").asString
-        val userEmail = userJson.get("email").asString
         val companies = userJson.getAsJsonArray("companies")
-        if (companies.size() == 0) throw TraceException(TraceError.noCompanyError())
-        val company = companies[0].asJsonObject.get("company_id").asString
-        val group = companies[0].asJsonObject.get("group_id").asString
+        if (companies == null || companies.size() == 0) throw TraceException(TraceError.noCompanyError())
+        val firstCompany = companies[0].asJsonObject
+        val company = firstCompany.get("company_id")?.takeIf { !it.isJsonNull }?.asString ?: ""
+        val group = firstCompany.get("group_id")?.takeIf { !it.isJsonNull }?.asString ?: ""
 
         val user = TraceUser(
-            userId = id, name = userName, email = userEmail,
-            phone = phone, companyId = company, group = group
+            userId = id,
+            phone = phone,
+            companyId = company,
+            group = group
         )
         userId = user.userId
         dataStore.setUser(user)
         return user
     }
+
+    @Deprecated("name and email are no longer supported by the backend; use authenticate(phone)")
+    suspend fun authenticate(name: String?, email: String?, phone: String): TraceUser =
+        authenticate(phone)
 
     suspend fun getCompanySettings(phone: String): TraceMode {
         val body = JsonObject().apply {

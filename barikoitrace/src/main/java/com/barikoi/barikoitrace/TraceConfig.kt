@@ -87,7 +87,21 @@ data class TraceConfig(
      * authorizes by client-id pattern — the symptom is `notAuthorized` on a
      * CONNECT whose username and password are correct.
      */
-    val mqttClientIdPrefix: String = MqttManager.DEFAULT_CLIENT_ID_PREFIX
+    val mqttClientIdPrefix: String = MqttManager.DEFAULT_CLIENT_ID_PREFIX,
+
+    // --- Notifications (optional) ---
+
+    /**
+     * Optional notification title for the background location foreground service.
+     * When null or blank, the app label is used.
+     */
+    val notificationTitle: String? = null,
+
+    /**
+     * Optional notification message for the background location foreground service.
+     * When null or blank, defaults to "Trace is running as Background service".
+     */
+    val notificationContent: String? = null
 ) {
 
     /**

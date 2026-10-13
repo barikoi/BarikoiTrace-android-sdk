@@ -2,6 +2,7 @@ package com.barikoi.barikoitrace.storage
 
 import androidx.test.core.app.ApplicationProvider
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.TraceModeSource
 import com.barikoi.barikoitrace.model.TraceUser
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
@@ -32,8 +33,6 @@ class TraceDataStoreTest {
     fun setUser_andGetUser_roundTrip() = runBlocking {
         val user = TraceUser(
             userId = "u123",
-            name = "Test User",
-            email = "test@test.com",
             phone = "01700000000",
             companyId = "c1",
             group = "g1"
@@ -42,8 +41,6 @@ class TraceDataStoreTest {
         val retrieved = dataStore.getUser()
         assertThat(retrieved).isNotNull()
         assertThat(retrieved!!.userId).isEqualTo("u123")
-        assertThat(retrieved.name).isEqualTo("Test User")
-        assertThat(retrieved.email).isEqualTo("test@test.com")
         assertThat(retrieved.phone).isEqualTo("01700000000")
         assertThat(retrieved.companyId).isEqualTo("c1")
         assertThat(retrieved.group).isEqualTo("g1")
@@ -134,5 +131,112 @@ class TraceDataStoreTest {
         assertThat(dataStore.isLogging()).isTrue()
         dataStore.setLogging(false)
         assertThat(dataStore.isLogging()).isFalse()
+    }
+
+    @Test
+    fun setUser_withMinimalFields_roundTrip() = runBlocking {
+        val user = TraceUser(userId = "u-sparse")
+        dataStore.setUser(user)
+        val retrieved = dataStore.getUser()
+        assertThat(retrieved).isNotNull()
+        assertThat(retrieved!!.userId).isEqualTo("u-sparse")
+        assertThat(retrieved.phone).isNull()
+        assertThat(retrieved.companyId).isNull()
+        assertThat(retrieved.group).isNull()
+    }
+
+    @Test
+    fun setNotificationConfig_andGetNotificationConfig_roundTrip() = runBlocking {
+        assertThat(dataStore.getNotificationContent()).isNull()
+        dataStore.setNotificationConfig("Custom Title", "Custom Message")
+        assertThat(dataStore.getNotificationTitle()).isEqualTo("Custom Title")
+        assertThat(dataStore.getNotificationContent()).isEqualTo("Custom Message")
+
+        dataStore.setNotificationConfig(null, null)
+        assertThat(dataStore.getNotificationTitle()).isNull()
+        assertThat(dataStore.getNotificationContent()).isNull()
+    }
+    @Test
+    fun updateUserName_andGetUser_returnsUpdatedName() = runBlocking {
+        dataStore.setUser(TraceUser(userId = "u123", name = "Old", phone = "01700000000"))
+        dataStore.updateUserName("New Name")
+        val retrieved = dataStore.getUser()
+        assertThat(retrieved).isNotNull()
+        assertThat(retrieved!!.name).isEqualTo("New Name")
+        assertThat(retrieved.userId).isEqualTo("u123")
+        assertThat(retrieved.phone).isEqualTo("01700000000")
+    }
+
+    @Test
+    fun updateUserName_preservesUserUpdatedAt() = runBlocking {
+        dataStore.setUser(
+            TraceUser(userId = "u123", name = "Old", phone = "01700000000", updatedAt = 1000L)
+        )
+        dataStore.updateUserName("New")
+        assertThat(dataStore.getUser()!!.updatedAt).isEqualTo(1000L)
+    }
+
+    @Test
+    fun getTraceModeSource_defaultsToLocal() = runBlocking {
+        dataStore.clearTraceModeWithTiming()
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+    }
+
+    @Test
+    fun setTraceModeSource_roundTrip() = runBlocking {
+        dataStore.setTraceModeSource(TraceModeSource.REMOTE)
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.REMOTE)
+        dataStore.setTraceModeSource(TraceModeSource.LOCAL)
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+    }
+
+    @Test
+    fun setTraceModeFromRemote_marksOriginAndStoresMode() = runBlocking {
+        val mode = TraceMode.Builder()
+            .setUpdateInterval(30)
+            .setDistanceFilter(50)
+            .setAccuracyFilter(150)
+            .setStartTime(LocalTime.of(6, 0))
+            .setEndTime(LocalTime.of(20, 0))
+            .build()
+        dataStore.setTraceModeFromRemote(mode)
+        assertThat(dataStore.isTraceModeFromRemote()).isTrue()
+        assertThat(dataStore.getTraceMode().updateInterval).isEqualTo(30)
+        assertThat(dataStore.getTraceMode().distanceFilter).isEqualTo(50)
+        assertThat(dataStore.getTraceMode().startTime).isEqualTo(LocalTime.of(6, 0))
+        assertThat(dataStore.getTraceMode().endTime).isEqualTo(LocalTime.of(20, 0))
+    }
+
+    @Test
+    fun setTraceMode_demotesRemoteOrigin() = runBlocking {
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.setTraceMode(TraceMode.Builder().setUpdateInterval(7).build())
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
+        assertThat(dataStore.getTraceMode().updateInterval).isEqualTo(7)
+    }
+
+    @Test
+    fun clearTraceMode_clearsRemoteOrigin() = runBlocking {
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.clearTraceMode()
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
+    }
+
+    @Test
+    fun clearTraceModeWithTiming_resetsSourceAndOrigin() = runBlocking {
+        dataStore.setTraceModeSource(TraceModeSource.REMOTE)
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.clearTraceModeWithTiming()
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
+    }
+
+    @Test
+    fun stopSdkTracking_resetsSourceToLocal() = runBlocking {
+        dataStore.setTraceModeSource(TraceModeSource.REMOTE)
+        dataStore.setTraceModeFromRemote(TraceMode.Builder().setUpdateInterval(30).build())
+        dataStore.stopSdkTracking()
+        assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
+        assertThat(dataStore.isTraceModeFromRemote()).isFalse()
     }
 }

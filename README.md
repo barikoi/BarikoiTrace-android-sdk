@@ -173,7 +173,9 @@ val config = TraceConfig(
     mqttPassword = BuildConfig.MQTT_PASSWORD,
     baseUrl = "https://api.staging.example.com/api/v1/",
     mqttUrl = "ssl://broker.staging.example.com:8883",
-    mqttClientIdPrefix = "fleet-android-"  // only if the broker ACL matches on client id
+    mqttClientIdPrefix = "fleet-android-",  // only if the broker ACL matches on client id
+    notificationTitle = "Fleet Tracker",
+    notificationContent = "Tracking active shift"
 )
 
 check(config.warnings.isEmpty()) { config.warnings.toString() }  // plaintext broker, non-HTTPS API, empty key…
@@ -193,6 +195,8 @@ first connection.
 | `baseUrl` | `https://api.trace.bmapsbd.com/api/v1/` | trailing slash normalized |
 | `mqttUrl` | `tcp://broker.trace.bmapsbd.com:1883` | **plaintext** — see below |
 | `mqttClientIdPrefix` | `AndroidClient-` | iOS uses `iOSClient-` |
+| `notificationTitle` | `null` (app name) | foreground service notification title |
+| `notificationContent` | `null` (`"Trace is running as Background service"`) | foreground service notification body |
 
 `mqttUrl` accepts `tcp`/`mqtt`/`ws` (plaintext) and `ssl`/`mqtts`/`tls`/`wss`
 (TLS); Paho reads the scheme and the port from the URL.
@@ -213,6 +217,18 @@ same.
 BarikoiTrace.setBaseUrl("https://api.staging.example.com/api/v1/")
 BarikoiTrace.setMqttUrl("ssl://broker.staging.example.com:8883")
 BarikoiTrace.setMqttClientIdPrefix("fleet-android-")   // before startTracking
+```
+
+### Customizing foreground service notification
+
+The foreground service status notification title and content can be configured via
+`TraceConfig` at initialization time or dynamically updated mid-session:
+
+```kotlin
+BarikoiTrace.setNotificationConfig(
+    title = "Fleet Tracker",
+    content = "Shift in progress"
+)
 ```
 
 ---
@@ -300,11 +316,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun signInAndTrack() = lifecycleScope.launch {
         try {
-            BarikoiTrace.setOrCreateUser(name = "Jane", email = null, phone = "01700000000")
-            BarikoiTrace.startTracking(TraceMode.ACTIVE, withTrip = true)
+            var user = BarikoiTrace.setOrCreateUser(phone = "01700000000")
+            // Optionally update user display name live:
+            user = BarikoiTrace.updateUserName("Jane Doe")
+
+            BarikoiTrace.startTracking(
+                TraceMode.ACTIVE,
+                withTrip = true,
+                source = TraceModeSource.LOCAL
+            )
         } catch (e: TraceException) {
             Log.e("Trace", "${e.code}: ${e.message}")
         }
+    }
+
+    private fun stopAndSignOut() {
+        BarikoiTrace.stopTracking()
+        BarikoiTrace.logout() // clears local trip, queued offline fixes, and user credentials
     }
 
     private fun observeLocations() = lifecycleScope.launch {
@@ -351,14 +379,18 @@ production, say — and re-point the MQTT client on the next fix.
 | `setMqttUrl(url)` | |
 | `setMqttClientIdPrefix(prefix)` | Call before `startTracking`. |
 | `resetUrls()` | Back to the SDK defaults. |
+| `setNotificationConfig(title, content)` | Configures persistent notification title and body. |
+| `setNotificationContent(content)` | Configures persistent notification body. |
 
 ### User
 
 | Method | Notes |
 |---|---|
-| `setOrCreateUser(name, email, phone): TraceUser` | `suspend`. Authenticates or creates. Throws `TraceError`. Also refreshes remote settings — that refresh swallows its own failure by design (a secondary step should not fail the primary auth call). |
+| `setOrCreateUser(phone): TraceUser` | `suspend`. Authenticates or creates. Throws `TraceError`. Also refreshes remote settings — that refresh swallows its own failure by design. Overload `setOrCreateUser(name, email, phone)` is deprecated. |
+| `updateUserName(name): TraceUser` | `suspend`. Updates the user's name live in storage and in outgoing MQTT payloads. |
 | `getUser(): TraceUser?` | Cached user, no network. |
 | `getUserId(): String?` | |
+| `logout()` | Signs out: stops tracking, cancels trip, wipes offline queued locations, resets tracking state, and clears cached credentials. |
 
 `TraceUser` carries `userId`, `name`, `email`, `phone`, `companyId`, `group`,
 `updatedAt` (epoch ms). `companyId` and `group` are required — MQTT topic
@@ -383,7 +415,7 @@ resolution needs them.
 
 | Method | Notes |
 |---|---|
-| `startTracking(mode)` / `startTracking(mode, withTrip)` | `withTrip` attaches a locally generated trip UUID. |
+| `startTracking(mode, withTrip, source)` | `withTrip` attaches a locally generated trip UUID. `source` specifies `TraceModeSource.LOCAL` (default) or `TraceModeSource.REMOTE` (fetches/applies remote settings). |
 | `stopTracking()` | If a trip was open, publishes the completed-trip payload. |
 | `setTraceMode(mode)` | |
 | `isLocationTracking(): Boolean` | Reads the real service state, not a stored flag. |

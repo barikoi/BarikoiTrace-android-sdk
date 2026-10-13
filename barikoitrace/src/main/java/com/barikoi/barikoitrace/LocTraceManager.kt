@@ -24,6 +24,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -41,6 +42,10 @@ class LocTraceManager private constructor(private val context: Context) {
 
     private val _locationBroadcast = MutableSharedFlow<Location>(replay = 0)
     val locationBroadcast: SharedFlow<Location> = _locationBroadcast
+
+    internal var settingsFetcher: suspend (String) -> TraceMode = { apiClient.getCompanySettings(it) }
+    internal var authenticator: suspend (String) -> TraceUser = { apiClient.authenticate(it) }
+    internal var serviceRunningChecker: () -> Boolean = { isServiceRunning() }
 
     companion object {
         private const val OFFLINE_SYNC_WORK_NAME = "com.barikoi.barikoitrace.offline_sync"
@@ -82,6 +87,7 @@ class LocTraceManager private constructor(private val context: Context) {
             dataStore.setMqttUsername(mqttUsername)
             dataStore.setMqttPassword(mqttPassword)
             dataStore.setMqttClientIdPrefix(config.mqttClientIdPrefix)
+            dataStore.setNotificationConfig(config.notificationTitle, config.notificationContent)
 
             // Endpoints are applied here rather than through setBaseUrl()/
             // setMqttUrl(), which clear the cached user and stop tracking when
@@ -111,7 +117,7 @@ class LocTraceManager private constructor(private val context: Context) {
                 val traceMode = dataStore.getTraceMode()
                 if (traceMode != null && !isServiceRunning()) {
                     val hasActiveTrip = dataStore.getLocalTripId() != null
-                    startTracking(traceMode, hasActiveTrip)
+                    startTracking(traceMode, hasActiveTrip, dataStore.getTraceModeSource())
                 }
             }
         }
@@ -123,6 +129,12 @@ class LocTraceManager private constructor(private val context: Context) {
      * sees it. Unlike [initialize] it touches nothing else (no endpoints, no
      * tracking resume). Mirrors the iOS SDK's `setApiKey(_:)`.
      */
+    fun setNotificationConfig(title: String?, content: String?) {
+        scope.launch {
+            dataStore.setNotificationConfig(title, content)
+        }
+    }
+
     suspend fun setApiKey(apiKey: String) {
         dataStore.setApiKey(apiKey)
         apiClient.setApiKey(apiKey)
@@ -130,34 +142,69 @@ class LocTraceManager private constructor(private val context: Context) {
 
     // --- User ---
 
-    suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser {
+    @Deprecated("name and email are no longer supported by the backend; use setOrCreateUser(phone)")
+    suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser =
+        setOrCreateUser(phone)
+
+    suspend fun setOrCreateUser(phone: String): TraceUser {
         if (phone.isBlank()) throw TraceException(TraceError.noDataError())
         if (dataStore.getApiKey().isNullOrBlank()) throw TraceException(TraceError.noKeyError())
         if (!NetworkChecker.isNetworkAvailable(context)) throw TraceException(TraceError.networkError())
 
         // Check cached user
         val cached = dataStore.getUser()
+        val switchingUser = cached != null && phone != cached.phone
+        val wasTracking = serviceRunningChecker()
+        if (switchingUser) {
+            // Discard the outgoing user's undelivered data so it can't be
+            // mis-attributed to the new user's session
+            offlineDb.locationDao().deleteAll()
+        }
         val user = if (cached != null && phone == cached.phone &&
             (System.currentTimeMillis() - cached.updatedAt) < 24 * 60 * 60 * 1000
         ) {
             cached
         } else {
-            val freshUser = apiClient.authenticate(name, email, phone)
+            val freshUser = authenticator(phone)
             apiClient.setUserId(freshUser.userId)
             freshUser
         }
 
-        // Best-effort remote settings refresh
-        try {
-            if (!user.phone.isNullOrBlank()) {
-                val mode = apiClient.getCompanySettings(user.phone)
-                dataStore.setTraceModeWithTiming(mode)
-            }
-        } catch (e: Exception) {
-            Log.w("LocTrace", "Failed to fetch remote settings: ${e.message}")
+        if (switchingUser && wasTracking) {
+            // Session handoff: stop+start the service so onDestroy completes the
+            // outgoing user's trip and tears down their MQTT, and onStartCommand
+            // rebuilds everything from the newly stored user
+            refreshTracking()
+        }
+
+        // Remote settings only apply when the app opted into the REMOTE mode source
+        if (dataStore.getTraceModeSource() == TraceModeSource.REMOTE) {
+            fetchAndApplyRemoteSettings()
         }
 
         return user
+    }
+
+    fun logout() {
+        // Wipe user-scoped state before the service tears down so no trailing
+        // publishes or leftover data survive
+        runBlocking {
+            offlineDb.locationDao().deleteAll()
+            dataStore.stopSdkTracking()
+            dataStore.clearLocalTrip()
+            dataStore.clearUser()
+        }
+        stopLocationService()
+        cancelOfflineSyncWork()
+    }
+
+    suspend fun updateUserName(name: String): TraceUser {
+        if (dataStore.getUser() == null) throw TraceException(TraceError.noUserError())
+        if (name.isBlank()) throw TraceException(TraceError.noDataError())
+
+        dataStore.updateUserName(name.trim())
+        if (isServiceRunning()) sendUpdateUserNameIntent()
+        return dataStore.getUser()!!
     }
 
     fun getUser(): TraceUser? = dataStore.getUser()
@@ -212,7 +259,11 @@ class LocTraceManager private constructor(private val context: Context) {
 
     // --- Tracking ---
 
-    fun startTracking(traceMode: TraceMode, withTrip: Boolean = false) {
+    fun startTracking(
+        traceMode: TraceMode,
+        withTrip: Boolean = false,
+        source: TraceModeSource = TraceModeSource.LOCAL
+    ) {
         val userId = dataStore.getUserId()
         if (userId.isNullOrBlank()) {
             Log.w("LocTrace", TraceError.noUserError().message)
@@ -225,9 +276,15 @@ class LocTraceManager private constructor(private val context: Context) {
             return
         }
 
-        scope.launch {
+        val keepStoredRemote = source == TraceModeSource.REMOTE && dataStore.isTraceModeFromRemote()
+
+        // Persist synchronously so the service reads the freshly decided mode, not a stale one
+        runBlocking {
             dataStore.setSdkTracking(true)
-            dataStore.setTraceMode(traceMode)
+            dataStore.setTraceModeSource(source)
+            if (!keepStoredRemote) {
+                dataStore.setTraceMode(traceMode)
+            }
             if (withTrip) {
                 if (dataStore.getLocalTripId() == null) {
                     dataStore.setLocalTripId(UUID.randomUUID().toString())
@@ -239,6 +296,10 @@ class LocTraceManager private constructor(private val context: Context) {
 
         startLocationService()
         scheduleOfflineSyncWork()
+
+        if (source == TraceModeSource.REMOTE) {
+            scope.launch { fetchAndApplyRemoteSettings() }
+        }
     }
 
     fun stopTracking() {
@@ -288,6 +349,7 @@ class LocTraceManager private constructor(private val context: Context) {
             addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
             addProperty("speed", location.speed)
             addProperty("accuracy", location.accuracy)
+            dataStore.getUserId()?.let { addProperty("user_id", it) }
             tripId?.let {
                 addProperty("trip_id", it)
                 addProperty("trip_status", "active")
@@ -308,9 +370,28 @@ class LocTraceManager private constructor(private val context: Context) {
         val user = dataStore.getUser()
         if (user == null || user.phone.isNullOrBlank()) throw TraceException(TraceError.noUserError())
 
-        val mode = apiClient.getCompanySettings(user.phone)
-        dataStore.setTraceModeWithTiming(mode)
+        val mode = settingsFetcher(user.phone)
+        if (dataStore.getTraceModeSource() == TraceModeSource.REMOTE) {
+            dataStore.setTraceModeFromRemote(mode)
+            if (isServiceRunning()) sendTraceModeChangedIntent()
+        }
         return mode
+    }
+
+    internal suspend fun fetchAndApplyRemoteSettings() {
+        val user = dataStore.getUser() ?: return
+        if (user.phone.isNullOrBlank()) return
+        try {
+            val mode = settingsFetcher(user.phone)
+            dataStore.setTraceModeFromRemote(mode)
+            if (isServiceRunning()) sendTraceModeChangedIntent()
+            BarikoiTrace.notifyLog(
+                "INFO", "LocTrace",
+                "Remote trace settings applied: interval=${mode.updateInterval}s distance=${mode.distanceFilter}m accuracyFilter=${mode.accuracyFilter}m"
+            )
+        } catch (e: Exception) {
+            Log.w("LocTrace", "Remote settings fetch failed, keeping current mode: ${e.message}")
+        }
     }
 
     // --- Broadcast ---
@@ -322,6 +403,28 @@ class LocTraceManager private constructor(private val context: Context) {
     }
 
     // --- Service Management ---
+
+    private fun sendUpdateUserNameIntent() {
+        try {
+            val intent = Intent(context, LocTraceForegroundService::class.java).apply {
+                action = LocTraceForegroundService.ACTION_UPDATE_USER_NAME
+            }
+            context.startService(intent)
+        } catch (e: Exception) {
+            Log.e("LocTrace", "Failed to deliver user name update to service", e)
+        }
+    }
+
+    private fun sendTraceModeChangedIntent() {
+        try {
+            val intent = Intent(context, LocTraceForegroundService::class.java).apply {
+                action = LocTraceForegroundService.ACTION_TRACE_MODE_CHANGED
+            }
+            context.startService(intent)
+        } catch (e: Exception) {
+            Log.e("LocTrace", "Failed to deliver trace mode change to service", e)
+        }
+    }
 
     private fun startLocationService() {
         try {
@@ -361,16 +464,24 @@ class LocTraceManager private constructor(private val context: Context) {
     // possible here — same kind of OS-imposed coarseness as iOS's
     // BGProcessingTask, not a bug to work around.
     private fun scheduleOfflineSyncWork() {
-        val request = PeriodicWorkRequestBuilder<com.barikoi.barikoitrace.service.LocTraceDataService>(
-            15, TimeUnit.MINUTES
-        ).build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            OFFLINE_SYNC_WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request
-        )
+        try {
+            val request = PeriodicWorkRequestBuilder<com.barikoi.barikoitrace.service.LocTraceDataService>(
+                15, TimeUnit.MINUTES
+            ).build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                OFFLINE_SYNC_WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request
+            )
+        } catch (e: Exception) {
+            Log.d("LocTrace", "WorkManager not available: ${e.message}")
+        }
     }
 
     private fun cancelOfflineSyncWork() {
-        WorkManager.getInstance(context).cancelUniqueWork(OFFLINE_SYNC_WORK_NAME)
+        try {
+            WorkManager.getInstance(context).cancelUniqueWork(OFFLINE_SYNC_WORK_NAME)
+        } catch (e: Exception) {
+            Log.d("LocTrace", "WorkManager not available: ${e.message}")
+        }
     }
 
     private fun isServiceRunning(): Boolean {
