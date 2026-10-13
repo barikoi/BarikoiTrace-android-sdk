@@ -13,10 +13,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
 import com.barikoi.barikoitrace.BarikoiTrace
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.TraceModeSource
 import com.barikoi.barikoitrace.model.TraceError
 import com.barikoi.barikoitrace.model.TraceUser
+import kotlinx.coroutines.launch
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
@@ -95,6 +98,14 @@ class DemoActivity : AppCompatActivity() {
             log("URLs set: base=$base, mqtt=$mqtt")
         }
 
+        findViewById<MaterialButton>(R.id.btnSetNotification).setOnClickListener {
+            val title = findViewById<TextInputEditText>(R.id.inputNotificationTitle).text.toString().trim().ifEmpty { null }
+            val content = findViewById<TextInputEditText>(R.id.inputNotificationContent).text.toString().trim().ifEmpty { null }
+            BarikoiTrace.setNotificationConfig(title, content)
+            log("Notification updated: title=$title, content=$content")
+            toast("Notification updated")
+        }
+
         // --- User ---
         val inputPhone = findViewById<TextInputEditText>(R.id.inputPhone)
         val inputName = findViewById<TextInputEditText>(R.id.inputName)
@@ -107,34 +118,69 @@ class DemoActivity : AppCompatActivity() {
         }
 
         findViewById<MaterialButton>(R.id.btnSetUser).setOnClickListener {
-            val phone = inputPhone.text.toString()
-            val name = inputName.text.toString()
+            val phone = inputPhone.text.toString().trim()
+            val name = inputName.text.toString().trim()
             if (phone.isEmpty()) {
                 toast("Enter phone number")
                 return@setOnClickListener
             }
-            log("Creating user: $name, $phone")
-            BarikoiTrace.setOrCreateUser(name, null, phone, object : BarikoiTrace.TraceUserCallback {
-                override fun onSuccess(user: TraceUser) {
-                    log("User set: ${user.name} (${user.userId})")
-                    tvStatus.text = "User: ${user.name}"
-                    toast("User set: ${user.name}")
+            log("Setting user: $name, $phone")
+            lifecycleScope.launch {
+                try {
+                    val user = BarikoiTrace.setOrCreateUser(phone)
+                    if (name.isNotEmpty()) {
+                        BarikoiTrace.updateUserName(name)
+                    }
+                    val finalUser = BarikoiTrace.getUser() ?: user
+                    log("User set: ${finalUser.name} (${finalUser.userId})")
+                    tvStatus.text = "User: ${finalUser.name ?: finalUser.userId}"
+                    toast("User set: ${finalUser.name ?: finalUser.userId}")
+                } catch (e: Exception) {
+                    log("User error: ${e.message}")
+                    toast(e.message ?: "Failed to set user")
                 }
+            }
+        }
 
-                override fun onFailure(error: TraceError) {
-                    log("User error: ${error.message}")
-                    toast(error.message)
+        findViewById<MaterialButton>(R.id.btnUpdateName).setOnClickListener {
+            val name = inputName.text.toString().trim()
+            if (name.isEmpty()) {
+                toast("Enter name")
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                try {
+                    val user = BarikoiTrace.updateUserName(name)
+                    log("User name updated to: ${user.name}")
+                    tvStatus.text = "User: ${user.name}"
+                    toast("Name updated: ${user.name}")
+                } catch (e: Exception) {
+                    log("Update name error: ${e.message}")
+                    toast(e.message ?: "Failed to update name")
                 }
-            })
+            }
+        }
+
+        val switchTrip = findViewById<SwitchMaterial>(R.id.switchTrip)
+        val btnToggleTracking = findViewById<MaterialButton>(R.id.btnToggleTracking)
+
+        findViewById<MaterialButton>(R.id.btnLogout).setOnClickListener {
+            BarikoiTrace.logout()
+            inputPhone.setText("")
+            inputName.setText("")
+            tvStatus.text = "Logged out"
+            btnToggleTracking.text = "Start"
+            btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF43bc5d.toInt())
+            switchTrip.isChecked = false
+            updateTripStatus()
+            log("Logged out: tracking stopped, local trip ended, offline queue purged")
+            toast("Logged out")
         }
 
         // --- Tracking ---
         val inputInterval = findViewById<TextInputEditText>(R.id.inputInterval)
         val inputDistance = findViewById<TextInputEditText>(R.id.inputDistance)
         val inputAccuracy = findViewById<TextInputEditText>(R.id.inputAccuracy)
-
-        val switchTrip = findViewById<SwitchMaterial>(R.id.switchTrip)
-        val btnToggleTracking = findViewById<MaterialButton>(R.id.btnToggleTracking)
 
         if (BarikoiTrace.isLocationTracking() || BarikoiTrace.isOnTrip()) {
             btnToggleTracking.text = "Stop"
@@ -156,8 +202,10 @@ class DemoActivity : AppCompatActivity() {
             } else {
                 val mode = buildTraceMode(spinnerMode, inputInterval, inputDistance, inputAccuracy)
                 val withTrip = switchTrip.isChecked
-                log("Starting tracking: $mode, withTrip=$withTrip")
-                BarikoiTrace.startTracking(mode, withTrip)
+                val spinnerSource = findViewById<Spinner>(R.id.spinnerSource)
+                val source = if (spinnerSource.selectedItemPosition == 1) TraceModeSource.REMOTE else TraceModeSource.LOCAL
+                log("Starting tracking: $mode, withTrip=$withTrip, source=$source")
+                BarikoiTrace.startTracking(mode, withTrip, source)
                 tvStatus.text = "Tracking: active"
                 btnToggleTracking.text = "Stop"
                 btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE53935.toInt())
