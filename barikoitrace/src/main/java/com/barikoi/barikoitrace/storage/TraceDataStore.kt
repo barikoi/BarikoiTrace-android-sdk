@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.barikoi.barikoitrace.TraceMode
+import com.barikoi.barikoitrace.TraceModeSource
 import com.barikoi.barikoitrace.api.MqttManager
 import com.barikoi.barikoitrace.model.TraceUser
 import kotlinx.coroutines.flow.first
@@ -84,6 +85,8 @@ class TraceDataStore private constructor(context: Context) {
         val DEBUG = booleanPreferencesKey("debug")
         val NOTIFICATION_TITLE = stringPreferencesKey("notification_title")
         val NOTIFICATION_CONTENT = stringPreferencesKey("notification_content")
+        val TRACE_MODE_SOURCE = stringPreferencesKey("trace_mode_source")
+        val TRACE_MODE_REMOTE = booleanPreferencesKey("trace_mode_remote")
     }
 
     init {
@@ -118,6 +121,8 @@ class TraceDataStore private constructor(context: Context) {
                 cache[Keys.DEBUG.name] = prefs[Keys.DEBUG] ?: false
                 prefs[Keys.NOTIFICATION_TITLE]?.let { cache[Keys.NOTIFICATION_TITLE.name] = it }
                 prefs[Keys.NOTIFICATION_CONTENT]?.let { cache[Keys.NOTIFICATION_CONTENT.name] = it }
+                cache[Keys.TRACE_MODE_SOURCE.name] = prefs[Keys.TRACE_MODE_SOURCE] ?: TraceModeSource.LOCAL.name
+                cache[Keys.TRACE_MODE_REMOTE.name] = prefs[Keys.TRACE_MODE_REMOTE] ?: false
             }
         }
     }
@@ -180,16 +185,20 @@ class TraceDataStore private constructor(context: Context) {
     // these need no cache layer of their own.
     suspend fun setUser(user: TraceUser) {
         secure.putString(SecureKeys.USER_ID, user.userId)
+        user.name?.let { secure.putString(SecureKeys.USER_NAME, it) }
         user.phone?.let { secure.putString(SecureKeys.USER_PHONE, it) }
         user.companyId?.let { secure.putString(SecureKeys.USER_COMPANY, it) }
         user.group?.let { secure.putString(SecureKeys.USER_GROUP, it) }
         secure.putLong(SecureKeys.USER_UPDATED_AT, user.updatedAt)
     }
 
+    suspend fun updateUserName(name: String) = secure.putString(SecureKeys.USER_NAME, name)
+
     fun getUser(): TraceUser? {
         val userId = secure.getString(SecureKeys.USER_ID) ?: return null
         return TraceUser(
             userId = userId,
+            name = secure.getString(SecureKeys.USER_NAME),
             phone = secure.getString(SecureKeys.USER_PHONE),
             companyId = secure.getString(SecureKeys.USER_COMPANY),
             group = secure.getString(SecureKeys.USER_GROUP),
@@ -200,7 +209,7 @@ class TraceDataStore private constructor(context: Context) {
     fun getUserId(): String? = secure.getString(SecureKeys.USER_ID)
 
     suspend fun clearUser() = secure.remove(
-        SecureKeys.USER_ID,
+        SecureKeys.USER_ID, SecureKeys.USER_NAME,
         SecureKeys.USER_PHONE, SecureKeys.USER_COMPANY, SecureKeys.USER_GROUP,
         SecureKeys.USER_UPDATED_AT
     )
@@ -280,6 +289,7 @@ class TraceDataStore private constructor(context: Context) {
         cache[Keys.PING_SYNC_INTERVAL.name] = mode.pingSyncInterval
         cache[Keys.TRACKING_TYPE.name] = mode.trackingMode.option
         cache[Keys.DEBUG.name] = mode.debug
+        cache[Keys.TRACE_MODE_REMOTE.name] = false
         // `getTraceMode()` reads `offline` back out, but this method never
         // wrote it — a mode built with `.setOfflineSync(false)` was silently
         // ignored. Written and read on the same key now, and that key is the
@@ -295,6 +305,7 @@ class TraceDataStore private constructor(context: Context) {
             it[Keys.TRACKING_TYPE] = mode.trackingMode.option
             it[Keys.DEBUG] = mode.debug
             it[Keys.MODE_OFFLINE_SYNC] = mode.offline
+            it[Keys.TRACE_MODE_REMOTE] = false
         }
 
         // A caller-supplied daily window is persisted here too. Only
@@ -373,18 +384,33 @@ class TraceDataStore private constructor(context: Context) {
     fun getTrackingType(): Int = getInt(Keys.TRACKING_TYPE)
     fun getUpdateInterval(): Int = getInt(Keys.UPDATE_INTERVAL)
 
+    // --- TraceModeSource ---
+    suspend fun setTraceModeSource(source: TraceModeSource) = putAndCache(Keys.TRACE_MODE_SOURCE, source.name)
+
+    fun getTraceModeSource(): TraceModeSource {
+        val name = getString(Keys.TRACE_MODE_SOURCE) ?: return TraceModeSource.LOCAL
+        return try { TraceModeSource.valueOf(name) } catch (_: Exception) { TraceModeSource.LOCAL }
+    }
+
+    suspend fun setTraceModeFromRemote(mode: TraceMode) {
+        setTraceModeWithTiming(mode)
+        putAndCache(Keys.TRACE_MODE_REMOTE, true)
+    }
+
+    fun isTraceModeFromRemote(): Boolean = getBoolean(Keys.TRACE_MODE_REMOTE)
+
     // MODE_OFFLINE_SYNC belongs to the mode, so it clears with it — otherwise
     // a mode with `offline == false` would keep the durable queue disabled
     // after the mode itself was cleared.
     suspend fun clearTraceMode() = removeAndCache(
         Keys.DESIRED_ACCURACY, Keys.UPDATE_INTERVAL, Keys.DISTANCE_FILTER,
         Keys.STOP_DURATION, Keys.ACCURACY_FILTER, Keys.PING_SYNC_INTERVAL,
-        Keys.TRACKING_TYPE, Keys.DEBUG, Keys.MODE_OFFLINE_SYNC
+        Keys.TRACKING_TYPE, Keys.DEBUG, Keys.MODE_OFFLINE_SYNC, Keys.TRACE_MODE_REMOTE
     )
 
     suspend fun clearTraceModeWithTiming() {
         clearTraceMode()
-        removeAndCache(Keys.START_TIME, Keys.END_TIME)
+        removeAndCache(Keys.START_TIME, Keys.END_TIME, Keys.TRACE_MODE_SOURCE)
     }
 
     // --- Notification Config ---
@@ -408,6 +434,7 @@ class TraceDataStore private constructor(context: Context) {
     suspend fun stopSdkTracking() {
         putAndCache(Keys.SDK_TRACKING, false)
         clearTraceMode()
+        removeAndCache(Keys.TRACE_MODE_SOURCE)
     }
 
     companion object {

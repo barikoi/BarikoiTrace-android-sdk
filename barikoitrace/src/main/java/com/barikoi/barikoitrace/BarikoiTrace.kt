@@ -120,10 +120,17 @@ object BarikoiTrace {
         setOrCreateUser(phone)
 
     @JvmStatic
+    suspend fun updateUserName(name: String): TraceUser =
+        getInstance().updateUserName(name)
+
+    @JvmStatic
     fun getUser(): TraceUser? = getInstance().getUser()
 
     @JvmStatic
     fun getUserId(): String? = getInstance().getUserId()
+
+    @JvmStatic
+    fun logout() = getInstance().logout()
 
     // --- Permissions & Settings ---
 
@@ -175,6 +182,10 @@ object BarikoiTrace {
     @JvmStatic
     fun startTracking(traceMode: TraceMode, withTrip: Boolean) =
         getInstance().startTracking(traceMode, withTrip)
+
+    @JvmStatic
+    fun startTracking(traceMode: TraceMode, withTrip: Boolean, source: TraceModeSource) =
+        getInstance().startTracking(traceMode, withTrip, source)
 
     @JvmStatic
     fun stopTracking() = getInstance().stopTracking()
@@ -258,6 +269,18 @@ object BarikoiTrace {
         name: String?, email: String?, phone: String,
         callback: TraceUserCallback
     ) = setOrCreateUser(phone, callback)
+
+    @JvmStatic
+    fun updateUserName(name: String, callback: TraceUserCallback) {
+        scope.launch {
+            try {
+                val user = updateUserName(name)
+                callback.onSuccess(user)
+            } catch (e: Exception) {
+                callback.onFailure(asTraceError(e, "USER_ERROR"))
+            }
+        }
+    }
 
     @JvmStatic
     fun updateCurrentLocation(callback: TraceLocationUpdateCallback) {

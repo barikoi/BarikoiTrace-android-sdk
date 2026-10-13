@@ -38,6 +38,8 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         private const val TAG = "LocTraceService"
         private const val CHANNEL_ID = "BarikoiTrace"
         private const val NOTIFICATION_ID = 1
+        const val ACTION_UPDATE_USER_NAME = "com.barikoi.barikoitrace.action.UPDATE_USER_NAME"
+        const val ACTION_TRACE_MODE_CHANGED = "com.barikoi.barikoitrace.action.TRACE_MODE_CHANGED"
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -58,6 +60,16 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureForegroundStarted()
 
+        if (intent?.action == ACTION_UPDATE_USER_NAME) {
+            handleUpdateUserName()
+            return START_STICKY
+        }
+
+        if (intent?.action == ACTION_TRACE_MODE_CHANGED) {
+            handleTraceModeChanged()
+            return START_STICKY
+        }
+
         try {
             dataStore = TraceDataStore(this)
             locationEngine = LocationEngine(this)
@@ -75,7 +87,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     Log.e(TAG, "No MQTT credentials set — call BarikoiTrace.initialize(context, apiKey, mqttUsername, mqttPassword) before starting tracking")
                 } else {
                     initializeMqtt(
-                        mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "", null,
+                        mqttUrl, user.userId, uuid, user.companyId ?: "", user.group ?: "", user.name,
                         mqttUsername, mqttPassword
                     )
                 }
@@ -142,7 +154,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
     override fun onDestroy() {
         // Send final location with trip_status "completed" before tearing down MQTT
-        val tripId = dataStore.getLocalTripId()
+        val tripId = if (::dataStore.isInitialized) dataStore.getLocalTripId() else null
         if (tripId != null) {
             val location = lastLocation
             if (location != null && mqttManager?.isConnected() == true) {
@@ -232,6 +244,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                     // shape now carries the same fields the live-publish
                     // path does, whenever they're known at write time.
                     user?.companyId?.takeIf { it.isNotBlank() }?.let { addProperty("company_id", it) }
+                    user?.name?.takeIf { it.isNotBlank() }?.let { addProperty("user_name", it) }
                     tripId?.let {
                         addProperty("trip_id", it)
                         addProperty("trip_status", "active")
@@ -289,6 +302,38 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         }
     }
 
+    private fun handleUpdateUserName() {
+        if (!::dataStore.isInitialized) dataStore = TraceDataStore(this)
+        val name = dataStore.getUser()?.name
+        val mqtt = mqttManager
+        if (mqtt == null) {
+            Log.w(TAG, "updateUserName action ignored - MQTT not initialized")
+            return
+        }
+        if (name.isNullOrBlank()) {
+            Log.w(TAG, "updateUserName action ignored - no stored user name")
+            return
+        }
+        mqtt.updateUserName(name)
+        BarikoiTrace.notifyLog("INFO", TAG, "MQTT user name updated to $name")
+    }
+
+    private fun handleTraceModeChanged() {
+        try {
+            if (!::dataStore.isInitialized) dataStore = TraceDataStore(this)
+            if (!::locationEngine.isInitialized) locationEngine = LocationEngine(this)
+            val traceMode = dataStore.getTraceMode()
+            // startLocationUpdates stops the previous request first, so this safely replaces it
+            locationEngine.startLocationUpdates(traceMode, this)
+            BarikoiTrace.notifyLog(
+                "INFO", TAG,
+                "Trace mode re-applied: interval=${traceMode.updateInterval}s distance=${traceMode.distanceFilter}m accuracyFilter=${traceMode.accuracyFilter}m"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error applying new trace mode", e)
+        }
+    }
+
     // --- MQTT ---
 
     private fun initializeMqtt(
@@ -296,6 +341,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         companyId: String, groupId: String, userName: String?,
         mqttUsername: String, mqttPassword: String
     ) {
+        mqttManager?.destroy()
         mqttManager = MqttManager(
             this, serverUri, userId, companyId, groupId, uuid,
             callback = object : MqttManager.MqttStatusCallback {
@@ -376,6 +422,9 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                             // onLocationReceived's offline branch above).
                             if (!locJson.has("company_id")) {
                                 user?.companyId?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("company_id", it) }
+                            }
+                            if (!locJson.has("user_name")) {
+                                user?.name?.takeIf { it.isNotBlank() }?.let { locJson.addProperty("user_name", it) }
                             }
                             mqtt.publishLocationJson(locJson)
                         } catch (_: Exception) {}

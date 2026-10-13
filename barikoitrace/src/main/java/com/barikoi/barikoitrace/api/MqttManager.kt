@@ -27,7 +27,7 @@ class MqttManager(
     private val groupId: String,
     private val uuid: String,
     private val callback: MqttStatusCallback? = null,
-    private val userName: String? = null,
+    private var userName: String? = null,
     // Required now — was a hardcoded companion-object constant
     // ("rilus"/"r1lu5") shared by every consumer of this library. Caller
     // (LocTraceForegroundService) reads the real per-app/per-environment
@@ -224,32 +224,38 @@ class MqttManager(
         }, delay)
     }
 
+    internal fun buildLocationJson(
+        location: Location,
+        tripId: String? = null,
+        tripStatus: String = "active"
+    ): JsonObject {
+        return JsonObject().apply {
+            addProperty("latitude", location.latitude)
+            addProperty("longitude", location.longitude)
+            addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
+            addProperty("user_id", deviceId)
+            addProperty("company_id", companyId)
+            addProperty("speed", location.speed)
+            addProperty("bearing", location.bearing)
+            addProperty("altitude", location.altitude)
+            addProperty("accuracy", location.accuracy)
+            userName?.takeIf { it.isNotBlank() }?.let {
+                addProperty("user_name", it)
+            }
+            tripId?.let {
+                addProperty("trip_id", it)
+                addProperty("trip_status", tripStatus)
+            }
+        }
+    }
+
+    fun updateUserName(name: String?) {
+        userName = name
+    }
+
     fun publishLocation(location: Location, tripId: String? = null, tripStatus: String = "active") {
         try {
-            val locationData = JsonObject().apply {
-                addProperty("latitude", location.latitude)
-                addProperty("longitude", location.longitude)
-                // Was raw epoch-ms (location.time) here vs. a formatted UTC
-                // string on the offline-write/flush path — the two payload
-                // shapes silently disagreed on this field's type. Now uses
-                // the same DateTimeUtils formatting everywhere, matching
-                // what the iOS SDK standardized on (see its work plan's
-                // Phase 0 / defect carry-forward checklist).
-                addProperty("gpx_time", DateTimeUtils.getDateTimeLocal(location.time))
-                addProperty("user_id", deviceId)
-                addProperty("company_id", companyId)
-                addProperty("speed", location.speed)
-                addProperty("bearing", location.bearing)
-                addProperty("altitude", location.altitude)
-                addProperty("accuracy", location.accuracy)
-                userName?.takeIf { it.isNotBlank() }?.let {
-                    addProperty("user_name", it)
-                }
-                tripId?.let {
-                    addProperty("trip_id", it)
-                    addProperty("trip_status", tripStatus)
-                }
-            }
+            val locationData = buildLocationJson(location, tripId, tripStatus)
             Log.d(tag, "Publishing location: $locationData")
             publishMessage(channelTopic, locationData.toString(), 1, false)
         } catch (e: Exception) {
@@ -300,7 +306,7 @@ class MqttManager(
         client.removeCallback(mqttCallback)
         try {
             if (client.isConnected) {
-                client.disconnect(0, null, object : IMqttActionListener {
+                client.disconnect(1000, null, object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         Log.i(tag, "Disconnected from MQTT broker")
                     }
@@ -308,12 +314,15 @@ class MqttManager(
                         Log.e(tag, "Failed to disconnect", exception)
                     }
                 })
+            } else {
+                client.close()
             }
-            client.unregisterResources()
-            client.close()
+        } catch (e: IllegalArgumentException) {
+            Log.d(tag, "MQTT client already released: ${e.message}")
         } catch (e: Exception) {
             Log.e(tag, "Error during destroy", e)
         } finally {
+            client.unregisterResources()
             mqttClient = null
             isConnected = false
         }

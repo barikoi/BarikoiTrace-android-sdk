@@ -18,4 +18,7 @@ interface OfflineLocationDao {
 
     @Query("DELETE FROM offline_location WHERE id IN (SELECT id FROM offline_location ORDER BY id ASC LIMIT 100)")
     suspend fun deleteBatch(): Int
+
+    @Query("DELETE FROM offline_location")
+    suspend fun deleteAll()
 }
