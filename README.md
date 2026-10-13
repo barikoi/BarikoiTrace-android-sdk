@@ -52,7 +52,7 @@ App module:
 
 ```groovy
 dependencies {
-    implementation 'com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.1'
+    implementation 'com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.7.0'
 }
 ```
 
@@ -60,7 +60,7 @@ Kotlin DSL (`build.gradle.kts`):
 
 ```kotlin
 dependencies {
-    implementation("com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.1")
+    implementation("com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.7.0")
 }
 ```
 
@@ -72,7 +72,7 @@ installable:
 
 | What you write | What you get |
 |---|---|
-| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.1` | that exact tag — what you want in a shipped app |
+| `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.7.0` | that exact tag — what you want in a shipped app |
 | `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:dev-v4-SNAPSHOT` | latest commit on the `dev-v4` branch |
 | `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:f767158` | a specific commit, by short hash |
 | `com.github.barikoi.BarikoiTrace-android-sdk:barikoitrace:0.4.+` | latest `0.4.x` patch |

@@ -122,7 +122,7 @@ publishing {
             // 1.0.0 a minor bump is the breaking one.
             //
             // 0.4.1 adds BarikoiTrace.setApiKey (iOS parity; no breaking change).
-            version = "0.4.1"
+            version = "0.7.0"
 
             afterEvaluate {
                 from(components["release"])
