@@ -91,15 +91,13 @@ class TraceApiClient private constructor(context: Context) {
 
         val userJson = json.getAsJsonObject("user")
         val id = userJson.get("_id").asString
-        val userName = userJson.get("name").asString
-        val userEmail = userJson.get("email").asString
         val companies = userJson.getAsJsonArray("companies")
         if (companies.size() == 0) throw Exception("Company not found")
         val company = companies[0].asJsonObject.get("company_id").asString
         val group = companies[0].asJsonObject.get("group_id").asString
 
         val user = TraceUser(
-            userId = id, name = userName, email = userEmail,
+            userId = id, name = "", email = "",
             phone = phone, companyId = company, group = group
         )
         userId = user.userId
