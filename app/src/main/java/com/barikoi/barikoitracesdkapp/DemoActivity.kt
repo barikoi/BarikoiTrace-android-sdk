@@ -1,297 +1,404 @@
 package com.barikoi.barikoitracesdkapp
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.util.Log
+import android.provider.Settings
+import android.text.InputType
+import android.view.View
+import android.widget.AdapterView
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.barikoi.barikoitrace.BarikoiTrace
 import com.barikoi.barikoitrace.TraceMode
 import com.barikoi.barikoitrace.TraceModeSource
-import com.barikoi.barikoitrace.model.TraceError
 import com.barikoi.barikoitrace.model.TraceUser
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
+import androidx.core.content.edit
 
 class DemoActivity : AppCompatActivity() {
+    private lateinit var model: DemoViewModel
+    private var rendering = false
+    private var formInitialized = false
+    private var shownRevision = -1
+    private var shownUser: TraceUser? = null
+    private var shownLogs: List<String>? = null
+    private var pendingStart = false
+    private var externalRequest = false
+    private var restoredForm: Bundle? = null
+    private val permissionPreferences by lazy { getSharedPreferences("demo_permissions", MODE_PRIVATE) }
 
-    private lateinit var tvStatus: TextView
-    private lateinit var tvLog: TextView
-    private lateinit var logScrollView: ScrollView
-    private lateinit var tvTripStatus: TextView
-    private lateinit var spinnerMode: Spinner
-    private lateinit var spinnerSource: Spinner
-    private val logBuilder = StringBuilder()
+    private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        externalRequest = false
+        if (BarikoiTrace.isLocationPermissionsGranted()) {
+            model.notice("Location permission granted; approximate location is also supported.")
+            if (pendingStart) continueStart() else requestNotifications()
+        } else {
+            pendingStart = false
+            model.notice("Location access was denied. Use Permissions to try again or open app settings.")
+        }
+    }
+    private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        externalRequest = false
+        model.notice(if (granted) "Notifications enabled." else "Notifications denied; tracking can still run with a foreground service.")
+        if (pendingStart) continueStart()
+    }
+    private val backgroundPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        externalRequest = false
+        model.notice(if (granted) "Background location enabled." else "Background location was not granted.")
+    }
+    private val settingsResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        externalRequest = false
+        if (pendingStart) {
+            if (BarikoiTrace.isLocationPermissionsGranted() && BarikoiTrace.isLocationSettingsOn()) continueStart()
+            else {
+                pendingStart = false
+                model.notice("Tracking was not started. Enable location access and device location first.")
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_demo)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = true
+            isAppearanceLightNavigationBars = true
+        }
+        model = ViewModelProvider(this)[DemoViewModel::class.java]
+        pendingStart = savedInstanceState?.getBoolean("pending_start") ?: false
+        externalRequest = savedInstanceState?.getBoolean("external_request") ?: false
+        restoredForm = savedInstanceState
 
-        tvStatus = findViewById(R.id.tvStatus)
-        tvLog = findViewById(R.id.tvLog)
-        val logContainer = findViewById<ScrollView>(R.id.logScrollView)
-        logScrollView = logContainer
-        tvTripStatus = findViewById(R.id.tvTripStatus)
-        spinnerMode = findViewById(R.id.spinnerMode)
-        spinnerSource = findViewById(R.id.spinnerSource)
-
-        // --- Initialize SDK ---
-        BarikoiTrace.initialize(this, BuildConfig.API_KEY)
-        log("SDK initialized with API key from flavor")
-
-        // --- API Key ---
-        findViewById<ImageButton>(R.id.ivApiKey).setOnClickListener {
-            val input = EditText(this).apply {
-                hint = "Enter API Key"
-                setText("")
-                setSelection(text.length)
+        button(R.id.btnSetUser).setOnClickListener {
+            model.setUser(input(R.id.inputPhone).text.toString(), input(R.id.inputName).text.toString())
+        }
+        button(R.id.btnLogout).setOnClickListener {
+            AlertDialog.Builder(this).setTitle("Log out?")
+                .setMessage("This stops tracking and deletes the saved user, trip, and queued locations.")
+                .setPositiveButton("Log out") { _, _ -> model.logout() }
+                .setNegativeButton("Cancel", null).show()
+        }
+        button(R.id.btnSetUrl).setOnClickListener {
+            model.configureEndpoints(input(R.id.inputBaseUrl).text.toString(), input(R.id.inputMqttUrl).text.toString())
+        }
+        findViewById<ImageButton>(R.id.ivApiKey).setOnClickListener { showApiKeyDialog() }
+        button(R.id.btnToggleTracking).setOnClickListener {
+            val state = model.state.value
+            if (state.status?.serviceRunning == true || state.status?.trackingRequested == true) model.stop()
+            else {
+                pendingStart = true
+                continueStart()
             }
-            AlertDialog.Builder(this)
-                .setTitle("API Key")
-                .setView(input)
-                .setPositiveButton("Apply") { _, _ ->
-                    val newKey = input.text.toString().trim()
-                    if (newKey.isNotEmpty()) {
-                        BarikoiTrace.initialize(this@DemoActivity, newKey)
-                        log("API key updated and SDK re-initialized")
-                        toast("API key updated")
-                    } else {
-                        toast("API key cannot be empty")
-                    }
+        }
+        button(R.id.btnApplyMode).setOnClickListener { readMode()?.let(model::applyMode) }
+        button(R.id.btnRemoteSettings).setOnClickListener { model.refreshRemoteSettings() }
+        button(R.id.btnPermissions).setOnClickListener {
+            pendingStart = false
+            if (!BarikoiTrace.isLocationPermissionsGranted()) requestLocation() else requestNotifications(explicit = true)
+        }
+        button(R.id.btnBackgroundPermission).setOnClickListener { requestBackgroundAccess() }
+        button(R.id.btnBatterySettings).setOnClickListener {
+            AlertDialog.Builder(this).setTitle("Battery optimization")
+                .setMessage("An exemption may help long-running tracking. It does not replace location permission.")
+                .setPositiveButton("Open settings") { _, _ ->
+                    runCatching { BarikoiTrace.requestDisableBatteryOptimization(this) }
+                        .onFailure { model.notice("Battery exemption settings are unavailable on this device.") }
+                }.setNegativeButton("Cancel", null).show()
+        }
+        switch(R.id.switchLogging).setOnCheckedChangeListener { _, checked -> if (!rendering) model.setLogging(checked) }
+        switch(R.id.switchBroadcast).setOnCheckedChangeListener { _, checked -> if (!rendering) model.setBroadcasting(checked) }
+        button(R.id.btnClearLog).setOnClickListener { model.clearLogs() }
+        val selectionListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = updateModeControls()
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+        findViewById<Spinner>(R.id.spinnerMode).onItemSelectedListener = selectionListener
+        findViewById<Spinner>(R.id.spinnerSource).onItemSelectedListener = selectionListener
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { model.state.collect(::render) }
+                launch { BarikoiTrace.locationUpdates.collect(model::onLocation) }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (isActive) {
+                    model.refresh()
+                    delay(1_000.milliseconds)
                 }
-                .setNegativeButton("Cancel", null)
-                .show()
-        }
-
-        // --- Permissions ---
-        requestPermissionsIfNeeded()
-
-        // --- SDK Log Listener ---
-        BarikoiTrace.setLogListener(object : BarikoiTrace.TraceLogListener {
-            override fun onLog(level: String, tag: String, message: String) {
-                log("[$tag] $message")
-            }
-        })
-
-        // --- Server URL ---
-        val inputBaseUrl = findViewById<TextInputEditText>(R.id.inputBaseUrl)
-        val inputMqttUrl = findViewById<TextInputEditText>(R.id.inputMqttUrl)
-
-
-        findViewById<MaterialButton>(R.id.btnSetUrl).setOnClickListener {
-            val base = inputBaseUrl.text.toString()
-            val mqtt = inputMqttUrl.text.toString()
-            if (base.isNotEmpty()) BarikoiTrace.setBaseUrl(base)
-            if (mqtt.isNotEmpty()) BarikoiTrace.setMqttUrl(mqtt)
-            log("URLs set: base=$base, mqtt=$mqtt")
-        }
-
-        // --- User ---
-        val inputPhone = findViewById<TextInputEditText>(R.id.inputPhone)
-        val inputName = findViewById<TextInputEditText>(R.id.inputName)
-
-        val cachedUser = BarikoiTrace.getUser()
-        if (cachedUser?.phone != null) {
-            inputPhone.setText(cachedUser.phone)
-            inputName.setText(cachedUser.name)
-            log("Cached user: ${cachedUser.name} (${cachedUser.phone})")
-        }
-
-        findViewById<MaterialButton>(R.id.btnSetUser).setOnClickListener {
-            val phone = inputPhone.text.toString()
-            val name = inputName.text.toString()
-            if (phone.isEmpty()) {
-                toast("Enter phone number")
-                return@setOnClickListener
-            }
-            log("Creating user: $name, $phone")
-            BarikoiTrace.setOrCreateUser(name, null, phone, object : BarikoiTrace.TraceUserCallback {
-                override fun onSuccess(user: TraceUser) {
-                    log("User set: ${user.name} (${user.userId})")
-                    tvStatus.text = "User: ${user.name}"
-                    toast("User set: ${user.name}")
-
-                    lifecycleScope.launch {
-                        BarikoiTrace.updateUserName("hello world")
-                    }
-                }
-
-                override fun onFailure(error: TraceError) {
-                    log("User error: ${error.message}")
-                    toast(error.message)
-                }
-            })
-        }
-
-        // --- Tracking ---
-        val inputInterval = findViewById<TextInputEditText>(R.id.inputInterval)
-        val inputDistance = findViewById<TextInputEditText>(R.id.inputDistance)
-        val inputAccuracy = findViewById<TextInputEditText>(R.id.inputAccuracy)
-
-        val switchTrip = findViewById<SwitchMaterial>(R.id.switchTrip)
-        val btnToggleTracking = findViewById<MaterialButton>(R.id.btnToggleTracking)
-
-        if (BarikoiTrace.isLocationTracking() || BarikoiTrace.isOnTrip()) {
-            btnToggleTracking.text = "Stop"
-            btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE53935.toInt())
-            log("Tracking already active")
-        }
-        if (BarikoiTrace.isOnTrip()) {
-            switchTrip.isChecked = true
-        }
-
-        btnToggleTracking.setOnClickListener {
-            if (BarikoiTrace.isLocationTracking()) {
-                log("Stopping tracking")
-                BarikoiTrace.stopTracking()
-                tvStatus.text = "Tracking: stopped"
-                btnToggleTracking.text = "Start"
-                btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF43bc5d.toInt())
-                updateTripStatus()
-            } else {
-                val mode = buildTraceMode(spinnerMode, inputInterval, inputDistance, inputAccuracy)
-                val withTrip = switchTrip.isChecked
-                val source = if (spinnerSource.selectedItem.toString() == "REMOTE") TraceModeSource.REMOTE else TraceModeSource.LOCAL
-                log("Starting tracking: $mode, withTrip=$withTrip, source=$source")
-                BarikoiTrace.startTracking(mode, withTrip, source)
-                tvStatus.text = "Tracking: active"
-                btnToggleTracking.text = "Stop"
-                btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFFE53935.toInt())
-                updateTripStatus()
             }
         }
-
-        // --- Logout ---
-        findViewById<MaterialButton>(R.id.btnLogout).setOnClickListener {
-            log("Logging out")
-            BarikoiTrace.logout()
-            tvStatus.text = "Logged out"
-            inputPhone.setText("")
-            inputName.setText("")
-            btnToggleTracking.text = "Start"
-            btnToggleTracking.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF43bc5d.toInt())
-            updateTripStatus()
-            toast("Logged out")
-        }
-
-        // --- Broadcast ---
-        val switchBroadcast = findViewById<SwitchMaterial>(R.id.switchBroadcast)
-        switchBroadcast.setOnCheckedChangeListener { _, isChecked ->
-            BarikoiTrace.setBroadcastingEnabled(isChecked)
-            log("Broadcast: $isChecked")
-        }
-
-        // --- Trip ---
-        updateTripStatus()
-
-        // --- Clear Log ---
-        findViewById<MaterialButton>(R.id.btnClearLog).setOnClickListener {
-            logBuilder.clear()
-            tvLog.text = ""
-        }
     }
 
-    private fun buildTraceMode(
-        spinner: Spinner,
-        inputInterval: TextInputEditText,
-        inputDistance: TextInputEditText,
-        inputAccuracy: TextInputEditText
-    ): TraceMode {
-        val selected = spinner.selectedItem.toString()
+    override fun onResume() {
+        super.onResume()
+        if (pendingStart && !externalRequest) continueStart()
+    }
 
-        when (selected) {
-            "ACTIVE" -> return TraceMode.ACTIVE
-            "REACTIVE" -> return TraceMode.REACTIVE
-            "PASSIVE" -> return TraceMode.PASSIVE
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("pending_start", pendingStart)
+        outState.putBoolean("external_request", externalRequest)
+        listOf(R.id.inputInterval, R.id.inputDistance, R.id.inputAccuracy, R.id.inputBaseUrl, R.id.inputMqttUrl,
+            R.id.inputPhone, R.id.inputName).forEach { outState.putString("draft_$it", input(it).text.toString()) }
+        outState.putInt("draft_mode", findViewById<Spinner>(R.id.spinnerMode).selectedItemPosition)
+        outState.putInt("draft_source", findViewById<Spinner>(R.id.spinnerSource).selectedItemPosition)
+        outState.putBoolean("draft_offline", switch(R.id.switchOffline).isChecked)
+        outState.putBoolean("draft_trip", switch(R.id.switchTrip).isChecked)
+        outState.putInt("draft_revision", model.state.value.configurationRevision)
+        outState.putString("draft_user_id", model.state.value.user?.userId)
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun continueStart() {
+        if (externalRequest || !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
+        if (model.state.value.working) { pendingStart = false; return }
+        if (model.state.value.user == null) {
+            pendingStart = false
+            model.notice("Set a user online first. An already saved user can start offline.")
+            return
         }
-
-        val interval = inputInterval.text.toString().toIntOrNull() ?: 0
-        val distance = inputDistance.text.toString().toIntOrNull() ?: 0
-        val accuracy = inputAccuracy.text.toString().toIntOrNull() ?: 100
-
-        return TraceMode.Builder()
-            .setUpdateInterval(interval)
-            .setDistanceFilter(distance)
-            .setAccuracyFilter(accuracy)
-            .setDebugModeOn()
-            .build()
-    }
-
-    private fun updateTripStatus() {
-        val tripId = BarikoiTrace.getTripId()
-        tvTripStatus.text = if (tripId != null) "On trip: $tripId" else "No active trip"
-    }
-
-    private fun log(message: String) {
-        val time = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
-        val line = "[$time] $message\n"
-        Log.d("DemoActivity", message)
-        runOnUiThread {
-            logBuilder.append(line)
-            tvLog.text = logBuilder.toString()
-            logScrollView.post { logScrollView.fullScroll(ScrollView.FOCUS_DOWN) }
-        }
-    }
-
-    private fun toast(msg: String) {
-        runOnUiThread { Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() }
-    }
-
-    private fun requestPermissionsIfNeeded() {
-        if (!BarikoiTrace.isLocationPermissionsGranted()) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ),
-                10221
-            )
-        }
+        if (!BarikoiTrace.isLocationPermissionsGranted()) { requestLocation(); return }
         if (!BarikoiTrace.isLocationSettingsOn()) {
-            BarikoiTrace.requestLocationServices(this)
+            externalRequest = true
+            AlertDialog.Builder(this).setTitle("Enable device location")
+                .setMessage("Turn on device location, then return here to start tracking.")
+                .setPositiveButton("Open settings") { _, _ ->
+                    settingsResult.launch(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                }.setNegativeButton("Cancel") { _, _ -> externalRequest = false; pendingStart = false }
+                .setOnCancelListener { externalRequest = false; pendingStart = false }.show()
+            return
+        }
+        if (needsNotificationPermission() && !permissionPreferences.getBoolean("asked_notifications", false)) {
+            requestNotifications()
+            return
+        }
+        val mode = readMode() ?: run { pendingStart = false; return }
+        pendingStart = false
+        val source = if (findViewById<Spinner>(R.id.spinnerSource).selectedItem.toString() == "REMOTE") {
+            TraceModeSource.REMOTE
+        } else TraceModeSource.LOCAL
+        model.start(mode, switch(R.id.switchTrip).isChecked, source)
+    }
+
+    private fun requestLocation() {
+        val asked = permissionPreferences.getBoolean("asked_location", false)
+        if (asked && !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            externalRequest = true
+            AlertDialog.Builder(this).setTitle("Location permission")
+                .setMessage("Location access is disabled. You can enable it in app settings.")
+                .setPositiveButton("App settings") { _, _ -> openAppSettings() }
+                .setNegativeButton("Cancel") { _, _ -> externalRequest = false; pendingStart = false }
+                .setOnCancelListener { externalRequest = false; pendingStart = false }.show()
+        } else {
+            permissionPreferences.edit { putBoolean("asked_location", true) }
+            externalRequest = true
+            locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 10221) {
-            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                log("Location permission granted")
-                // Request notification permission after location permission is granted
-                BarikoiTrace.requestNotificationPermission(this)
-            } else {
-                log("Location permission denied")
-                toast("Location permission denied")
-            }
-        } else if (requestCode == 10226) {
-            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                log("Notification permission granted")
-            } else {
-                log("Notification permission denied")
-                toast("Notification permission denied")
-            }
-        }
+    private fun needsNotificationPermission(): Boolean = Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+
+    private fun requestNotifications(explicit: Boolean = false) {
+        if (needsNotificationPermission() && (explicit || !permissionPreferences.getBoolean("asked_notifications", false))) {
+            permissionPreferences.edit { putBoolean("asked_notifications", true) }
+            externalRequest = true
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else if (pendingStart) continueStart()
+        else model.notice("Location permission is available. Notification permission is ${if (needsNotificationPermission()) "disabled" else "available"}.")
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        BarikoiTrace.setLogListener(null)
+    private fun requestBackgroundAccess() {
+        if (!BarikoiTrace.isLocationPermissionsGranted()) {
+            model.notice("Grant foreground location using Permissions first."); return
+        }
+        if (Build.VERSION.SDK_INT < 29) { model.notice("A separate background permission is not needed on this Android version."); return }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            model.notice("Background location is already enabled."); return
+        }
+        AlertDialog.Builder(this).setTitle("Background location")
+            .setMessage("Allow background location only if you need eligible tracking starts while the app is not visible. On Android 11 or newer, choose Allow all the time in the app's location permission settings.")
+            .setPositiveButton("Continue") { _, _ ->
+                externalRequest = true
+                if (Build.VERSION.SDK_INT >= 30) openAppSettings()
+                else backgroundPermission.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }.setNegativeButton("Cancel", null).show()
     }
+
+    private fun openAppSettings() {
+        settingsResult.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            "package:$packageName".toUri()))
+    }
+
+    private fun showApiKeyDialog() {
+        val entry = EditText(this).apply {
+            hint = "API key"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            isSaveEnabled = false
+        }
+        val dialog = AlertDialog.Builder(this).setTitle("API key")
+            .setMessage("Changing the key logs out the saved user. The key is stored for this demo on this device.")
+            .setView(entry).setPositiveButton("Save", null).setNegativeButton("Cancel", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val key = entry.text.toString().trim()
+                if (key.isBlank()) entry.error = "API key cannot be empty"
+                else { model.configureApiKey(key); entry.text.clear(); dialog.dismiss() }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun readMode(): TraceMode? = try {
+        DemoInput.mode(findViewById<Spinner>(R.id.spinnerMode).selectedItem.toString(),
+            input(R.id.inputInterval).text.toString(), input(R.id.inputDistance).text.toString(),
+            input(R.id.inputAccuracy).text.toString(), switch(R.id.switchOffline).isChecked)
+    } catch (e: IllegalArgumentException) {
+        model.notice(e.message ?: "Check the tracking settings.")
+        null
+    }
+
+    private fun render(state: DemoState) {
+        val status = state.status
+        rendering = true
+        try {
+            if (status != null && !formInitialized) {
+                input(R.id.inputInterval).setText(status.mode.updateInterval.toString())
+                input(R.id.inputDistance).setText(status.mode.distanceFilter.toString())
+                input(R.id.inputAccuracy).setText(status.mode.accuracyFilter.toString())
+                switch(R.id.switchOffline).isChecked = status.offlineTracking
+                findViewById<Spinner>(R.id.spinnerSource).setSelection(if (status.source == TraceModeSource.REMOTE) 1 else 0)
+                formInitialized = true
+            }
+            if (status != null && shownRevision != state.configurationRevision) {
+                input(R.id.inputBaseUrl).setText(status.baseUrl)
+                input(R.id.inputMqttUrl).setText(status.mqttUrl)
+                shownRevision = state.configurationRevision
+            }
+            if (shownUser != state.user) {
+                input(R.id.inputPhone).setText(state.user?.phone.orEmpty())
+                input(R.id.inputName).setText(state.user?.name.orEmpty())
+                shownUser = state.user
+            }
+            if (status != null && restoredForm != null) {
+                val saved = restoredForm!!
+                // Preserve draft controls during rotation, but never restore a superseded endpoint change.
+                listOf(R.id.inputInterval, R.id.inputDistance, R.id.inputAccuracy).forEach { id ->
+                    saved.getString("draft_$id")?.let { input(id).setText(it) }
+                }
+                if (saved.getInt("draft_revision", -1) == state.configurationRevision) {
+                    listOf(R.id.inputBaseUrl, R.id.inputMqttUrl).forEach { id ->
+                        saved.getString("draft_$id")?.let { input(id).setText(it) }
+                    }
+                }
+                if (saved.getString("draft_user_id") == state.user?.userId) {
+                    listOf(R.id.inputPhone, R.id.inputName).forEach { id ->
+                        saved.getString("draft_$id")?.let { input(id).setText(it) }
+                    }
+                }
+                findViewById<Spinner>(R.id.spinnerMode).setSelection(saved.getInt("draft_mode", 0))
+                findViewById<Spinner>(R.id.spinnerSource).setSelection(saved.getInt("draft_source", 0))
+                switch(R.id.switchOffline).isChecked = saved.getBoolean("draft_offline", true)
+                switch(R.id.switchTrip).isChecked = saved.getBoolean("draft_trip", false)
+                restoredForm = null
+            }
+            text(R.id.tvStatus).text = when {
+                state.transition != null -> "Tracking: ${state.transition.lowercase()}…"
+                status == null -> "Tracking: checking…"
+                status.serviceRunning -> "Tracking service: running"
+                status.trackingRequested -> "Tracking: requested, service not running"
+                else -> "Tracking: stopped"
+            }
+            text(R.id.tvNotice).text = if (!state.hasApiKey) "Configure an API key using the key button.\n${state.notice}" else state.notice
+            text(R.id.tvConnection).text = when {
+                status == null -> "MQTT: checking…"
+                status.mqttConnected -> "MQTT: connected"
+                !status.serviceRunning -> "MQTT: disconnected (tracking stopped)"
+                else -> "MQTT: disconnected / connecting"
+            }
+            text(R.id.tvPendingUploads).text = "Pending uploads: ${status?.pendingLocationCount ?: "…"}"
+            text(R.id.tvTripStatus).text = status?.tripId?.let { "Trip: $it" } ?: "No active trip"
+            text(R.id.tvEffectiveMode).text = status?.let {
+                "Effective ${it.source}: interval ${it.mode.updateInterval}s, distance ${it.mode.distanceFilter}m, accuracy ${it.mode.accuracyFilter}m, offline storage ${if (it.offlineTracking) "on" else "off"}"
+            } ?: "Waiting for saved settings…"
+            text(R.id.tvLastLocation).text = state.lastLocation?.let {
+                String.format(Locale.US, "Last location: %.5f, %.5f (±%.0fm)", it.latitude, it.longitude, it.accuracy)
+            } ?: "Last location: none received (enable Broadcast)"
+            val running = status?.serviceRunning == true || status?.trackingRequested == true
+            val ready = status != null && !state.working
+            button(R.id.btnToggleTracking).apply {
+                text = state.transition?.let { "$it…" } ?: if (running) "Stop" else "Start"
+                isEnabled = ready && (running || state.user != null)
+                backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    if (running) 0xFFE53935.toInt() else 0xFF43BC5D.toInt()
+                )
+            }
+            button(R.id.btnSetUser).isEnabled = ready && !running && status?.tripId == null && state.hasApiKey
+            button(R.id.btnLogout).isEnabled = ready && (state.user != null || (status?.pendingLocationCount ?: 0) > 0 || status?.tripId != null)
+            button(R.id.btnSetUrl).isEnabled = ready && !running
+            findViewById<ImageButton>(R.id.ivApiKey).isEnabled = ready && !running
+            listOf(R.id.inputPhone, R.id.inputName, R.id.inputBaseUrl, R.id.inputMqttUrl).forEach {
+                input(it).isEnabled = ready && !running
+            }
+            button(R.id.btnApplyMode).isEnabled = ready && status?.serviceRunning == true && status.source == TraceModeSource.LOCAL
+            button(R.id.btnRemoteSettings).isEnabled = ready && state.user != null
+            findViewById<Spinner>(R.id.spinnerSource).isEnabled = ready && !running
+            switch(R.id.switchTrip).isEnabled = ready && !running
+            if (running && status?.tripId != null) switch(R.id.switchTrip).isChecked = true
+            status?.let {
+                switch(R.id.switchLogging).isChecked = it.logging
+                switch(R.id.switchBroadcast).isChecked = it.broadcasting
+            }
+            if (shownLogs != state.logs) {
+                text(R.id.tvLog).text = state.logs.joinToString("\n")
+                shownLogs = state.logs
+                findViewById<ScrollView>(R.id.logScrollView).post {
+                    if (!isDestroyed) findViewById<ScrollView>(R.id.logScrollView).fullScroll(ScrollView.FOCUS_DOWN)
+                }
+            }
+        } finally { rendering = false }
+        updateModeControls()
+    }
+
+    private fun updateModeControls() {
+        if (!::model.isInitialized) return
+        val state = model.state.value
+        val remoteRunning = state.status?.serviceRunning == true && state.status.source == TraceModeSource.REMOTE
+        val editable = !state.working && !remoteRunning
+        val custom = findViewById<Spinner>(R.id.spinnerMode).selectedItem.toString() == "CUSTOM"
+        findViewById<Spinner>(R.id.spinnerMode).isEnabled = editable
+        listOf(R.id.inputInterval, R.id.inputDistance, R.id.inputAccuracy).forEach { input(it).isEnabled = editable && custom }
+        switch(R.id.switchOffline).isEnabled = editable
+    }
+
+    private fun input(id: Int): TextInputEditText = findViewById(id)
+    private fun text(id: Int): TextView = findViewById(id)
+    private fun button(id: Int): MaterialButton = findViewById(id)
+    private fun switch(id: Int): SwitchMaterial = findViewById(id)
 }
