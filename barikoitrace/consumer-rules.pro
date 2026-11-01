@@ -10,6 +10,7 @@
 # --- Models ---
 
 -keep class com.barikoi.barikoitrace.model.TraceUser { *; }
+-keep class com.barikoi.barikoitrace.model.TraceStatus { *; }
 -keep class com.barikoi.barikoitrace.model.TraceError { *; }
 -keep class com.barikoi.barikoitrace.model.TraceError$* { *; }
 -keep class com.barikoi.barikoitrace.TraceMode { *; }
