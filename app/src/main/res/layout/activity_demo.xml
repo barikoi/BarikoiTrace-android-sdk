@@ -4,13 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F5F5F5"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginTop="48dp"
         android:padding="16dp">
 
         <!-- Header -->
@@ -40,9 +40,47 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Initialized"
+                    android:text="Tracking: checking…"
                     android:textColor="#666666"
                     android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvConnection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="MQTT: checking…" />
+
+                <TextView
+                    android:id="@+id/tvPendingUploads"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Pending uploads: …" />
+
+                <TextView
+                    android:id="@+id/tvNotice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:accessibilityLiveRegion="polite"
+                    android:text="Checking SDK state…" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPermissions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Permissions" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBackgroundPermission"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Background location" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnBatterySettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Battery settings" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -69,19 +107,20 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Server"
                         android:layout_weight="1"
+                        android:text="Server"
                         android:textColor="#43bc5d"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
                     <ImageButton
                         android:id="@+id/ivApiKey"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@android:color/transparent"
+                        android:contentDescription="Configure API key"
                         android:padding="5dp"
                         android:src="@drawable/key_vertical_24dp"
-                        android:layout_width="wrap_content"
-                        android:background="@android:color/transparent"
-                        android:layout_height="wrap_content"
                         app:tint="@color/common_google_signin_btn_text_light_pressed" />
 
 
@@ -89,11 +128,11 @@
 
 
                 <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="Base URL"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+                    android:hint="Base URL">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputBaseUrl"
@@ -103,11 +142,11 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="MQTT URL"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+                    android:hint="MQTT URL">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputMqttUrl"
@@ -151,26 +190,26 @@
                     android:textStyle="bold" />
 
                 <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="Phone Number"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+                    android:hint="Phone Number">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputPhone"
                         android:layout_width="match_parent"
-                        android:text=""
                         android:layout_height="wrap_content"
-                        android:inputType="phone" />
+                        android:inputType="phone"
+                        android:text="" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="Name (optional)"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+                    android:hint="Name (optional)">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/inputName"
@@ -199,7 +238,6 @@
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
 
 
         <!-- Tracking Config -->
@@ -231,12 +269,12 @@
                     android:orientation="horizontal">
 
                     <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:layout_marginEnd="4dp"
-                        android:hint="Interval (s)"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+                        android:layout_weight="1"
+                        android:hint="Interval (s)">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/inputInterval"
@@ -247,13 +285,13 @@
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:layout_marginStart="4dp"
                         android:layout_marginEnd="4dp"
-                        android:hint="Distance (m)"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+                        android:layout_weight="1"
+                        android:hint="Distance (m)">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/inputDistance"
@@ -264,12 +302,12 @@
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:layout_marginStart="4dp"
-                        android:hint="Accuracy (m)"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense">
+                        android:layout_weight="1"
+                        android:hint="Accuracy (m)">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/inputAccuracy"
@@ -285,6 +323,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="8dp"
+                    android:contentDescription="Tracking preset"
                     android:entries="@array/tracking_modes" />
 
                 <Spinner
@@ -292,6 +331,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="8dp"
+                    android:contentDescription="Tracking settings source"
                     android:entries="@array/trace_mode_sources" />
 
                 <LinearLayout
@@ -327,6 +367,44 @@
                     android:text="Start"
                     app:backgroundTint="#43bc5d"
                     app:cornerRadius="8dp" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchOffline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="Save disconnected locations" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnApplyMode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Apply mode while tracking" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRemoteSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Refresh remote settings" />
+
+                <TextView
+                    android:id="@+id/tvEffectiveMode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Waiting for saved settings…" />
+
+                <TextView
+                    android:id="@+id/tvLastLocation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Last location: none received (enable Broadcast)" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Queued uploads resume when tracking and MQTT are active. Offline trip completion is not queued." />
 
                 <TextView
                     android:id="@+id/tvTripStatus"
@@ -392,6 +470,12 @@
                         android:textColor="#333333"
                         android:textSize="11sp" />
                 </ScrollView>
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/switchLogging"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="SDK diagnostics" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
