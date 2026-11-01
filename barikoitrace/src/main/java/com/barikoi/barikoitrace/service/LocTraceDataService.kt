@@ -6,7 +6,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
-import android.util.Log
+import com.barikoi.barikoitrace.util.TraceLogger
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
@@ -24,6 +24,7 @@ class LocTraceDataService(
     context: Context,
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
+    private val logger by lazy { TraceLogger(applicationContext, TAG) }
 
     companion object {
         private const val TAG = "LocTraceDataService"
@@ -32,13 +33,15 @@ class LocTraceDataService(
     }
 
     override suspend fun doWork(): Result {
-        Log.d(TAG, "doWork: Started to work")
+        val dataStore = TraceDataStore(applicationContext)
+        if (!dataStore.isOfflineTracking()) return Result.success()
+        logger.d("doWork: Started to work")
         setForeground(createForegroundInfo())
 
         return try {
             val location = LocationEngine(applicationContext).getCurrentLocation()
             val db = OfflineLocationDb.getInstance(applicationContext)
-            val dataStore = TraceDataStore(applicationContext)
+            if (!dataStore.isOfflineTracking()) return Result.success()
             val tripId = dataStore.getLocalTripId()
             val json = JsonObject().apply {
                 addProperty("latitude", location.latitude)
@@ -53,11 +56,13 @@ class LocTraceDataService(
                     addProperty("trip_status", "active")
                 }
             }
-            db.locationDao().insert(OfflineLocationEntity(json = json.toString()))
-            Log.d(TAG, "Location saved offline for MQTT sync")
+            if (dataStore.isOfflineTracking()) {
+                db.locationDao().insert(OfflineLocationEntity(json = json.toString()))
+            }
+            logger.d("Location saved offline for MQTT sync")
             Result.success()
         } catch (e: Exception) {
-            Log.e(TAG, "Could not get location", e)
+            logger.e("Could not get location", e)
             Result.failure()
         }
     }
