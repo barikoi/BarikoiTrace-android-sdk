@@ -4,7 +4,11 @@ import android.Manifest
 import android.app.Application
 import android.content.Context
 import android.location.LocationManager
+import android.location.Location
 import androidx.test.core.app.ApplicationProvider
+import com.barikoi.barikoitrace.api.TraceApiClient
+import com.barikoi.barikoitrace.api.TraceApiService
+import com.barikoi.barikoitrace.location.LocationEngine
 import com.barikoi.barikoitrace.model.TraceUser
 import com.barikoi.barikoitrace.service.LocTraceForegroundService
 import com.barikoi.barikoitrace.storage.OfflineLocationDb
@@ -12,9 +16,20 @@ import com.barikoi.barikoitrace.storage.OfflineLocationEntity
 import com.barikoi.barikoitrace.storage.TraceDataStore
 import com.barikoi.barikoitrace.util.NetworkChecker
 import com.google.common.truth.Truth.assertThat
+import com.google.gson.JsonParser
+import io.mockk.coEvery
+import io.mockk.mockk
 import io.mockk.every
 import io.mockk.mockkObject
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
+import retrofit2.Response
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,6 +70,114 @@ class LocTraceManagerTest {
         while (System.currentTimeMillis() < deadline) {
             if (condition()) return
             Thread.sleep(20)
+        }
+    }
+
+    @Test
+    fun authenticateImmediatelyAfterInitialize_waitsForApiClientReadiness() {
+        assertAuthenticationWaitsForInitialization(previousKey = "", keys = listOf("new-key"))
+    }
+
+    @Test
+    fun authenticateDuringReinitialization_usesNewKeyInsteadOfPersistedKey() {
+        assertAuthenticationWaitsForInitialization(previousKey = "old-key", keys = listOf("new-key"))
+    }
+
+    @Test
+    fun queuedInitializations_applyInOrderAndAuthenticateWithLatestKey() {
+        assertAuthenticationWaitsForInitialization(previousKey = "old-key", keys = listOf("first-key", "latest-key"))
+    }
+
+    @Test
+    fun failedInitialization_isReportedAndCanBeRetried() = runBlocking {
+        dataStore.clearUser()
+        dataStore.stopSdkTracking()
+        val apiClient = TraceApiClient.getInstance(ApplicationProvider.getApplicationContext<Context>())
+        manager.authenticator = { _, _, phone -> TraceUser(userId = "u1", phone = phone) }
+        mockkObject(NetworkChecker) {
+            every { NetworkChecker.isNetworkAvailable(any()) } returns true
+            mockkObject(apiClient) {
+                every { apiClient.setApiKey("bad-key") } throws IOException("Initialization failed")
+                manager.initialize("bad-key")
+                try {
+                    manager.setOrCreateUser("Test", null, "01700000000")
+                    throw AssertionError("Expected initialization failure")
+                } catch (e: IOException) {
+                    assertThat(e.message).isEqualTo("Initialization failed")
+                }
+                manager.initialize("good-key")
+                assertThat(manager.setOrCreateUser("Test", null, "01700000000").userId).isEqualTo("u1")
+                assertThat(dataStore.getApiKey()).isEqualTo("good-key")
+            }
+        }
+    }
+
+    @Test
+    fun initialize_preservesExplicitLoggingOptOut() = runBlocking {
+        dataStore.stopSdkTracking()
+        dataStore.clearUser()
+        dataStore.setUser(TraceUser(userId = "u1", phone = "01700000000"))
+        dataStore.setLogging(true)
+        manager.setLoggingEnabled(false)
+        mockkObject(NetworkChecker) {
+            every { NetworkChecker.isNetworkAvailable(any()) } returns true
+            manager.initialize("test-key")
+            manager.setOrCreateUser(null, null, "01700000000")
+        }
+        assertThat(dataStore.isLogging()).isFalse()
+    }
+
+    private fun assertAuthenticationWaitsForInitialization(previousKey: String, keys: List<String>) = runBlocking {
+        dataStore.clearUser()
+        dataStore.stopSdkTracking()
+        dataStore.setApiKey(previousKey)
+        val apiClient = TraceApiClient.getInstance(ApplicationProvider.getApplicationContext<Context>())
+        apiClient.setApiKey(previousKey)
+        val serviceField = TraceApiClient::class.java.getDeclaredField("apiService").apply { isAccessible = true }
+        val originalService = serviceField.get(apiClient)
+        val apiService = mockk<TraceApiService>()
+        serviceField.set(apiClient, apiService)
+        var sentKey: String? = null
+        coEvery { apiService.authenticate(any(), any()) } coAnswers {
+            sentKey = secondArg<com.google.gson.JsonObject>().get("api_key").asString
+            Response.success(JsonParser.parseString("""{
+                "user":{"_id":"u1","companies":[{"company_id":"c1","group_id":"g1"}]}
+            }""").asJsonObject)
+        }
+        manager.authenticator = { name, email, phone -> apiClient.authenticate(name, email, phone) }
+        val initializationStarted = CountDownLatch(1)
+        val allowInitialization = CountDownLatch(1)
+        try {
+            mockkObject(NetworkChecker) {
+                every { NetworkChecker.isNetworkAvailable(any()) } returns true
+                mockkObject(apiClient) {
+                    every { apiClient.setApiKey(keys.first()) } answers {
+                        initializationStarted.countDown()
+                        check(allowInitialization.await(5, TimeUnit.SECONDS)) { "Initialization gate timed out" }
+                        callOriginal()
+                    }
+                    manager.initialize(keys.first())
+                    check(initializationStarted.await(5, TimeUnit.SECONDS)) { "Initialization did not start" }
+                    keys.drop(1).forEach { manager.initialize(it) }
+                    try {
+                        val authentication = async(start = CoroutineStart.UNDISPATCHED) {
+                            manager.setOrCreateUser("Test", null, "01700000000")
+                        }
+                        assertThat(authentication.isCompleted).isFalse()
+                        assertThat(sentKey).isNull()
+                        allowInitialization.countDown()
+                        assertThat(authentication.await().userId).isEqualTo("u1")
+                        assertThat(sentKey).isEqualTo(keys.last())
+                        assertThat(dataStore.getApiKey()).isEqualTo(keys.last())
+                        assertThat(dataStore.getDeviceToken()).isNotNull()
+                    } finally {
+                        allowInitialization.countDown()
+                    }
+                }
+            }
+        } finally {
+            allowInitialization.countDown()
+            serviceField.set(apiClient, originalService)
         }
     }
 
@@ -129,6 +252,44 @@ class LocTraceManagerTest {
         val retrieved = dataStore.getTraceMode()
         assertThat(retrieved).isNotNull()
         assertThat(retrieved!!.updateInterval).isEqualTo(10)
+    }
+
+    @Test
+    fun setTraceModeWhileRunning_persistsModeAndSendsUpdateWithoutStoppingTrip() {
+        assertRuntimeModeUpdate(isRunning = true)
+    }
+
+    @Test
+    fun setTraceModeWhileStopped_savesModeWithoutStartingService() {
+        assertRuntimeModeUpdate(isRunning = false)
+    }
+
+    private fun assertRuntimeModeUpdate(isRunning: Boolean) = runBlocking {
+        dataStore.setTraceMode(TraceMode.ACTIVE)
+        dataStore.setSdkTracking(isRunning)
+        dataStore.setLocalTripId("ongoing-trip")
+        manager.serviceRunningChecker = { isRunning }
+        val newMode = TraceMode.PASSIVE.copy(distanceFilter = 250, accuracyFilter = 150)
+        manager.setTraceMode(newMode)
+        val scope = LocTraceManager::class.java.getDeclaredField("scope")
+            .apply { isAccessible = true }.get(manager) as CoroutineScope
+        scope.coroutineContext[Job]!!.children.toList().joinAll()
+        val saved = dataStore.getTraceMode()
+        assertThat(saved.updateInterval).isEqualTo(0)
+        assertThat(saved.distanceFilter).isEqualTo(250)
+        assertThat(saved.accuracyFilter).isEqualTo(150)
+        assertThat(dataStore.getLocalTripId()).isEqualTo("ongoing-trip")
+        assertThat(dataStore.isSdkTracking()).isEqualTo(isRunning)
+        val shadowApp = Shadows.shadowOf(ApplicationProvider.getApplicationContext<Context>() as Application)
+        val intent = shadowApp.nextStartedService
+        if (isRunning) {
+            assertThat(intent?.action).isEqualTo(LocTraceForegroundService.ACTION_TRACE_MODE_CHANGED)
+            assertThat(intent?.component?.className).isEqualTo(LocTraceForegroundService::class.java.name)
+        } else {
+            assertThat(intent).isNull()
+        }
+        assertThat(shadowApp.nextStoppedService).isNull()
+        assertThat(shadowApp.peekNextStartedService()).isNull()
     }
 
     @Test
@@ -366,6 +527,162 @@ class LocTraceManagerTest {
 
     // --- User switch & logout ---
 
+    @Test
+    fun configureEndpoints_validatesBothBeforeChangingUserOrConfiguration() = runBlocking {
+        manager.serviceRunningChecker = { false }
+        dataStore.setSdkTracking(false)
+        dataStore.setBaseUrl("https://original.example/api/v1/")
+        dataStore.setUser(TraceUser(userId = "original", phone = "01700000000"))
+        try {
+            manager.configureEndpoints("https://new.example/api/v1/", "tcp://user:secret@broker.example:1883")
+            throw AssertionError("Expected invalid broker URL")
+        } catch (_: IllegalArgumentException) {}
+        assertThat(dataStore.getBaseUrl()).isEqualTo("https://original.example/api/v1/")
+        assertThat(dataStore.getUserId()).isEqualTo("original")
+    }
+
+    @Test
+    fun configureEndpoints_waitsForSavedConfigurationAndClearsUserForChangedBase() = runBlocking {
+        manager.serviceRunningChecker = { false }
+        dataStore.setSdkTracking(false)
+        dataStore.setBaseUrl("https://original.example/api/v1/")
+        dataStore.setUser(TraceUser(userId = "original", phone = "01700000000"))
+        seedOfflineRows()
+        manager.configureEndpoints(" https://new.example/api/v1 ", "tcp://broker.example:1883")
+        val status = manager.getTrackingStatus()
+        assertThat(status.baseUrl).isEqualTo("https://new.example/api/v1/")
+        assertThat(status.mqttUrl).isEqualTo("tcp://broker.example:1883")
+        assertThat(dataStore.getUser()).isNull()
+    }
+
+    @Test
+    fun configureEndpoints_rejectsChangesWhileTracking() = runBlocking {
+        manager.serviceRunningChecker = { true }
+        val original = dataStore.getBaseUrl()
+        try {
+            manager.configureEndpoints("https://new.example/api/v1/", "tcp://broker.example:1883")
+            throw AssertionError("Expected active tracking rejection")
+        } catch (_: IllegalStateException) {}
+        assertThat(dataStore.getBaseUrl()).isEqualTo(original)
+    }
+
+    @Test
+    fun configureEndpoints_preservesQueuedDataAndRejectsMovingItToAnotherServer() = runBlocking {
+        manager.serviceRunningChecker = { false }
+        dataStore.setSdkTracking(false)
+        dataStore.setBaseUrl("https://original.example/api/v1/")
+        dataStore.setUser(TraceUser(userId = "original", phone = "01700000000"))
+        seedOfflineRows("""{"user_id":"original"}""")
+        try {
+            manager.configureEndpoints("https://new.example/api/v1/", "tcp://broker.example:1883")
+            throw AssertionError("Expected queued-data rejection")
+        } catch (_: IllegalStateException) {}
+        assertThat(dataStore.getBaseUrl()).isEqualTo("https://original.example/api/v1/")
+        assertThat(dataStore.getUserId()).isEqualTo("original")
+        assertThat(offlineRowCount()).isEqualTo(1)
+    }
+
+    @Test
+    fun trackingStatus_reportsQueueEvenWhileServiceIsStopped() = runBlocking {
+        manager.serviceRunningChecker = { false }
+        dataStore.setSdkTracking(false)
+        seedOfflineRows("{}", "{}")
+        val status = manager.getTrackingStatus()
+        assertThat(status.pendingLocationCount).isEqualTo(2)
+        assertThat(status.serviceRunning).isFalse()
+        assertThat(status.mqttConnected).isFalse()
+    }
+
+    @Test
+    fun updateCurrentLocation_returnsLocationButOnlyQueuesWhenOfflineEnabled() = runBlocking {
+        seedOfflineRows()
+        val location = Location("test").apply { time = System.currentTimeMillis() }
+        val engine = LocTraceManager::class.java.getDeclaredField("locationEngine")
+            .apply { isAccessible = true }.get(manager) as LocationEngine
+        mockkObject(engine) {
+            coEvery { engine.getCurrentLocation() } returns location
+            dataStore.setOfflineTracking(false)
+            assertThat(manager.updateCurrentLocation()).isSameInstanceAs(location)
+            assertThat(offlineRowCount()).isEqualTo(0)
+            dataStore.setOfflineTracking(true)
+            assertThat(manager.updateCurrentLocation()).isSameInstanceAs(location)
+            assertThat(offlineRowCount()).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun failedUserSwitchWhileTracking_preservesOutgoingSessionAndOfflineData() {
+        assertUnsuccessfulSwitchPreservesSession(wasTracking = true)
+    }
+
+    @Test
+    fun failedUserSwitchWhileStopped_preservesOutgoingSessionAndOfflineData() {
+        assertUnsuccessfulSwitchPreservesSession(wasTracking = false)
+    }
+
+    @Test
+    fun cancelledUserSwitch_preservesOutgoingSessionAndOfflineData() {
+        assertUnsuccessfulSwitchPreservesSession(wasTracking = true, cancel = true)
+    }
+
+    private fun assertUnsuccessfulSwitchPreservesSession(wasTracking: Boolean, cancel: Boolean = false) = runBlocking {
+        seedOfflineRows("""{"user_id":"u1","latitude":23.0}""", """{"user_id":"u1","latitude":23.1}""")
+        val dao = OfflineLocationDb.getInstance(ApplicationProvider.getApplicationContext<Context>()).locationDao()
+        val originalRows = dao.getBatch()
+        val outgoingUser = TraceUser(userId = "u1", name = "A", phone = "01700000000")
+        dataStore.setApiKey("test-key")
+        dataStore.clearUser()
+        dataStore.setUser(outgoingUser)
+        dataStore.setLocalTripId("outgoing-trip")
+        dataStore.setSdkTracking(wasTracking)
+        dataStore.setTraceMode(TraceMode.ACTIVE)
+        dataStore.setTraceModeSource(TraceModeSource.REMOTE)
+        manager.serviceRunningChecker = { wasTracking }
+        val authStarted = CompletableDeferred<Unit>()
+        val authResult = CompletableDeferred<TraceUser>()
+        var fetchedSettings = false
+        manager.settingsFetcher = {
+            fetchedSettings = true
+            TraceMode.ACTIVE
+        }
+        manager.authenticator = { _, _, _ ->
+            authStarted.complete(Unit)
+            authResult.await()
+        }
+        mockkObject(NetworkChecker) {
+            every { NetworkChecker.isNetworkAvailable(any()) } returns true
+            val switching = async {
+                try {
+                    manager.setOrCreateUser("B", null, "01800000000")
+                    null
+                } catch (e: IOException) {
+                    e
+                }
+            }
+            authStarted.await()
+            assertThat(dao.getBatch()).isEqualTo(originalRows)
+            assertThat(dataStore.getUser()).isEqualTo(outgoingUser)
+            // The outgoing service can still collect locations during authentication.
+            dao.insert(OfflineLocationEntity(json = """{"user_id":"u1","latitude":23.2}"""))
+            val rowsBeforeFailure = dao.getBatch()
+            if (cancel) {
+                switching.cancelAndJoin()
+            } else {
+                authResult.completeExceptionally(IOException("Authentication failed"))
+                assertThat(switching.await()?.message).isEqualTo("Authentication failed")
+            }
+            assertThat(dao.getBatch()).isEqualTo(rowsBeforeFailure)
+            assertThat(dataStore.getUser()).isEqualTo(outgoingUser)
+            assertThat(dataStore.getLocalTripId()).isEqualTo("outgoing-trip")
+            assertThat(dataStore.isSdkTracking()).isEqualTo(wasTracking)
+            assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.REMOTE)
+            assertThat(fetchedSettings).isFalse()
+            val shadowApp = Shadows.shadowOf(ApplicationProvider.getApplicationContext<Context>() as Application)
+            assertThat(shadowApp.getNextStoppedService()).isNull()
+            assertThat(shadowApp.peekNextStartedService()).isNull()
+        }
+    }
+
     private fun seedOfflineRows(vararg rows: String) = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val dao = OfflineLocationDb.getInstance(context).locationDao()
@@ -388,6 +705,7 @@ class LocTraceManagerTest {
         dataStore.setTraceModeSource(TraceModeSource.LOCAL)
         dataStore.setSdkTracking(true)
         manager.authenticator = { _, _, phone ->
+            assertThat(offlineRowCount()).isEqualTo(2)
             val user = TraceUser(userId = "u2", name = "B", phone = phone)
             dataStore.setUser(user)
             user
