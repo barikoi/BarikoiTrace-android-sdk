@@ -1,13 +1,12 @@
 package com.barikoi.barikoitrace.api
 
 import android.content.Context
-import android.util.Log
+import com.barikoi.barikoitrace.util.TraceLogger
 import com.barikoi.barikoitrace.TraceMode
 import com.barikoi.barikoitrace.model.TraceUser
 import com.barikoi.barikoitrace.storage.TraceDataStore
 import com.google.gson.JsonObject
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -20,21 +19,16 @@ class TraceApiClient private constructor(context: Context) {
     private var apiKey: String? = null
     private var userId: String? = null
 
-    private val loggingInterceptor = HttpLoggingInterceptor { message ->
-        Log.d("TraceApi", message)
-    }.apply {
-        level = HttpLoggingInterceptor.Level.BODY
-    }
+    private val logger = TraceLogger(context, "TraceApi")
 
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
                 .addHeader("Content-Type", "application/json")
                 .build()
-            Log.d("TraceApi", "--> ${request.method} ${request.url}")
-            chain.proceed(request)
+            logger.d("HTTP request: ${request.method}")
+            chain.proceed(request).also { logger.d("HTTP response: ${it.code}") }
         }
-        .addInterceptor(loggingInterceptor)
         .build()
 
     private var retrofit: Retrofit
@@ -85,7 +79,7 @@ class TraceApiClient private constructor(context: Context) {
             addProperty("phone", phone)
         }
 
-        Log.d("TraceApi", "API CALL: authenticate | phone=$phone")
+        logger.d("API call: authenticate")
         val response = apiService.authenticate(buildUrl(ApiRoutes.AUTHENTICATE), body)
         val json = parseResponse(response)
 
@@ -111,7 +105,7 @@ class TraceApiClient private constructor(context: Context) {
             addProperty("phone", phone)
         }
 
-        Log.d("TraceApi", "API CALL: getCompanySettings | phone=$phone")
+        logger.d("API call: getCompanySettings")
         val response = apiService.getCompanySettings(buildUrl(ApiRoutes.COMPANY_SETTINGS), body)
         val json = parseResponse(response)
         val settings = json.getAsJsonObject("settings")
@@ -130,10 +124,10 @@ class TraceApiClient private constructor(context: Context) {
 
     private fun parseResponse(response: Response<JsonObject>): JsonObject {
         if (!response.isSuccessful || response.body() == null) {
-            Log.e("TraceApi", "API ERROR: ${response.code()} ${response.message()}")
+            logger.e("API request failed (HTTP ${response.code()})")
             throw Exception("Server error: ${response.code()}")
         }
-        Log.d("TraceApi", "API RESPONSE: ${response.code()} | ${response.body()}")
+        logger.d("API response: ${response.code()}")
         return response.body()!!
     }
 
