@@ -12,8 +12,7 @@ import android.location.Location
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
-import com.barikoi.barikoitrace.BarikoiTrace
+import com.barikoi.barikoitrace.util.TraceLogger
 import com.barikoi.barikoitrace.R
 import com.barikoi.barikoitrace.api.ApiRoutes
 import com.barikoi.barikoitrace.api.MqttManager
@@ -24,8 +23,8 @@ import com.barikoi.barikoitrace.storage.OfflineLocationEntity
 import com.barikoi.barikoitrace.storage.TraceDataStore
 import com.barikoi.barikoitrace.util.DateTimeUtils
 import com.barikoi.barikoitrace.util.SystemSettingsManager
-import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -42,21 +41,24 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val logger by lazy { TraceLogger(this, TAG) }
     private lateinit var dataStore: TraceDataStore
     private lateinit var locationEngine: LocationEngine
     private lateinit var offlineDb: com.barikoi.barikoitrace.storage.OfflineLocationDb
     private var mqttManager: MqttManager? = null
+    private var connectionToken: Any? = null
     private var lastLocation: Location? = null
+    private var foregroundStartFailed = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
-        startForegroundNotification()
+        ensureForegroundStarted()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        ensureForegroundStarted()
+        if (!ensureForegroundStarted()) return START_NOT_STICKY
 
         if (intent?.action == ACTION_UPDATE_USER_NAME) {
             handleUpdateUserName()
@@ -70,7 +72,8 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
         try {
             dataStore = TraceDataStore(this)
-            locationEngine = LocationEngine(this)
+            // Reuse the engine so it can remove its previous callback before restarting.
+            if (!::locationEngine.isInitialized) locationEngine = LocationEngine(this)
             offlineDb = com.barikoi.barikoitrace.storage.OfflineLocationDb.getInstance(this)
 
             val user = dataStore.getUser()
@@ -86,13 +89,14 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
                 locationEngine.startLocationUpdates(traceMode, this)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting service", e)
+            logger.e("Error starting service", e)
         }
 
         return START_STICKY
     }
 
     override fun onDestroy() {
+        TraceConnectionState.clear(connectionToken)
         // Send final location with trip_status "completed" before tearing down MQTT
         val tripId = if (::dataStore.isInitialized) dataStore.getLocalTripId() else null
         if (tripId != null) {
@@ -114,13 +118,10 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         val traceMode = dataStore.getTraceMode() ?: return
 
         // Check time window
-        if (traceMode.endTime != LocalTime.MAX) {
-            val now = LocalTime.now()
-            if (now.isAfter(traceMode.endTime) || now.isBefore(traceMode.startTime)) {
-                serviceScope.launch { dataStore.setSdkTracking(false) }
-                stopSelf()
-                return
-            }
+        if (!traceMode.isWithinTrackingWindow(LocalTime.now())) {
+            serviceScope.launch { dataStore.setSdkTracking(false) }
+            stopSelf()
+            return
         }
 
         // Check location staleness (reject locations older than 10 seconds)
@@ -130,7 +131,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
 
         // Mock detection
         if (SystemSettingsManager.checkIfMockProvider(this, location)) {
-            Log.w(TAG, "Mock location detected")
+            logger.w("Mock location detected")
             return
         }
 
@@ -144,7 +145,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
             return
         }
 
-        Log.d(TAG, "Location: accuracy=${location.accuracy}, time=${DateTimeUtils.getDateTimeLocal(location.time)}")
+        logger.d("Location update accepted")
 
         lastLocation = location
 
@@ -158,8 +159,9 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
             val tripId = dataStore.getLocalTripId()
             mqttManager?.publishLocation(location, tripId)
             flushOfflineData()
-        } else {
+        } else if (dataStore.isOfflineTracking()) {
             serviceScope.launch {
+                if (!dataStore.isOfflineTracking()) return@launch
                 val tripId = dataStore.getLocalTripId()
                 val json = com.google.gson.JsonObject().apply {
                     addProperty("latitude", location.latitude)
@@ -183,7 +185,7 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
     }
 
     override fun onFailure(error: TraceError) {
-        Log.e(TAG, "Location error: ${error.message}")
+        logger.e("Location update failed")
     }
 
     override fun onProviderAvailabilityChanged(available: Boolean) {
@@ -200,15 +202,15 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         val name = dataStore.getUser()?.name
         val mqtt = mqttManager
         if (mqtt == null) {
-            Log.w(TAG, "updateUserName action ignored - MQTT not initialized")
+            logger.w("updateUserName action ignored - MQTT not initialized")
             return
         }
         if (name.isNullOrBlank()) {
-            Log.w(TAG, "updateUserName action ignored - no stored user name")
+            logger.w("updateUserName action ignored - no stored user name")
             return
         }
         mqtt.updateUserName(name)
-        BarikoiTrace.notifyLog("INFO", TAG, "MQTT user name updated to $name")
+        logger.i("MQTT user name updated")
     }
 
     private fun handleTraceModeChanged() {
@@ -218,12 +220,11 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
             val traceMode = dataStore.getTraceMode()
             // startLocationUpdates stops the previous request first, so this safely replaces it
             locationEngine.startLocationUpdates(traceMode, this)
-            BarikoiTrace.notifyLog(
-                "INFO", TAG,
+            logger.i(
                 "Trace mode re-applied: interval=${traceMode.updateInterval}s distance=${traceMode.distanceFilter}m accuracyFilter=${traceMode.accuracyFilter}m"
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error applying new trace mode", e)
+            logger.e("Error applying new trace mode", e)
         }
     }
 
@@ -236,21 +237,25 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
         // Tear down any previous client before replacing it (re-starts of the
         // service would otherwise leave the old connection alive)
         mqttManager?.destroy()
+        val token = Any()
+        connectionToken = token
+        TraceConnectionState.bind(token)
         mqttManager = MqttManager(
             this, serverUri, userId, companyId, groupId, uuid,
             callback = object : MqttManager.MqttStatusCallback {
                 override fun onConnectionStatusChanged(connected: Boolean, message: String) {
-                    BarikoiTrace.notifyLog("INFO", TAG, "MQTT $message")
+                    TraceConnectionState.update(token, connected)
+                    logger.i("MQTT connection status changed: connected=$connected")
                     if (connected) {
                         flushOfflineData()
                     }
                 }
                 override fun onMessageDelivered(topic: String) {
-                    BarikoiTrace.notifyLog("DEBUG", TAG, "Published to topic: $topic")
+                    logger.d("MQTT message delivered")
                 }
                 override fun onMessageReceived(topic: String, message: String) {
                     if (topic.endsWith("/command")) {
-                        Log.d(TAG, "Received command: $message")
+                        logger.d("Received MQTT command")
                     }
                 }
             },
@@ -262,57 +267,33 @@ class LocTraceForegroundService : Service(), LocationUpdateListener {
     // --- Offline Data Sync ---
 
     private fun flushOfflineData() {
-        if (dataStore.isDataSyncing()) return
         serviceScope.launch {
-            if (dataStore.isDataSyncing()) return@launch
             val dao = offlineDb.locationDao()
-            if (dao.getCount() == 0) return@launch
             val mqtt = mqttManager
             if (mqtt == null || !mqtt.isConnected()) return@launch
-            dataStore.setDataSyncing(true)
             try {
-                val batch = dao.getBatch()
-                if (batch.isEmpty()) {
-                    dataStore.setDataSyncing(false)
-                    return@launch
-                }
-
-                val userId = dataStore.getUserId()
-                if (userId == null) {
-                    dataStore.setDataSyncing(false)
-                    return@launch
-                }
-
-                for (entity in batch) {
-                    try {
-                        val locJson = JsonParser.parseString(entity.json).asJsonObject
-                        // Keep the user the row was captured under; only stamp legacy rows
-                        if (!locJson.has("user_id")) {
-                            locJson.addProperty("user_id", userId)
-                        }
-                        mqtt.publishLocationJson(locJson)
-                    } catch (_: Exception) {}
-                }
-
-                dao.deleteBatch()
-                dataStore.setDataSyncing(false)
-
-                // Recursively flush if more data remains
-                flushOfflineData()
+                val userId = dataStore.getUserId() ?: return@launch
+                OfflineDataFlusher(dao, mqtt::publishLocationJsonAndAwaitDelivery).flush(userId)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.e(TAG, "Auto-sync failed", e)
-                dataStore.setDataSyncing(false)
+                logger.e("Auto-sync failed", e)
             }
         }
     }
 
     // --- Notifications ---
 
-    private fun ensureForegroundStarted() {
-        try {
+    private fun ensureForegroundStarted(): Boolean {
+        if (foregroundStartFailed) return false
+        return try {
             startForegroundNotification()
+            true
         } catch (e: Exception) {
-            Log.e(TAG, "Error ensuring foreground started", e)
+            foregroundStartFailed = true
+            stopSelf()
+            logger.e("Unable to start foreground service", e)
+            false
         }
     }
 
