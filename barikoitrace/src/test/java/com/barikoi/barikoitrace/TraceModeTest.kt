@@ -7,6 +7,56 @@ import java.time.LocalTime
 class TraceModeTest {
 
     @Test
+    fun daytimeWindow_includesBoundsAndExcludesTimesOutside() {
+        val mode = TraceMode.ACTIVE.copy(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(18, 0))
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(8, 0))).isTrue()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.NOON)).isTrue()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(18, 0))).isTrue()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(7, 59))).isFalse()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(18, 1))).isFalse()
+    }
+
+    @Test
+    fun overnightWindow_includesBothSidesOfMidnightAndExcludesDaytime() {
+        val mode = TraceMode.ACTIVE.copy(startTime = LocalTime.of(22, 0), endTime = LocalTime.of(6, 0))
+        for (time in listOf(LocalTime.of(22, 0), LocalTime.of(23, 0), LocalTime.MIDNIGHT, LocalTime.of(5, 0), LocalTime.of(6, 0))) {
+            assertThat(mode.isWithinTrackingWindow(time)).isTrue()
+        }
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(21, 59))).isFalse()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(6, 1))).isFalse()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.NOON)).isFalse()
+    }
+
+    @Test
+    fun startOnlyWindow_rejectsTimesBeforeStartEvenWithDefaultEnd() {
+        val mode = TraceMode.ACTIVE.copy(startTime = LocalTime.of(8, 0))
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(7, 59))).isFalse()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.of(8, 0))).isTrue()
+        assertThat(mode.isWithinTrackingWindow(LocalTime.MAX)).isTrue()
+    }
+
+    @Test
+    fun defaultWindow_includesEntireDay() {
+        assertThat(TraceMode.ACTIVE.isWithinTrackingWindow(LocalTime.MIN)).isTrue()
+        assertThat(TraceMode.ACTIVE.isWithinTrackingWindow(LocalTime.NOON)).isTrue()
+        assertThat(TraceMode.ACTIVE.isWithinTrackingWindow(LocalTime.MAX)).isTrue()
+    }
+
+    @Test
+    fun builder_zeroUpdateIntervalPreservesDistanceBasedMode() {
+        val mode = TraceMode.Builder().setUpdateInterval(0).setDistanceFilter(100).build()
+        assertThat(mode.updateInterval).isEqualTo(0)
+        assertThat(mode.distanceFilter).isEqualTo(100)
+    }
+
+    @Test
+    fun builder_zeroDistanceFilterKeepsDistanceFilteringDisabled() {
+        val mode = TraceMode.Builder().setUpdateInterval(10).setDistanceFilter(0).build()
+        assertThat(mode.distanceFilter).isEqualTo(0)
+        assertThat(mode.updateInterval).isEqualTo(10)
+    }
+
+    @Test
     fun builder_clampsUpdateIntervalToMinimum5() {
         val mode = TraceMode.Builder().setUpdateInterval(3).build()
         assertThat(mode.updateInterval).isEqualTo(5)
