@@ -77,7 +77,7 @@ class TraceDataStore private constructor(context: Context) {
                 cache[Keys.SDK_TRACKING.name] = prefs[Keys.SDK_TRACKING] ?: false
                 cache[Keys.ON_TRIP.name] = prefs[Keys.ON_TRIP] ?: false
                 prefs[Keys.LOCAL_TRIP_ID]?.let { cache[Keys.LOCAL_TRIP_ID.name] = it }
-                cache[Keys.OFFLINE_TRACKING.name] = prefs[Keys.OFFLINE_TRACKING] ?: false
+                cache[Keys.OFFLINE_TRACKING.name] = prefs[Keys.OFFLINE_TRACKING] ?: true
                 cache[Keys.DATA_SYNCING.name] = prefs[Keys.DATA_SYNCING] ?: false
                 cache[Keys.LOGGING.name] = prefs[Keys.LOGGING] ?: false
                 cache[Keys.BROADCASTING.name] = prefs[Keys.BROADCASTING] ?: false
@@ -194,12 +194,22 @@ class TraceDataStore private constructor(context: Context) {
     suspend fun clearLocalTrip() = removeAndCache(Keys.LOCAL_TRIP_ID)
 
     suspend fun setOfflineTracking(enabled: Boolean) = putAndCache(Keys.OFFLINE_TRACKING, enabled)
-    fun isOfflineTracking(): Boolean = getBoolean(Keys.OFFLINE_TRACKING)
+    fun isOfflineTracking(): Boolean = getBoolean(Keys.OFFLINE_TRACKING, true)
 
     suspend fun setDataSyncing(syncing: Boolean) = putAndCache(Keys.DATA_SYNCING, syncing)
     fun isDataSyncing(): Boolean = getBoolean(Keys.DATA_SYNCING)
 
-    suspend fun setLogging(enabled: Boolean) = putAndCache(Keys.LOGGING, enabled)
+    internal fun updateLoggingCache(enabled: Boolean) {
+        cache[Keys.LOGGING.name] = enabled
+    }
+    internal suspend fun persistLogging() {
+        // Read the current choice inside the edit so queued writes cannot restore an older value.
+        store.edit { it[Keys.LOGGING] = isLogging() }
+    }
+    suspend fun setLogging(enabled: Boolean) {
+        updateLoggingCache(enabled)
+        persistLogging()
+    }
     fun isLogging(): Boolean = getBoolean(Keys.LOGGING)
 
     suspend fun setBroadcasting(enabled: Boolean) = putAndCache(Keys.BROADCASTING, enabled)
@@ -216,6 +226,9 @@ class TraceDataStore private constructor(context: Context) {
         cache[Keys.TRACKING_TYPE.name] = mode.trackingMode.option
         cache[Keys.DEBUG.name] = mode.debug
         cache[Keys.TRACE_MODE_REMOTE.name] = false
+        cache[Keys.OFFLINE_TRACKING.name] = mode.offline
+        cache[Keys.START_TIME.name] = mode.startTime.toString()
+        cache[Keys.END_TIME.name] = mode.endTime.toString()
         store.edit {
             it[Keys.DESIRED_ACCURACY] = mode.desiredAccuracy.name
             it[Keys.UPDATE_INTERVAL] = mode.updateInterval
@@ -226,18 +239,13 @@ class TraceDataStore private constructor(context: Context) {
             it[Keys.TRACKING_TYPE] = mode.trackingMode.option
             it[Keys.DEBUG] = mode.debug
             it[Keys.TRACE_MODE_REMOTE] = false
-        }
-    }
-
-    suspend fun setTraceModeWithTiming(mode: TraceMode) {
-        setTraceMode(mode)
-        cache[Keys.START_TIME.name] = mode.startTime.toString()
-        cache[Keys.END_TIME.name] = mode.endTime.toString()
-        store.edit {
+            it[Keys.OFFLINE_TRACKING] = mode.offline
             it[Keys.START_TIME] = mode.startTime.toString()
             it[Keys.END_TIME] = mode.endTime.toString()
         }
     }
+
+    suspend fun setTraceModeWithTiming(mode: TraceMode) = setTraceMode(mode)
 
     fun getTraceMode(): TraceMode {
         val updateInterval = getInt(Keys.UPDATE_INTERVAL)
@@ -248,7 +256,7 @@ class TraceDataStore private constructor(context: Context) {
                 .setAccuracyFilter(getInt(Keys.ACCURACY_FILTER, 200))
                 .setDistanceFilter(distanceFilter)
                 .setUpdateInterval(updateInterval)
-                .setOfflineSync(getBoolean(Keys.OFFLINE_TRACKING, true))
+                .setOfflineSync(isOfflineTracking())
                 .setPingSyncInterval(getInt(Keys.PING_SYNC_INTERVAL))
                 .setDesiredAccuracy(TraceMode.DesiredAccuracy.fromString(getString(Keys.DESIRED_ACCURACY)))
         } else {
@@ -256,7 +264,7 @@ class TraceDataStore private constructor(context: Context) {
                 .setAccuracyFilter(200)
                 .setDistanceFilter(0)
                 .setUpdateInterval(5)
-                .setOfflineSync(true)
+                .setOfflineSync(isOfflineTracking())
                 .setDesiredAccuracy(TraceMode.DesiredAccuracy.HIGH)
         }
 
@@ -294,12 +302,13 @@ class TraceDataStore private constructor(context: Context) {
     suspend fun clearTraceMode() = removeAndCache(
         Keys.DESIRED_ACCURACY, Keys.UPDATE_INTERVAL, Keys.DISTANCE_FILTER,
         Keys.STOP_DURATION, Keys.ACCURACY_FILTER, Keys.PING_SYNC_INTERVAL,
-        Keys.TRACKING_TYPE, Keys.DEBUG, Keys.TRACE_MODE_REMOTE
+        Keys.TRACKING_TYPE, Keys.DEBUG, Keys.TRACE_MODE_REMOTE,
+        Keys.START_TIME, Keys.END_TIME
     )
 
     suspend fun clearTraceModeWithTiming() {
         clearTraceMode()
-        removeAndCache(Keys.START_TIME, Keys.END_TIME, Keys.TRACE_MODE_SOURCE)
+        removeAndCache(Keys.TRACE_MODE_SOURCE)
     }
 
     suspend fun stopSdkTracking() {
@@ -310,6 +319,8 @@ class TraceDataStore private constructor(context: Context) {
 
     companion object {
         private val sharedCache = ConcurrentHashMap<String, Any?>()
+
+        internal fun isLoggingEnabled(): Boolean = sharedCache[Keys.LOGGING.name] as? Boolean ?: false
 
         @Volatile
         private var INSTANCE: TraceDataStore? = null
