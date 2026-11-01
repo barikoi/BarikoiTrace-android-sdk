@@ -4,12 +4,14 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.location.Location
-import android.util.Log
+import com.barikoi.barikoitrace.util.TraceLogger
 import com.barikoi.barikoitrace.api.ApiRoutes
 import com.barikoi.barikoitrace.api.TraceApiClient
 import com.barikoi.barikoitrace.location.LocationEngine
 import com.barikoi.barikoitrace.model.TraceError
 import com.barikoi.barikoitrace.model.TraceUser
+import com.barikoi.barikoitrace.model.TraceStatus
+import com.barikoi.barikoitrace.service.TraceConnectionState
 import com.barikoi.barikoitrace.service.LocTraceForegroundService
 import com.barikoi.barikoitrace.storage.OfflineLocationDb
 import com.barikoi.barikoitrace.storage.OfflineLocationEntity
@@ -19,21 +21,34 @@ import com.barikoi.barikoitrace.util.NetworkChecker
 import com.barikoi.barikoitrace.util.SystemSettingsManager
 import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.net.URI
 import java.util.UUID
 
 class LocTraceManager private constructor(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val dataStore = TraceDataStore(context)
+    private val logger = TraceLogger(context, "LocTrace")
     private val apiClient = TraceApiClient.getInstance(context)
     private val locationEngine = LocationEngine(context)
     private val offlineDb = OfflineLocationDb.getInstance(context)
+    private val initializationLock = Any()
+    private val endpointMutex = Mutex()
+    @Volatile
+    private var initialization: Deferred<Unit>? = null
 
     // Test seam for the company-settings fetch
     internal var settingsFetcher: suspend (String) -> TraceMode = { apiClient.getCompanySettings(it) }
@@ -62,26 +77,85 @@ class LocTraceManager private constructor(private val context: Context) {
     // --- Init ---
 
     fun initialize(apiKey: String) {
-        scope.launch {
-            dataStore.setApiKey(apiKey)
-            apiClient.setApiKey(apiKey)
-            dataStore.setLogging(true)
-
-            if (dataStore.getDeviceToken() == null) {
-                dataStore.setDeviceToken(UUID.randomUUID().toString())
+        synchronized(initializationLock) {
+            val previous = initialization
+            val pending = scope.async(start = CoroutineStart.LAZY) {
+                // Serialize repeated initialization; a new attempt can recover from a failed one.
+                previous?.join()
+                initializeInternal(apiKey)
             }
+            initialization = pending
+            pending.start()
+        }
+    }
 
-            if (!NetworkChecker.isNetworkAvailable(context)) {
-                Log.w("LocTrace", TraceError.networkError().message)
-            }
+    internal suspend fun awaitInitialization() {
+        initialization?.await()
+    }
 
-            // Restart tracking if it was active
-            if (dataStore.isSdkTracking()) {
-                val traceMode = dataStore.getTraceMode()
-                if (traceMode != null && !isServiceRunning()) {
-                    val hasActiveTrip = dataStore.getLocalTripId() != null
-                    startTracking(traceMode, hasActiveTrip, dataStore.getTraceModeSource())
+    suspend fun getTrackingStatus(): TraceStatus = withContext(Dispatchers.IO) {
+        val running = serviceRunningChecker()
+        TraceStatus(
+            serviceRunning = running,
+            trackingRequested = dataStore.isSdkTracking(),
+            mqttConnected = running && TraceConnectionState.connected,
+            pendingLocationCount = offlineDb.locationDao().getCount(),
+            tripId = dataStore.getLocalTripId(),
+            mode = dataStore.getTraceMode(), source = dataStore.getTraceModeSource(),
+            offlineTracking = dataStore.isOfflineTracking(),
+            broadcasting = dataStore.isBroadcasting(), logging = dataStore.isLogging(),
+            baseUrl = dataStore.getBaseUrl() ?: ApiRoutes.BASE_URL,
+            mqttUrl = dataStore.getMqttUrl() ?: ApiRoutes.MQTT_URL
+        )
+    }
+
+    /** Validates both endpoints before mutation and returns after configuration is saved. */
+    suspend fun configureEndpoints(baseUrl: String, mqttUrl: String) {
+        val base = baseUrl.trim().toHttpUrlOrNull()
+        require(base != null && base.username.isEmpty() && base.password.isEmpty() &&
+            base.query == null && base.fragment == null) { "Invalid REST base URL" }
+        val mqtt = runCatching { URI(mqttUrl.trim()) }.getOrNull()
+        require(mqtt != null && mqtt.scheme in setOf("tcp", "ssl", "ws", "wss") &&
+            !mqtt.host.isNullOrBlank() && mqtt.userInfo == null && mqtt.query == null &&
+            mqtt.fragment == null && (mqtt.port == -1 || mqtt.port in 1..65535) &&
+            (mqtt.scheme in setOf("ws", "wss") || mqtt.path.isNullOrEmpty())) { "Invalid MQTT URL" }
+        awaitInitialization()
+        withContext(Dispatchers.IO) {
+            endpointMutex.withLock {
+                check(!serviceRunningChecker() && !dataStore.isSdkTracking()) { "Stop tracking before changing endpoints" }
+                val normalizedBase = base.toString().trimEnd('/') + "/"
+                val baseChanged = normalizedBase != (dataStore.getBaseUrl() ?: ApiRoutes.BASE_URL)
+                if (baseChanged) {
+                    check(offlineDb.locationDao().getCount() == 0) { "Upload or clear pending locations before changing the REST endpoint" }
+                    apiClient.setBaseUrl(normalizedBase)
+                    dataStore.setBaseUrl(normalizedBase)
+                    dataStore.clearUser()
+                    dataStore.stopSdkTracking()
+                    dataStore.clearLocalTrip()
                 }
+                dataStore.setMqttUrl(mqtt.toString())
+            }
+        }
+    }
+
+    private suspend fun initializeInternal(apiKey: String) {
+        dataStore.setApiKey(apiKey)
+        apiClient.setApiKey(apiKey)
+
+        if (dataStore.getDeviceToken() == null) {
+            dataStore.setDeviceToken(UUID.randomUUID().toString())
+        }
+
+        if (!NetworkChecker.isNetworkAvailable(context)) {
+            logger.w(TraceError.networkError().message)
+        }
+
+        // Restart tracking if it was active
+        if (dataStore.isSdkTracking()) {
+            val traceMode = dataStore.getTraceMode()
+            if (traceMode != null && !isServiceRunning()) {
+                val hasActiveTrip = dataStore.getLocalTripId() != null
+                startTracking(traceMode, hasActiveTrip, dataStore.getTraceModeSource())
             }
         }
     }
@@ -90,6 +164,7 @@ class LocTraceManager private constructor(private val context: Context) {
 
     suspend fun setOrCreateUser(name: String?, email: String?, phone: String): TraceUser {
         if (phone.isBlank()) throw Exception(TraceError.noDataError().message)
+        awaitInitialization()
         if (dataStore.getApiKey().isNullOrBlank()) throw Exception(TraceError.noKeyError().message)
         if (!NetworkChecker.isNetworkAvailable(context)) throw Exception(TraceError.networkError().message)
 
@@ -97,11 +172,6 @@ class LocTraceManager private constructor(private val context: Context) {
         val cached = dataStore.getUser()
         val switchingUser = cached != null && phone != cached.phone
         val wasTracking = serviceRunningChecker()
-        if (switchingUser) {
-            // Discard the outgoing user's undelivered data so it can't be
-            // mis-attributed to the new user's session
-            offlineDb.locationDao().deleteAll()
-        }
         val user = if (cached != null && phone == cached.phone &&
             (System.currentTimeMillis() - cached.updatedAt) < 24 * 60 * 60 * 1000
         ) {
@@ -110,6 +180,12 @@ class LocTraceManager private constructor(private val context: Context) {
             val freshUser = authenticator(name, email, phone)
             apiClient.setUserId(freshUser.userId)
             freshUser
+        }
+
+        if (switchingUser) {
+            // Keep the outgoing user's data until replacement authentication succeeds.
+            // Then discard it before restarting the service for the new session.
+            offlineDb.locationDao().deleteAll()
         }
 
         if (switchingUser && wasTracking) {
@@ -195,13 +271,13 @@ class LocTraceManager private constructor(private val context: Context) {
     ) {
         val userId = dataStore.getUserId()
         if (userId.isNullOrBlank()) {
-            Log.w("LocTrace", TraceError.noUserError().message)
+            logger.w(TraceError.noUserError().message)
             return
         }
         if (!SystemSettingsManager.checkPermissions(context) ||
             !SystemSettingsManager.checkLocationSettings(context)
         ) {
-            Log.w("LocTrace", TraceError.locationPermissionError().message)
+            logger.w(TraceError.locationPermissionError().message)
             return
         }
 
@@ -240,7 +316,10 @@ class LocTraceManager private constructor(private val context: Context) {
     fun isLocationTracking(): Boolean = isServiceRunning()
 
     fun setTraceMode(mode: TraceMode) {
-        scope.launch { dataStore.setTraceMode(mode) }
+        scope.launch {
+            dataStore.setTraceMode(mode)
+            if (serviceRunningChecker()) sendTraceModeChangedIntent()
+        }
     }
 
     fun setOfflineTracking(enabled: Boolean) {
@@ -248,7 +327,8 @@ class LocTraceManager private constructor(private val context: Context) {
     }
 
     fun setLoggingEnabled(enabled: Boolean) {
-        scope.launch { dataStore.setLogging(enabled) }
+        dataStore.updateLoggingCache(enabled)
+        scope.launch { dataStore.persistLogging() }
     }
 
     fun setBroadcastingEnabled(enabled: Boolean) {
@@ -267,6 +347,7 @@ class LocTraceManager private constructor(private val context: Context) {
 
     suspend fun updateCurrentLocation(): Location {
         val location = locationEngine.getCurrentLocation()
+        if (!dataStore.isOfflineTracking()) return location
         val tripId = dataStore.getLocalTripId()
         val json = JsonObject().apply {
             addProperty("latitude", location.latitude)
@@ -289,11 +370,12 @@ class LocTraceManager private constructor(private val context: Context) {
     fun uploadOfflineData() {
         // Offline sync is handled automatically by the foreground service via MQTT.
         // Restarting the service triggers MQTT reconnect and flush.
-        Log.i("LocTrace", "Offline sync is automatic via MQTT. Restarting service if tracking is active.")
+        logger.i("Offline sync is automatic via MQTT. Restarting service if tracking is active.")
         refreshTracking()
     }
 
     suspend fun getSettingsFromRemote(): TraceMode {
+        awaitInitialization()
         val user = dataStore.getUser()
         if (user == null || user.phone.isNullOrBlank()) throw Exception(TraceError.noUserError().message)
 
@@ -306,18 +388,18 @@ class LocTraceManager private constructor(private val context: Context) {
     }
 
     internal suspend fun fetchAndApplyRemoteSettings() {
-        val user = dataStore.getUser() ?: return
-        if (user.phone.isNullOrBlank()) return
         try {
+            awaitInitialization()
+            val user = dataStore.getUser() ?: return
+            if (user.phone.isNullOrBlank()) return
             val mode = settingsFetcher(user.phone)
             dataStore.setTraceModeFromRemote(mode)
             if (isServiceRunning()) sendTraceModeChangedIntent()
-            BarikoiTrace.notifyLog(
-                "INFO", "LocTrace",
+            logger.i(
                 "Remote trace settings applied: interval=${mode.updateInterval}s distance=${mode.distanceFilter}m accuracyFilter=${mode.accuracyFilter}m"
             )
         } catch (e: Exception) {
-            Log.w("LocTrace", "Remote settings fetch failed, keeping current mode: ${e.message}")
+            logger.w("Remote settings fetch failed, keeping current mode", e)
         }
     }
 
@@ -340,9 +422,9 @@ class LocTraceManager private constructor(private val context: Context) {
                 context.startService(intent)
             }
         } catch (e: IllegalStateException) {
-            Log.e("LocTrace", "Cannot start foreground service from background", e)
+            logger.e("Cannot start foreground service from background", e)
         } catch (e: Exception) {
-            Log.e("LocTrace", "Error starting location service", e)
+            logger.e("Error starting location service", e)
         }
     }
 
@@ -353,7 +435,7 @@ class LocTraceManager private constructor(private val context: Context) {
             }
             context.startService(intent)
         } catch (e: Exception) {
-            Log.e("LocTrace", "Failed to deliver user name update to service", e)
+            logger.e("Failed to deliver user name update to service", e)
         }
     }
 
@@ -364,7 +446,7 @@ class LocTraceManager private constructor(private val context: Context) {
             }
             context.startService(intent)
         } catch (e: Exception) {
-            Log.e("LocTrace", "Failed to deliver trace mode change to service", e)
+            logger.e("Failed to deliver trace mode change to service", e)
         }
     }
 
