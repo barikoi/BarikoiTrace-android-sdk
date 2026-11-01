@@ -2,9 +2,17 @@ package com.barikoi.barikoitrace.api
 
 import android.content.Context
 import android.location.Location
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import com.barikoi.barikoitrace.util.TraceLogger
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import info.mqtt.android.service.Ack
@@ -15,7 +23,9 @@ import org.eclipse.paho.client.mqttv3.IMqttToken
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
+import kotlin.time.Duration.Companion.milliseconds
 
 class MqttManager(
     private val context: Context,
@@ -38,144 +48,243 @@ class MqttManager(
         fun onMessageReceived(topic: String, message: String)
     }
 
-    private val tag = "MqttManager"
+    private val logger = TraceLogger(context, "MqttManager")
 
     private val clientId = "AndroidClient-$userId-$uuid"
     private val deviceId = userId
     private val channelTopic = "company/$companyId/$groupId/$userId/location"
 
     private var mqttClient: MqttAndroidClient? = null
-    private var isConnected = false
+    @Volatile private var isConnected = false
     private var isConnecting = false
+    @Volatile private var destroyed = false
     private var reconnectAttempts = 0
-    private val maxReconnectAttempts = 10
     private val reconnectIntervalMs = 5000L
     private val handler = Handler(Looper.getMainLooper())
+    private var reconnectScheduled = false
+    private var retryAfterNetworkChange = false
+    private var clientGeneration = 0
+    private var networkCallbackRegistered = false
+    private var validatedNetwork: Network? = null
+    private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+    internal var clientFactory: () -> MqttAndroidClient = {
+        MqttAndroidClient(context, serverUri, clientId, Ack.AUTO_ACK,
+            MqttDefaultFilePersistence(context.filesDir.absolutePath), false, 100)
+    }
+    private val reconnectTask = Runnable {
+        reconnectScheduled = false
+        connectInternal()
+    }
+    private val connectionTimeoutTask = Runnable {
+        if (!destroyed && isConnecting) {
+            isConnecting = false
+            logger.w("MQTT connection attempt timed out")
+            callback?.onConnectionStatusChanged(false, "Connection attempt timed out")
+            scheduleReconnect()
+        }
+    }
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            val available = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            onMain {
+                if (!available && validatedNetwork == network) validatedNetwork = null
+                if (available) {
+                    if (!destroyed && validatedNetwork != network) {
+                        validatedNetwork = network
+                        retryAfterNetworkChange = true
+                        reconnectAttempts = 0
+                        logger.i("Network available; checking MQTT connection")
+                        if (!isConnecting && !isConnected()) connectInternal()
+                    }
+                }
+            }
+        }
+
+        override fun onLost(network: Network) {
+            onMain {
+                if (!destroyed && validatedNetwork == network) {
+                    validatedNetwork = null
+                    isConnected = false
+                    callback?.onConnectionStatusChanged(false, "Network unavailable")
+                    // Retire a connected socket bound to the old network. An in-flight
+                    // connect is allowed to finish/fail, avoiding competing connects.
+                    if (!isConnecting) releaseClient(0)
+                    scheduleReconnect()
+                }
+            }
+        }
+    }
+
+    private fun onMain(block: () -> Unit) {
+        if (Looper.myLooper() == handler.looper) block() else handler.post { block() }
+    }
 
     @Volatile
     private var userName: String? = userName
 
-    private val mqttCallback = object : MqttCallbackExtended {
+    private var mqttCallback = createCallback(clientGeneration)
+
+    private fun createCallback(generation: Int) = object : MqttCallbackExtended {
         override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-            isConnected = true
-            isConnecting = false
-            Log.i(tag, "Connected to MQTT broker")
-            callback?.onConnectionStatusChanged(true, if (reconnect) "reconnected" else "connected")
+            onMain {
+                if (!destroyed && generation == clientGeneration) connected(if (reconnect) "Reconnected" else "Connected")
+            }
         }
 
         override fun connectionLost(cause: Throwable?) {
-            isConnected = false
-            isConnecting = false
-            Log.e(tag, "Connection lost", cause)
-            callback?.onConnectionStatusChanged(false, "Connection lost: ${cause?.message ?: "Unknown"}")
-            scheduleReconnect()
+            onMain {
+                if (!destroyed && generation == clientGeneration) connectionFailed(cause, "Connection lost")
+            }
         }
 
         override fun messageArrived(topic: String?, message: MqttMessage?) {
-            val payloadBytes = message?.payload ?: run {
-                Log.w(tag, "Message arrived with empty payload on topic: $topic")
-                return
-            }
-            val payload = String(payloadBytes, Charsets.UTF_8)
-            Log.d(tag, "Message arrived on topic: $topic - $payload")
-            callback?.onMessageReceived(topic ?: "", payload)
+            if (destroyed || generation != clientGeneration) return
+            val payload = message?.payload ?: return
+            logger.d("MQTT message received")
+            callback?.onMessageReceived(topic ?: "", String(payload, Charsets.UTF_8))
         }
 
         override fun deliveryComplete(token: IMqttDeliveryToken?) {
+            if (destroyed || generation != clientGeneration) return
             try {
-                val topics = token?.topics
-                if (!topics.isNullOrEmpty()) {
-                    Log.d(tag, "Message delivered to topic: ${topics[0]}")
-                    callback?.onMessageDelivered(topics[0])
+                token?.topics?.firstOrNull()?.let {
+                    logger.d("MQTT message delivered")
+                    callback?.onMessageDelivered(it)
                 }
             } catch (e: Exception) {
-                Log.e(tag, "Error in delivery complete", e)
+                logger.e("Error in delivery complete", e)
             }
         }
     }
 
     fun connect() {
-        if (isConnecting) return
+        onMain {
+            if (destroyed) return@onMain
+            if (!networkCallbackRegistered) {
+                try {
+                    connectivityManager?.registerDefaultNetworkCallback(networkCallback)
+                    networkCallbackRegistered = connectivityManager != null
+                } catch (e: Exception) {
+                    logger.w("Network monitoring unavailable; MQTT retry timer remains active", e)
+                }
+            }
+            connectInternal()
+        }
+    }
 
-        val client = mqttClient ?: MqttAndroidClient(
-            context, serverUri, clientId,
-            Ack.AUTO_ACK, MqttDefaultFilePersistence(context.filesDir.absolutePath), false, 100
-        ).also { mqttClient = it }
+    private fun connectInternal() {
+        if (destroyed || isConnecting) return
+        handler.removeCallbacks(reconnectTask)
+        reconnectScheduled = false
+        var generation = clientGeneration
+        try {
+            val client = mqttClient ?: clientFactory().also {
+                mqttClient = it
+                clientGeneration++
+                generation = clientGeneration
+                mqttCallback = createCallback(generation)
+                it.setCallback(mqttCallback)
+            }
+            if (client.isConnected) {
+                connected("Already connected")
+                return
+            }
+            isConnecting = true
+            retryAfterNetworkChange = false
+            handler.removeCallbacks(connectionTimeoutTask)
+            handler.postDelayed(connectionTimeoutTask, 30_000L)
+            logger.d("Attempting to connect to MQTT broker")
+            callback?.onConnectionStatusChanged(false, "Connecting")
+            client.connect(createConnectionOptions(), null, object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) {
+                    onMain {
+                        if (!destroyed && generation == clientGeneration) connected("Connected")
+                    }
+                }
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                    onMain {
+                        if (!destroyed && generation == clientGeneration) connectionFailed(exception)
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            connectionFailed(e)
+        }
+    }
 
-        if (client.isConnected) {
-            isConnected = true
-            callback?.onConnectionStatusChanged(true, "already connected")
+    private fun connected(message: String) {
+        val wasConnected = isConnected
+        isConnected = true
+        isConnecting = false
+        reconnectAttempts = 0
+        retryAfterNetworkChange = false
+        reconnectScheduled = false
+        handler.removeCallbacks(reconnectTask)
+        handler.removeCallbacks(connectionTimeoutTask)
+        if (!wasConnected) {
+            logger.i("Connected to MQTT broker")
+            callback?.onConnectionStatusChanged(true, message)
+        }
+    }
+
+    private fun connectionFailed(error: Throwable?, message: String = "Connection failed") {
+        // A late failure from a competing dependency callback must not undo a successful connection.
+        if (runCatching { mqttClient?.isConnected == true }.getOrDefault(false)) {
+            connected("Connected")
             return
         }
-
-        isConnecting = true
-        client.setCallback(mqttCallback)
-        val options = createConnectionOptions()
-
-        Log.d(tag, "Attempting to connect to MQTT broker: $serverUri")
-        callback?.onConnectionStatusChanged(false, "Connecting...")
-
-        client.connect(options, null, object : IMqttActionListener {
-            override fun onSuccess(asyncActionToken: IMqttToken?) {
-                isConnected = true
-                isConnecting = false
-                reconnectAttempts = 0
-                Log.i(tag, "Connected to MQTT broker")
-                callback?.onConnectionStatusChanged(true, "Connected")
-            }
-
-            override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                isConnected = false
-                isConnecting = false
-                Log.e(tag, "Connection failed", exception)
-                callback?.onConnectionStatusChanged(false, "Connection failed: ${exception?.message}")
-                scheduleReconnect()
-            }
-        })
+        isConnected = false
+        isConnecting = false
+        handler.removeCallbacks(connectionTimeoutTask)
+        val reason = (error as? MqttException)?.reasonCode
+        val cause = error?.cause?.javaClass?.simpleName ?: error?.javaClass?.simpleName ?: "Unknown"
+        val detail = "$message (reason=${reason ?: "unknown"}, cause=$cause)"
+        logger.w(detail)
+        callback?.onConnectionStatusChanged(false, detail)
+        if (reason == MqttException.REASON_CODE_CLIENT_CLOSED.toInt() || error is IllegalArgumentException) {
+            releaseClient(0)
+        }
+        val immediate = retryAfterNetworkChange
+        retryAfterNetworkChange = false
+        scheduleReconnect(immediate)
     }
 
     private fun createConnectionOptions(): MqttConnectOptions {
         return MqttConnectOptions().apply {
-            isAutomaticReconnect = true
+            // One SDK-owned retry loop handles initial failures and network recovery.
+            isAutomaticReconnect = false
+            connectionTimeout = 15
             isCleanSession = false
             keepAliveInterval = 60
             serverURIs = arrayOf(this@MqttManager.serverUri)
             try {
                 setWill("device/$deviceId/status", "offline".toByteArray(), 1, true)
             } catch (e: Exception) {
-                Log.e(tag, "Error setting LWT", e)
+                logger.e("Error setting LWT", e)
             }
             userName = MQTT_USERNAME
             password = MQTT_PASSWORD.toCharArray()
         }
     }
 
-    private fun scheduleReconnect() {
-        if (isConnecting) return
-        isConnecting = true
-        if (reconnectAttempts >= maxReconnectAttempts) {
-            reconnectAttempts = 0
-            isConnecting = false
-            return
-        }
-
-        val delay = (reconnectIntervalMs * (1L shl reconnectAttempts.coerceAtMost(4))).coerceAtMost(60_000L)
-        reconnectAttempts++
-        Log.d(tag, "Scheduling reconnect in ${delay}ms, attempt $reconnectAttempts")
-
-        handler.postDelayed({
-            isConnecting = false
-            if (!isConnected) connect()
-        }, delay)
+    private fun scheduleReconnect(immediate: Boolean = false) {
+        if (destroyed || isConnecting || reconnectScheduled) return
+        val delay = if (immediate) 0L else
+            (reconnectIntervalMs * (1L shl reconnectAttempts.coerceAtMost(4))).coerceAtMost(60_000L)
+        reconnectAttempts = (reconnectAttempts + 1).coerceAtMost(4)
+        reconnectScheduled = true
+        logger.d("Scheduling MQTT reconnect in ${delay}ms")
+        handler.postDelayed(reconnectTask, delay)
     }
 
     fun publishLocation(location: Location, tripId: String? = null, tripStatus: String = "active") {
         try {
             val locationData = buildLocationJson(location, tripId, tripStatus)
-            Log.d(tag, "Publishing location: $locationData")
+            logger.d("Publishing location")
             publishMessage(channelTopic, locationData.toString(), 1, false)
         } catch (e: Exception) {
-            Log.e(tag, "Error creating location JSON", e)
+            logger.e("Error creating location JSON", e)
         }
     }
 
@@ -209,16 +318,44 @@ class MqttManager(
     }
 
     fun publishLocationJson(json: JsonObject) {
-        Log.d(tag, "Publishing offline location: $json")
+        logger.d("Publishing offline location")
         publishMessage(channelTopic, json.toString(), 1, false)
     }
 
+    // For durable offline rows, returning from publish() is not delivery confirmation.
+    internal suspend fun publishLocationJsonAndAwaitDelivery(json: JsonObject) {
+        withTimeout(30_000L.milliseconds) {
+            suspendCancellableCoroutine<Unit> { continuation ->
+                val completed = AtomicBoolean(false)
+                val listener = object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        if (completed.compareAndSet(false, true)) continuation.resume(Unit)
+                    }
+
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        if (completed.compareAndSet(false, true)) {
+                            continuation.resumeWithException(exception ?: IllegalStateException("MQTT publish failed"))
+                        }
+                    }
+                }
+                try {
+                    publishMessage(channelTopic, json.toString(), 1, false, listener)
+                } catch (e: Exception) {
+                    listener.onFailure(null, e)
+                }
+            }
+        }
+    }
+
     fun publishOfflineBatch(jsonArray: JsonArray) {
-        Log.d(tag, "Publishing offline batch: $jsonArray")
+        logger.d("Publishing offline batch")
         publishMessage(channelTopic, jsonArray.toString(), 1, false)
     }
 
-    private fun publishMessage(topic: String, payload: String, qos: Int, retained: Boolean) {
+    private fun publishMessage(
+        topic: String, payload: String, qos: Int, retained: Boolean,
+        listener: IMqttActionListener? = null
+    ) {
         val client = mqttClient
         if (client != null && isConnected) {
             val message = MqttMessage(payload.toByteArray()).apply {
@@ -227,56 +364,58 @@ class MqttManager(
             }
             client.publish(topic, message, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
-                    Log.d(tag, "Published to topic: $topic")
+                    logger.d("MQTT publish completed")
+                    listener?.onSuccess(asyncActionToken)
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    Log.e(tag, "Failed to publish to topic: $topic", exception)
+                    logger.e("MQTT publish failed", exception)
+                    listener?.onFailure(asyncActionToken, exception)
                 }
             })
         } else {
-            Log.w(tag, "Cannot publish - not connected")
+            logger.w("Cannot publish - not connected")
+            listener?.onFailure(null, IllegalStateException("MQTT not connected"))
         }
     }
 
-    fun isConnected(): Boolean = isConnected && mqttClient?.isConnected == true
+    fun isConnected(): Boolean = !destroyed && isConnected &&
+        runCatching { mqttClient?.isConnected == true }.getOrDefault(false)
 
     fun destroy() {
-        handler.removeCallbacksAndMessages(null)
-        val client = mqttClient ?: return
-
-        isConnecting = false
-        reconnectAttempts = 0
-
-        client.removeCallback(mqttCallback)
-        try {
-            if (client.isConnected) {
-                // MqttService.disconnect() removes the client handle from its
-                // connections map, so calling close() afterwards always throws
-                // "Invalid ClientHandle". Disconnect alone tears the connection
-                // down and stops the remote service. The quiesce window lets the
-                // final location / trip-completed publish land before teardown.
-                client.disconnect(1000, null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {
-                        Log.i(tag, "Disconnected from MQTT broker")
-                    }
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        Log.e(tag, "Failed to disconnect", exception)
-                    }
-                })
-            } else {
-                // Not connected: the handle is still registered, close() releases it
-                client.close()
+        onMain {
+            if (destroyed) return@onMain
+            destroyed = true
+            handler.removeCallbacksAndMessages(null)
+            reconnectScheduled = false
+            isConnecting = false
+            if (networkCallbackRegistered) {
+                runCatching { connectivityManager?.unregisterNetworkCallback(networkCallback) }
+                networkCallbackRegistered = false
             }
-        } catch (e: IllegalArgumentException) {
-            // Handle already gone (e.g. connect never registered) - nothing to release
-            Log.d(tag, "MQTT client already released: ${e.message}")
+            releaseClient(1000)
+        }
+    }
+
+    private fun releaseClient(quiesceMs: Long) {
+        val client = mqttClient
+        mqttClient = null
+        isConnected = false
+        clientGeneration++
+        if (client == null) return
+        runCatching { client.removeCallback(mqttCallback) }
+        // close() alone leaves a closed handle in the Android MQTT service map.
+        // Disconnect also removes that handle so a replacement can connect again.
+        if (!runCatching { client.isConnected }.getOrDefault(false)) runCatching { client.close() }
+        try {
+            client.disconnect(quiesceMs, null, object : IMqttActionListener {
+                override fun onSuccess(asyncActionToken: IMqttToken?) = Unit
+                override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) = Unit
+            })
         } catch (e: Exception) {
-            Log.e(tag, "Error during destroy", e)
+            logger.w("MQTT connection cleanup could not complete", e)
         } finally {
-            client.unregisterResources()
-            mqttClient = null
-            isConnected = false
+            runCatching { client.unregisterResources() }
         }
     }
 }
