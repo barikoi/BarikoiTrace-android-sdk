@@ -3,14 +3,15 @@ package com.barikoi.barikoitrace.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import com.barikoi.barikoitrace.util.TraceLogger
 import com.barikoi.barikoitrace.LocTraceManager
 
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-            Log.d("BootReceiver", "Boot completed, checking tracking state")
+            val logger = TraceLogger(context, "BootReceiver")
+            logger.d("Boot completed, checking tracking state")
             try {
                 val manager = LocTraceManager.getInstance(context)
                 val dataStore = com.barikoi.barikoitrace.storage.TraceDataStore(context)
@@ -22,7 +23,7 @@ class BootReceiver : BroadcastReceiver() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("BootReceiver", "Error restarting tracking", e)
+                logger.e("Error restarting tracking", e)
             }
         }
     }
