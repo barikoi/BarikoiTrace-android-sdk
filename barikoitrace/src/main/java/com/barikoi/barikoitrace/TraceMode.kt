@@ -15,6 +15,14 @@ data class TraceMode(
     val startTime: LocalTime = LocalTime.MIN,
     val endTime: LocalTime = LocalTime.MAX
 ) {
+    /** Inclusive local-time bounds; a start later than the end crosses midnight. */
+    internal fun isWithinTrackingWindow(time: LocalTime): Boolean =
+        if (startTime <= endTime) {
+            time >= startTime && time <= endTime
+        } else {
+            time >= startTime || time <= endTime
+        }
+
     enum class DesiredAccuracy {
         HIGH, MEDIUM, LOW;
 
@@ -47,8 +55,13 @@ data class TraceMode(
         private var endTime = LocalTime.MAX
 
         fun setDesiredAccuracy(accuracy: DesiredAccuracy) = apply { this.desiredAccuracy = accuracy }
-        fun setUpdateInterval(seconds: Int) = apply { this.updateInterval = if (seconds < 5) 5 else seconds }
-        fun setDistanceFilter(meters: Int) = apply { this.distanceFilter = if (meters < 10) 10 else meters }
+        // Zero disables a filter; positive values retain their minimum thresholds.
+        fun setUpdateInterval(seconds: Int) = apply {
+            this.updateInterval = if (seconds == 0) 0 else seconds.coerceAtLeast(5)
+        }
+        fun setDistanceFilter(meters: Int) = apply {
+            this.distanceFilter = if (meters == 0) 0 else meters.coerceAtLeast(10)
+        }
         fun setStopDuration(seconds: Int) = apply { this.stopDuration = seconds }
         fun setAccuracyFilter(meters: Int) = apply { this.accuracyFilter = if (meters < 20) 20 else meters }
         fun setOfflineSync(enabled: Boolean) = apply { this.offline = enabled }
