@@ -17,6 +17,55 @@ class TraceDataStoreTest {
 
     private lateinit var dataStore: TraceDataStore
 
+    @Test
+    fun localOfflineSetting_roundTripsAndCanBeReenabled() = runBlocking {
+        dataStore.setTraceMode(TraceMode.ACTIVE.copy(offline = false))
+        assertThat(dataStore.isOfflineTracking()).isFalse()
+        assertThat(dataStore.getTraceMode().offline).isFalse()
+        dataStore.setTraceMode(TraceMode.ACTIVE)
+        assertThat(dataStore.isOfflineTracking()).isTrue()
+        assertThat(dataStore.getTraceMode().offline).isTrue()
+    }
+
+    @Test
+    fun remoteOfflineSetting_updatesEffectivePreference() = runBlocking {
+        dataStore.setOfflineTracking(true)
+        dataStore.setTraceModeFromRemote(TraceMode.ACTIVE.copy(offline = false))
+        assertThat(dataStore.isOfflineTracking()).isFalse()
+        assertThat(dataStore.getTraceMode().offline).isFalse()
+        dataStore.setTraceModeFromRemote(TraceMode.ACTIVE)
+        assertThat(dataStore.isOfflineTracking()).isTrue()
+    }
+
+    @Test
+    fun offlineOverride_isReflectedEvenWhenNoModeStored() = runBlocking {
+        dataStore.clearTraceMode()
+        dataStore.setOfflineTracking(false)
+        assertThat(dataStore.getTraceMode().offline).isFalse()
+        dataStore.setOfflineTracking(true)
+        assertThat(dataStore.getTraceMode().offline).isTrue()
+    }
+
+    @Test
+    fun passiveMode_roundTripPreservesDistanceBasedConfiguration() = runBlocking {
+        dataStore.setTraceMode(TraceMode.PASSIVE)
+        val restored = dataStore.getTraceMode()
+        assertThat(restored.updateInterval).isEqualTo(0)
+        assertThat(restored.distanceFilter).isEqualTo(100)
+        assertThat(restored.desiredAccuracy).isEqualTo(TraceMode.DesiredAccuracy.MEDIUM)
+        assertThat(restored.pingSyncInterval).isEqualTo(120)
+    }
+
+    @Test
+    fun reactiveMode_roundTripPreservesDistanceBasedConfiguration() = runBlocking {
+        dataStore.setTraceMode(TraceMode.REACTIVE)
+        val restored = dataStore.getTraceMode()
+        assertThat(restored.updateInterval).isEqualTo(0)
+        assertThat(restored.distanceFilter).isEqualTo(100)
+        assertThat(restored.desiredAccuracy).isEqualTo(TraceMode.DesiredAccuracy.HIGH)
+        assertThat(restored.pingSyncInterval).isEqualTo(30)
+    }
+
     @Before
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -97,7 +146,7 @@ class TraceDataStoreTest {
             .setStartTime(LocalTime.of(8, 0))
             .setEndTime(LocalTime.of(18, 0))
             .build()
-        dataStore.setTraceModeWithTiming(mode)
+        dataStore.setTraceMode(mode)
         val retrieved = dataStore.getTraceMode()
         assertThat(retrieved).isNotNull()
         assertThat(retrieved!!.updateInterval).isEqualTo(10)
@@ -219,5 +268,36 @@ class TraceDataStoreTest {
         dataStore.stopSdkTracking()
         assertThat(dataStore.getTraceModeSource()).isEqualTo(TraceModeSource.LOCAL)
         assertThat(dataStore.isTraceModeFromRemote()).isFalse()
+    }
+
+    @Test
+    fun localModeWithoutSchedule_replacesPreviousRemoteSchedule() = runBlocking {
+        dataStore.setTraceModeFromRemote(
+            TraceMode.ACTIVE.copy(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(18, 0))
+        )
+        dataStore.setTraceMode(TraceMode.ACTIVE)
+        assertThat(dataStore.getTraceMode().startTime).isEqualTo(LocalTime.MIN)
+        assertThat(dataStore.getTraceMode().endTime).isEqualTo(LocalTime.MAX)
+    }
+
+    @Test
+    fun localOvernightSchedule_replacesPreviousRemoteSchedule() = runBlocking {
+        dataStore.setTraceModeFromRemote(
+            TraceMode.ACTIVE.copy(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(18, 0))
+        )
+        val overnight = TraceMode.ACTIVE.copy(startTime = LocalTime.of(22, 0), endTime = LocalTime.of(6, 0))
+        dataStore.setTraceMode(overnight)
+        assertThat(dataStore.getTraceMode().startTime).isEqualTo(overnight.startTime)
+        assertThat(dataStore.getTraceMode().endTime).isEqualTo(overnight.endTime)
+    }
+
+    @Test
+    fun stopTracking_clearsPreviousSchedule() = runBlocking {
+        dataStore.setTraceModeFromRemote(
+            TraceMode.ACTIVE.copy(startTime = LocalTime.of(8, 0), endTime = LocalTime.of(18, 0))
+        )
+        dataStore.stopSdkTracking()
+        assertThat(dataStore.getTraceMode().startTime).isEqualTo(LocalTime.MIN)
+        assertThat(dataStore.getTraceMode().endTime).isEqualTo(LocalTime.MAX)
     }
 }
