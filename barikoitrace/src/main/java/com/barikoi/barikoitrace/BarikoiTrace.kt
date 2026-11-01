@@ -5,8 +5,10 @@ import android.content.Context
 import android.location.Location
 import com.barikoi.barikoitrace.model.TraceError
 import com.barikoi.barikoitrace.model.TraceUser
+import com.barikoi.barikoitrace.model.TraceStatus
 import com.barikoi.barikoitrace.receiver.LocationReceiver
 import com.barikoi.barikoitrace.util.SystemSettingsManager
+import com.barikoi.barikoitrace.storage.TraceDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +29,7 @@ object BarikoiTrace {
     }
 
     internal fun notifyLog(level: String, tag: String, message: String) {
+        if (!TraceDataStore.isLoggingEnabled()) return
         logListener?.onLog(level, tag, message)
     }
 
@@ -43,6 +46,16 @@ object BarikoiTrace {
         manager = LocTraceManager.getInstance(context)
         getInstance().initialize(apiKey)
     }
+
+    @JvmStatic
+    suspend fun awaitReady() = getInstance().awaitInitialization()
+
+    @JvmStatic
+    suspend fun configureEndpoints(baseUrl: String, mqttUrl: String) =
+        getInstance().configureEndpoints(baseUrl, mqttUrl)
+
+    @JvmStatic
+    suspend fun getTrackingStatus(): TraceStatus = getInstance().getTrackingStatus()
 
     @JvmStatic
     fun setBaseUrl(url: String) = getInstance().setBaseUrl(url)
@@ -113,6 +126,7 @@ object BarikoiTrace {
 
     // --- Tracking ---
 
+    /** Saves the mode and applies it to active tracking without restarting the service or trip. */
     @JvmStatic
     fun setTraceMode(mode: TraceMode) = getInstance().setTraceMode(mode)
 
